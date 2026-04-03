@@ -158,6 +158,8 @@ export function BrandingProvider({
       deposit_min_amount: data?.deposit_min_amount ?? null,
       deposit_preset_amounts: data?.deposit_preset_amounts ?? null,
       deposit_notify_telegram: data?.deposit_notify_telegram ?? null,
+      landing_pricing: data?.landing_pricing ?? null,
+      menu_labels: data?.menu_labels ?? null,
       turnstile_enabled: data?.turnstile_enabled ?? null,
       turnstile_site_key: data?.turnstile_site_key ?? null
     }),
@@ -171,15 +173,46 @@ export function BrandingProvider({
     if (isLoading) return
     const root = document.documentElement
 
+    // Primary color → inject cả custom vars lẫn MUI vars (ThemeProvider không tự set CSS vars)
+    root.style.setProperty('--primary-color', primaryColor, 'important')
     root.style.setProperty('--primary-hover', primaryHover, 'important')
     root.style.setProperty('--primary-gradient', primaryGradient, 'important')
+    root.style.setProperty('--mui-palette-primary-main', primaryColor, 'important')
 
+    // Compute light/dark variants
+    const lighten = (hex: string, amount: number) => {
+      const num = parseInt(hex.replace('#', ''), 16)
+      const r = Math.min(255, Math.round(((num >> 16) & 0xff) + (255 - ((num >> 16) & 0xff)) * amount))
+      const g = Math.min(255, Math.round(((num >> 8) & 0xff) + (255 - ((num >> 8) & 0xff)) * amount))
+      const b = Math.min(255, Math.round((num & 0xff) + (255 - (num & 0xff)) * amount))
+      return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+    }
+
+    const darken = (hex: string, amount: number) => {
+      const num = parseInt(hex.replace('#', ''), 16)
+      const r = Math.round(((num >> 16) & 0xff) * (1 - amount))
+      const g = Math.round(((num >> 8) & 0xff) * (1 - amount))
+      const b = Math.round((num & 0xff) * (1 - amount))
+      return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+    }
+
+    root.style.setProperty('--mui-palette-primary-light', lighten(primaryColor, 0.2), 'important')
+    root.style.setProperty('--mui-palette-primary-dark', darken(primaryColor, 0.1), 'important')
+
+    // mainChannel for opacity variants (MUI uses rgb channel format)
     const hex = primaryColor.replace('#', '')
-    const r = parseInt(hex.substring(0, 2), 16) / 255
-    const g = parseInt(hex.substring(2, 4), 16) / 255
-    const b = parseInt(hex.substring(4, 6), 16) / 255
-    const luminance = 0.299 * r + 0.587 * g + 0.114 * b
+    const r = parseInt(hex.substring(0, 2), 16)
+    const g = parseInt(hex.substring(2, 4), 16)
+    const b = parseInt(hex.substring(4, 6), 16)
+    root.style.setProperty('--mui-palette-primary-mainChannel', `${r} ${g} ${b}`, 'important')
 
+    // Light variant for hover backgrounds
+    root.style.setProperty('--primary-light', `rgba(${r}, ${g}, ${b}, 0.1)`, 'important')
+    root.style.setProperty('--mui-palette-primary-lightOpacity', `rgba(${r}, ${g}, ${b}, 0.16)`, 'important')
+    root.style.setProperty('--mui-palette-primary-lighterOpacity', `rgba(${r}, ${g}, ${b}, 0.08)`, 'important')
+
+    // Contrast
+    const luminance = 0.299 * (r / 255) + 0.587 * (g / 255) + 0.114 * (b / 255)
     root.style.setProperty('--primary-contrast', luminance > 0.6 ? '#1e293b' : '#ffffff')
   }, [isLoading, primaryColor, primaryHover, primaryGradient])
 

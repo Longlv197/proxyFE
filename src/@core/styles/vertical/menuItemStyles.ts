@@ -39,10 +39,10 @@ const menuItemStyles = (verticalNavOptions: VerticalNavState, theme: Theme): Men
         ...(collapsedNotHovered
           ? {
               backgroundColor: 'transparent',
-              color: '#FC4336',
+              color: 'var(--mui-palette-primary-main)',
               boxShadow: 'none',
               [`& .${menuClasses.icon}`]: {
-                color: '#FC4336'
+                color: 'var(--mui-palette-primary-main)'
               }
             }
           : popoutCollapsed && level > 0
@@ -56,7 +56,7 @@ const menuItemStyles = (verticalNavOptions: VerticalNavState, theme: Theme): Men
             : {
                 color: '#fff !important',
                 background: 'var(--primary-gradient, linear-gradient(45deg, #FC4336, #F88A4B)) !important',
-                boxShadow: '0px 2px 6px rgba(252, 67, 54, 0.3)',
+                boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.15)',
                 [`& .${menuClasses.icon}`]: {
                   color: '#fff !important'
                 }

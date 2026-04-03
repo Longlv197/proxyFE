@@ -18,31 +18,7 @@ import type { SystemMode } from '@core/types'
 import coreTheme from '@core/theme'
 
 const mergedTheme = (settings: Settings, mode: SystemMode, direction: Theme['direction']) => {
-  // Vars
-  const userTheme = {
-    colorSchemes: {
-      light: {
-        palette: {
-          primary: {
-            main: '#F88A4B',
-            light: '#FF9CF2',
-            dark: '#80004E'
-          }
-        }
-      },
-      dark: {
-        palette: {
-          secondary: {
-            main: '#BF2761',
-            light: '#FF9CF2',
-            dark: '#80004E'
-          }
-        }
-      }
-    }
-  } as Theme
-
-  return deepmerge(coreTheme(settings, mode, direction), userTheme)
+  return coreTheme(settings, mode, direction)
 }
 
 export default mergedTheme
