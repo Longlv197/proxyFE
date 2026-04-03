@@ -118,6 +118,26 @@ export const useUpdateItem = () => {
   })
 }
 
+// Hook admin chỉnh sửa đơn hàng (MySQL Order)
+export const useUpdateOrder = () => {
+  const axiosAuth = useAxiosAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ orderId, data }: { orderId: number; data: Record<string, any> }) => {
+      const res = await axiosAuth.put(`/admin/orders/${orderId}`, data)
+
+      return res?.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orderProxyStatic'] })
+      queryClient.invalidateQueries({ queryKey: ['userOrders'] })
+      queryClient.invalidateQueries({ queryKey: ['adminTransactionHistory'] })
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] })
+    }
+  })
+}
+
 // Hook để xóa đơn hàng
 export const useDeleteOrder = () => {
   const axiosAuth = useAxiosAuth()

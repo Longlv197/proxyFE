@@ -23,7 +23,9 @@ import {
   RefreshCw,
   ChevronDown,
   Database,
-  Eye
+  Eye,
+  Pencil,
+  Save
 } from 'lucide-react'
 
 import { extractProxyValue, extractProtocol } from '@/utils/protocolProxy'
@@ -36,7 +38,7 @@ import { Chip, Checkbox, CircularProgress } from '@mui/material'
 
 import { formatDateTimeLocal } from '@/utils/formatDate'
 import { ORDER_STATUS_LABELS_ADMIN, ORDER_STATUS, ORDER_STATUS_COLORS_ADMIN } from '@/constants'
-import { useApiKeys, useUpdateItem } from '@/hooks/apis/useOrders'
+import { useApiKeys, useUpdateItem, useUpdateOrder } from '@/hooks/apis/useOrders'
 import { useOrderLogs, type OrderLog } from '@/hooks/apis/useOrderLogs'
 import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderHistories'
 import { useOrderHistoryLogs, type HistoryLogItem } from '@/hooks/apis/useRenewal'
@@ -604,14 +606,74 @@ const fmtValue = (v: any): string => {
   return String(v)
 }
 
-/** Panel thông tin nội bộ đơn hàng — expandable, trực quan */
+/** Panel thông tin nội bộ đơn hàng — expandable, trực quan + admin edit */
 function OrderRawDataPanel({ order }: { order: any }) {
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState<Record<string, any>>({})
+  const updateOrder = useUpdateOrder()
+
+  const startEdit = () => {
+    setForm({
+      status: order.status ?? 0,
+      quantity: order.quantity ?? 0,
+      delivered_quantity: order.delivered_quantity ?? 0,
+      price_per_unit: order.price_per_unit ?? 0,
+      total_amount: order.total_amount ?? 0,
+      cost_price: order.cost_price ?? 0,
+      total_cost: order.total_cost ?? 0,
+      refunded_amount: order.refunded_amount ?? 0,
+      affiliate_commission: order.affiliate_commission ?? 0,
+      time: order.time ?? 0,
+      retry: order.retry ?? 0,
+      expired_at: order.expired_at ? order.expired_at.replace(' ', 'T').slice(0, 16) : '',
+      buy_at: order.buy_at ? order.buy_at.replace(' ', 'T').slice(0, 16) : '',
+      note: order.note ?? '',
+      proxy_type: order.proxy_type ?? '',
+    })
+    setEditing(true)
+  }
+
+  const saveEdit = () => {
+    if (!order?.id) return
+    const payload: Record<string, any> = {}
+    // Chỉ gửi field thay đổi
+    const numFields = ['status', 'quantity', 'delivered_quantity', 'price_per_unit', 'total_amount', 'cost_price', 'total_cost', 'refunded_amount', 'affiliate_commission', 'time', 'retry']
+    numFields.forEach(f => {
+      const v = Number(form[f])
+      if (v !== Number(order[f] ?? 0)) payload[f] = v
+    })
+    if (form.expired_at && form.expired_at !== (order.expired_at || '').replace(' ', 'T').slice(0, 16)) {
+      payload.expired_at = form.expired_at.replace('T', ' ') + ':00'
+    }
+    if (form.buy_at && form.buy_at !== (order.buy_at || '').replace(' ', 'T').slice(0, 16)) {
+      payload.buy_at = form.buy_at.replace('T', ' ') + ':00'
+    }
+    if (form.note !== (order.note ?? '')) payload.note = form.note
+    if (form.proxy_type !== (order.proxy_type ?? '')) payload.proxy_type = form.proxy_type
+
+    if (Object.keys(payload).length === 0) { setEditing(false); return }
+    updateOrder.mutate({ orderId: order.id, data: payload }, {
+      onSuccess: () => setEditing(false),
+    })
+  }
+
   if (!order) return null
 
   const fmtVND = (v: any) => v != null && v !== 0 && v !== '0' ? new Intl.NumberFormat('vi-VN').format(Number(v)) + 'đ' : null
   const statusLabel = ORDER_STATUS_LABELS_ADMIN[String(order.status)] || `Mã ${order.status}`
   const statusColor = ORDER_STATUS_COLORS_ADMIN[String(order.status) as keyof typeof ORDER_STATUS_COLORS_ADMIN] || 'default'
+
+  const STATUS_OPTIONS = [
+    { value: 0, label: 'Chờ xử lý' }, { value: 1, label: 'Đang xử lý' },
+    { value: 2, label: 'Đang sử dụng' }, { value: 3, label: 'Thiếu proxy' },
+    { value: 4, label: 'Hết hạn' }, { value: 5, label: 'Thất bại' },
+    { value: 6, label: 'Hoàn tiền 1 phần' }, { value: 7, label: 'Chờ hoàn tiền' },
+    { value: 8, label: 'Hoàn tiền toàn bộ' }, { value: 9, label: 'Đang mua bù' },
+    { value: 10, label: 'Chờ nhà cung cấp' },
+  ]
+
+  const inputSx: React.CSSProperties = { fontSize: '12px', padding: '4px 8px', border: '1px solid #c7d2fe', borderRadius: 4, fontFamily: 'monospace', width: '100%' }
 
   // Card data — chỉ hiện field có giá trị
   type CardItem = { label: string; value: string | React.ReactNode; mono?: boolean; highlight?: string }
@@ -675,35 +737,121 @@ function OrderRawDataPanel({ order }: { order: any }) {
         Thông tin chi tiết đơn hàng
         <ChevronDown size={14} style={{ marginLeft: 'auto', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
       </button>
-      {open && (
-        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {cards.map(card => (
-            <div key={card.title} style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-              <div style={{ background: card.bg, padding: '5px 12px', fontSize: '11px', fontWeight: 700, color: card.color, borderBottom: '1px solid #e2e8f0' }}>
-                {card.title}
+      {open && !editing && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {cards.map(card => (
+              <div key={card.title} style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{ background: card.bg, padding: '5px 12px', fontSize: '11px', fontWeight: 700, color: card.color, borderBottom: '1px solid #e2e8f0' }}>
+                  {card.title}
+                </div>
+                <div style={{ padding: '6px 0' }}>
+                  {card.items.map((item, i) => (
+                    <div key={i} style={{ padding: '3px 12px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#94a3b8', fontSize: '11px' }}>{item.label}</span>
+                      <span style={{
+                        fontWeight: 600, color: item.highlight || '#1e293b',
+                        fontFamily: item.mono ? 'monospace' : 'inherit', fontSize: '12px',
+                      }}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div style={{ padding: '6px 0' }}>
-                {card.items.map((item, i) => (
-                  <div key={i} style={{ padding: '3px 12px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#94a3b8', fontSize: '11px' }}>{item.label}</span>
-                    <span style={{
-                      fontWeight: 600, color: item.highlight || '#1e293b',
-                      fontFamily: item.mono ? 'monospace' : 'inherit', fontSize: '12px',
-                    }}>
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+            ))}
 
-          {/* Ghi chú — full width */}
-          {order.note && (
-            <div style={{ gridColumn: '1 / -1', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', background: '#fef2f2', fontSize: '12px', color: '#991b1b' }}>
-              <strong>Ghi chú:</strong> {order.note}
+            {order.note && (
+              <div style={{ gridColumn: '1 / -1', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', background: '#fef2f2', fontSize: '12px', color: '#991b1b' }}>
+                <strong>Ghi chú:</strong> {order.note}
+              </div>
+            )}
+          </div>
+          <button onClick={startEdit} style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: '12px', color: '#6366f1', background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 6, padding: '5px 14px', cursor: 'pointer', fontWeight: 500 }}>
+            <Pencil size={13} /> Chỉnh sửa đơn hàng
+          </button>
+        </div>
+      )}
+
+      {/* Edit mode */}
+      {open && editing && (
+        <div style={{ marginTop: 8, border: '1px solid #c7d2fe', borderRadius: 8, padding: 12, background: '#faf5ff' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: '#6366f1', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Pencil size={13} /> Chỉnh sửa đơn hàng #{order.order_code}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {/* Trạng thái */}
+            <div>
+              <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: 2 }}>Trạng thái</label>
+              <select value={form.status} onChange={e => setForm(p => ({ ...p, status: Number(e.target.value) }))} style={{ ...inputSx, fontFamily: 'inherit' }}>
+                {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
-          )}
+
+            {/* Loại proxy */}
+            <div>
+              <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: 2 }}>Loại proxy</label>
+              <select value={form.proxy_type} onChange={e => setForm(p => ({ ...p, proxy_type: e.target.value }))} style={{ ...inputSx, fontFamily: 'inherit' }}>
+                <option value='ROTATING'>ROTATING</option>
+                <option value='STATIC'>STATIC</option>
+              </select>
+            </div>
+
+            {/* Số lượng */}
+            {[
+              { key: 'quantity', label: 'Số lượng' },
+              { key: 'delivered_quantity', label: 'Đã giao' },
+              { key: 'time', label: 'Thời hạn (ngày)' },
+              { key: 'retry', label: 'Retry' },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: 2 }}>{f.label}</label>
+                <input type='number' value={form[f.key] ?? ''} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={inputSx} />
+              </div>
+            ))}
+
+            {/* Tài chính */}
+            {[
+              { key: 'price_per_unit', label: 'Giá bán/đơn vị' },
+              { key: 'total_amount', label: 'Doanh thu' },
+              { key: 'cost_price', label: 'Giá vốn/đơn vị' },
+              { key: 'total_cost', label: 'Tổng vốn' },
+              { key: 'refunded_amount', label: 'Đã hoàn tiền' },
+              { key: 'affiliate_commission', label: 'Hoa hồng affiliate' },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: 2 }}>{f.label}</label>
+                <input type='number' value={form[f.key] ?? ''} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={inputSx} />
+              </div>
+            ))}
+
+            {/* Thời gian */}
+            <div>
+              <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: 2 }}>Kích hoạt</label>
+              <input type='datetime-local' value={form.buy_at ?? ''} onChange={e => setForm(p => ({ ...p, buy_at: e.target.value }))} style={inputSx} />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: 2 }}>Hết hạn</label>
+              <input type='datetime-local' value={form.expired_at ?? ''} onChange={e => setForm(p => ({ ...p, expired_at: e.target.value }))} style={inputSx} />
+            </div>
+
+            {/* Ghi chú — full width */}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: 2 }}>Ghi chú</label>
+              <textarea value={form.note ?? ''} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} rows={2} style={{ ...inputSx, resize: 'vertical' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button onClick={saveEdit} disabled={updateOrder.isPending} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '12px', color: '#fff', background: updateOrder.isPending ? '#a5b4fc' : '#6366f1', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontWeight: 600 }}>
+              {updateOrder.isPending ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={13} />}
+              {updateOrder.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </button>
+            <button onClick={() => setEditing(false)} style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, padding: '6px 14px', cursor: 'pointer' }}>
+              Huỷ
+            </button>
+          </div>
         </div>
       )}
     </div>

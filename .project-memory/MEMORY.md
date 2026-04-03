@@ -76,10 +76,14 @@ Sau mỗi session có sửa code/thêm tính năng, **tự động cập nhật 
 - [Toast under Modal](bug_toast_under_modal.md) — ĐÃ FIX 26/03
 - [Auth Flash Debug](bug_auth_flash_debug.md) — ĐANG DEBUG: user nói "auth flash" = gửi log
 
+## IP Whitelist & Sync
+
+- [IP Whitelist Sync](project_ip_whitelist_sync.md) — ĐÃ FIX 03/04: sync site con→mẹ, mode both, flow xoay
+
 ## TODO
 
 - [Naming Refactor](project_naming_refactor.md) — CHƯA: rename supplier→provider variables
-- Params mapping FE admin UI + IP whitelist integrate buy flow
+- Params mapping FE admin UI
 
 ## Feedback (quy tắc bắt buộc)
 
