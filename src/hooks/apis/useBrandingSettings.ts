@@ -83,6 +83,10 @@ export interface BrandingSettings {
   // Menu labels
   menu_labels: Record<string, string> | null
 
+  // Cloudflare Turnstile
+  turnstile_enabled: string | null
+  turnstile_site_key: string | null
+
   // Mode
   site_mode: SiteMode | null
 }

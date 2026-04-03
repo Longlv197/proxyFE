@@ -8,7 +8,7 @@ import {
 } from '@mui/material'
 import {
   Settings, Plus, Trash2, Save, Loader2, Upload, Palette,
-  Search, Code, PanelLeft, Truck, Globe, Info, Eye, ShoppingCart, CreditCard, Headphones
+  Search, Code, PanelLeft, Truck, Globe, Info, Eye, ShoppingCart, CreditCard, Headphones, Shield
 } from 'lucide-react'
 import { toast } from 'react-toastify'
 
@@ -2054,6 +2054,64 @@ export default function SiteSettingsForm() {
                     />
                   </div>
                 ))}
+              </div>
+
+              {/* Cloudflare Turnstile */}
+              <div style={{ background: '#eff6ff', borderRadius: 12, padding: 20, border: '1px solid #bfdbfe' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <Shield size={16} color='#2563eb' />
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1e40af' }}>Cloudflare Turnstile</div>
+                </div>
+                <div style={{ fontSize: 12, color: '#60a5fa', marginBottom: 16 }}>
+                  Chống bot cho trang đăng nhập & đăng ký. Lấy key tại{' '}
+                  <a href='https://dash.cloudflare.com/?to=/:account/turnstile' target='_blank' rel='noopener noreferrer' style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                    Cloudflare Dashboard
+                  </a>.
+                </div>
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+                  <span style={{ width: 160, fontSize: 13, color: '#64748b' }}>Bật Turnstile</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type='checkbox'
+                      checked={branding.turnstile_enabled === 'true'}
+                      onChange={e => updateBrandingField('turnstile_enabled', e.target.checked ? 'true' : 'false')}
+                      style={{ width: 18, height: 18, accentColor: '#2563eb' }}
+                    />
+                    <span style={{ fontSize: 13, color: branding.turnstile_enabled === 'true' ? '#16a34a' : '#94a3b8' }}>
+                      {branding.turnstile_enabled === 'true' ? 'Đang bật' : 'Đang tắt'}
+                    </span>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ width: 160, fontSize: 13, color: '#64748b' }}>Site Key</span>
+                  <TextField
+                    size='small'
+                    placeholder='0x4AAAAAAA...'
+                    value={branding.turnstile_site_key || ''}
+                    onChange={e => updateBrandingField('turnstile_site_key', e.target.value)}
+                    sx={{ flex: 1, maxWidth: 400 }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <span style={{ width: 160, fontSize: 13, color: '#64748b' }}>Secret Key</span>
+                  <TextField
+                    size='small'
+                    type='password'
+                    placeholder='0x4AAAAAAA...'
+                    value={(branding as any).turnstile_secret_key || ''}
+                    onChange={e => updateBrandingField('turnstile_secret_key' as any, e.target.value)}
+                    sx={{ flex: 1, maxWidth: 400 }}
+                  />
+                </div>
+
+                {branding.turnstile_enabled === 'true' && !branding.turnstile_site_key && (
+                  <Alert severity='warning' sx={{ mt: 2, fontSize: 12 }}>
+                    Turnstile đã bật nhưng chưa nhập Site Key. Widget sẽ không hiển thị trên form đăng nhập/đăng ký.
+                  </Alert>
+                )}
               </div>
             </div>
           )}

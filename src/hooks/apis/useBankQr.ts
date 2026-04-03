@@ -36,7 +36,7 @@ export const useCreateBankQr = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (params: { amount: number }) => {
+    mutationFn: async (params: { amount: number; turnstile_token?: string }) => {
       const res = await axiosAuth.post('/create-bank-qr', params)
 
       

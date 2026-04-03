@@ -8,18 +8,7 @@ import { useParams } from 'next/navigation'
 import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
 
-import {
-  Wallet,
-  QrCode,
-  Clock,
-  Copy,
-  Loader,
-  Clock3,
-  CircleAlert,
-  Trash2,
-  CheckCircle2,
-  Radio
-} from 'lucide-react'
+import { Wallet, QrCode, Clock, Copy, Loader, Clock3, CircleAlert, Trash2, CheckCircle2, Radio } from 'lucide-react'
 
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -27,12 +16,7 @@ import Button from '@mui/material/Button'
 import { InputAdornment, LinearProgress, Tab, Tabs, Chip } from '@mui/material'
 import Pagination from '@mui/material/Pagination'
 
-import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
-  getPaginationRowModel
-} from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, flexRender, getPaginationRowModel } from '@tanstack/react-table'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -49,6 +33,7 @@ import { setUser } from '@/store/userSlice'
 
 import type { AppDispatch, RootState } from '@/store'
 import { useBranding } from '@/app/contexts/BrandingContext'
+import TurnstileWidget from '@/components/TurnstileWidget'
 
 const DEFAULT_DENOMINATIONS = ['2000', '5000', '10000', '50000', '100000', '200000', '500000', '1000000']
 const EXPIRE_SECONDS = 600
@@ -58,6 +43,7 @@ export default function RechargePage() {
   const dispatch = useDispatch<AppDispatch>()
   const params = useParams()
   const branding = useBranding()
+  const { turnstile_enabled } = branding
   const denominations = useMemo(() => {
     if (branding?.deposit_preset_amounts?.length) {
       return branding.deposit_preset_amounts.map((a: number) => String(a))
@@ -76,6 +62,7 @@ export default function RechargePage() {
   const [rechargeAmount, setRechargeAmount] = useState('50,000')
   const [amount, setAmount] = useState('50000')
   const [isGeneratingQR, setIsGeneratingQR] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
   const [countdown, setCountdown] = useState(0)
   const [createdRecord, setCreatedRecord] = useState<PendingBankQr | null>(null)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
@@ -101,16 +88,15 @@ export default function RechargePage() {
   useEffect(() => {
     if (!pendingRecord?.expires_at) {
       setCountdown(0)
-      
-return
+
+      return
     }
 
     const calcRemaining = () => {
       const expiresAt = new Date(pendingRecord.expires_at).getTime()
       const now = Date.now()
 
-      
-return Math.max(0, Math.floor((expiresAt - now) / 1000))
+      return Math.max(0, Math.floor((expiresAt - now) / 1000))
     }
 
     setCountdown(calcRemaining())
@@ -141,9 +127,12 @@ return Math.max(0, Math.floor((expiresAt - now) / 1000))
       toast.success(`Nạp ${prev.amount.toLocaleString('vi-VN')}đ thành công! Số dư đã được cập nhật.`)
 
       // Refresh balance + history (async, không block UI)
-      axiosAuth.post('/me').then(res => {
-        if (res?.data) dispatch(setUser(res.data))
-      }).catch(() => {})
+      axiosAuth
+        .post('/me')
+        .then(res => {
+          if (res?.data) dispatch(setUser(res.data))
+        })
+        .catch(() => {})
       queryClient.invalidateQueries({ queryKey: ['depositHistory'] })
       queryClient.invalidateQueries({ queryKey: ['getTransactionHistory'] })
 
@@ -152,7 +141,7 @@ return Math.max(0, Math.floor((expiresAt - now) / 1000))
 
     prevPendingRef.current = current
     wasCancelledRef.current = false
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingData?.data])
 
   // Khi server đã xác nhận record, không cần createdRecord nữa
@@ -165,16 +154,14 @@ return Math.max(0, Math.floor((expiresAt - now) / 1000))
   const formatCurrency = (value: string) => {
     const numericValue = value.replace(/\D/g, '')
 
-    
-return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   }
 
   const formatCountdown = (seconds: number) => {
     const m = Math.floor(seconds / 60)
     const s = seconds % 60
 
-    
-return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
   const changeInputAmount = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,10 +185,19 @@ return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   const handleCreateQrCode = async () => {
     if (hasPending) return
 
+    if (turnstile_enabled === 'true' && !turnstileToken) {
+      toast.error('Vui lòng xác minh bảo mật trước khi tạo QR.')
+
+      return
+    }
+
     setIsGeneratingQR(true)
 
     try {
-      const result = await createBankQr.mutateAsync({ amount: Number(amount) })
+      const result = await createBankQr.mutateAsync({
+        amount: Number(amount),
+        ...(turnstileToken ? { turnstile_token: turnstileToken } : {})
+      })
 
       if (result.success && result.data) {
         setCreatedRecord(result.data)
@@ -239,10 +235,9 @@ return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
     if (!pendingRecord) return ''
     const addInfo = pendingRecord.note || pendingRecord.transaction_code
 
-    
-if (!bankInfo) return ''
+    if (!bankInfo) return ''
 
-return `https://img.vietqr.io/image/${bankInfo.bank_code}-${bankInfo.account_number}-compact2.png?amount=${pendingRecord.amount}&addInfo=${encodeURIComponent(addInfo)}`
+    return `https://img.vietqr.io/image/${bankInfo.bank_code}-${bankInfo.account_number}-compact2.png?amount=${pendingRecord.amount}&addInfo=${encodeURIComponent(addInfo)}`
   }
 
   const handleCancelPending = async () => {
@@ -295,12 +290,25 @@ return `https://img.vietqr.io/image/${bankInfo.bank_code}-${bankInfo.account_num
                 padding: '20px'
               }}
             >
-              <Typography sx={{ fontWeight: 600, fontSize: '14px', color: 'var(--mui-palette-text-primary, #1e293b)', mb: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Typography
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  color: 'var(--mui-palette-text-primary, #1e293b)',
+                  mb: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
                 <CircleAlert size={16} color='var(--primary-color)' />
                 Xác nhận tên tài khoản ngân hàng
               </Typography>
-              <Typography sx={{ fontSize: '13px', color: 'var(--mui-palette-text-secondary, #64748b)', mb: 1.5, lineHeight: 1.6 }}>
-                Nhập họ tên đầy đủ của chủ tài khoản ngân hàng bạn sẽ dùng để chuyển khoản nạp tiền — <strong>viết hoa, không dấu</strong>. Hệ thống dùng tên này để tự động xác nhận giao dịch.
+              <Typography
+                sx={{ fontSize: '13px', color: 'var(--mui-palette-text-secondary, #64748b)', mb: 1.5, lineHeight: 1.6 }}
+              >
+                Nhập họ tên đầy đủ của chủ tài khoản ngân hàng bạn sẽ dùng để chuyển khoản nạp tiền —{' '}
+                <strong>viết hoa, không dấu</strong>. Hệ thống dùng tên này để tự động xác nhận giao dịch.
               </Typography>
 
               {/* Ví dụ minh họa */}
@@ -316,16 +324,43 @@ return `https://img.vietqr.io/image/${bankInfo.bank_code}-${bankInfo.account_num
                 <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#166534', mb: 1 }}>
                   Cách tìm tên chủ tài khoản:
                 </Typography>
-                <Box component='ol' sx={{ margin: 0, paddingLeft: '18px', '& li': { fontSize: '12px', color: '#15803d', lineHeight: 1.6, mb: 0.3 } }}>
+                <Box
+                  component='ol'
+                  sx={{
+                    margin: 0,
+                    paddingLeft: '18px',
+                    '& li': { fontSize: '12px', color: '#15803d', lineHeight: 1.6, mb: 0.3 }
+                  }}
+                >
                   <li>Mở app ngân hàng (VD: Vietcombank, MB Bank, Techcombank...)</li>
-                  <li>Vào phần <strong>Tài khoản</strong> hoặc <strong>Thông tin cá nhân</strong></li>
-                  <li>Tìm dòng <strong>"Chủ tài khoản"</strong> — thường viết IN HOA, không dấu</li>
+                  <li>
+                    Vào phần <strong>Tài khoản</strong> hoặc <strong>Thông tin cá nhân</strong>
+                  </li>
+                  <li>
+                    Tìm dòng <strong>"Chủ tài khoản"</strong> — thường viết IN HOA, không dấu
+                  </li>
                   <li>Nhập chính xác tên đó vào ô bên dưới</li>
                 </Box>
-                <Box sx={{ mt: 1, p: '8px 10px', background: '#fff', borderRadius: '6px', border: '1px dashed #86efac' }}>
-                  <Typography sx={{ fontSize: '11px', color: '#6b7280' }}>Ví dụ: Trên app ngân hàng hiển thị chủ tài khoản là</Typography>
-                  <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#166534', fontFamily: 'monospace', letterSpacing: '0.5px' }}>NGUYEN VAN A</Typography>
-                  <Typography sx={{ fontSize: '11px', color: '#6b7280', mt: 0.3 }}>→ Nhập vào ô bên dưới: <strong>NGUYEN VAN A</strong> (họ tên đầy đủ, viết hoa, không dấu)</Typography>
+                <Box
+                  sx={{ mt: 1, p: '8px 10px', background: '#fff', borderRadius: '6px', border: '1px dashed #86efac' }}
+                >
+                  <Typography sx={{ fontSize: '11px', color: '#6b7280' }}>
+                    Ví dụ: Trên app ngân hàng hiển thị chủ tài khoản là
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      color: '#166534',
+                      fontFamily: 'monospace',
+                      letterSpacing: '0.5px'
+                    }}
+                  >
+                    NGUYEN VAN A
+                  </Typography>
+                  <Typography sx={{ fontSize: '11px', color: '#6b7280', mt: 0.3 }}>
+                    → Nhập vào ô bên dưới: <strong>NGUYEN VAN A</strong> (họ tên đầy đủ, viết hoa, không dấu)
+                  </Typography>
                 </Box>
               </Box>
 
@@ -343,7 +378,8 @@ return `https://img.vietqr.io/image/${bankInfo.bank_code}-${bankInfo.account_num
               >
                 <CircleAlert size={14} color='#b45309' style={{ flexShrink: 0, marginTop: 2 }} />
                 <Typography sx={{ fontSize: '12px', color: '#92400e', lineHeight: 1.5 }}>
-                  <strong>Lưu ý:</strong> Tên phải khớp với tên hiển thị khi chuyển khoản. Nếu sai, tiền sẽ không được cộng tự động. Tên sau khi lưu không thể thay đổi.
+                  <strong>Lưu ý:</strong> Tên phải khớp với tên hiển thị khi chuyển khoản. Nếu sai, tiền sẽ không được
+                  cộng tự động. Tên sau khi lưu không thể thay đổi.
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -354,7 +390,9 @@ return `https://img.vietqr.io/image/${bankInfo.bank_code}-${bankInfo.account_num
                   size='small'
                   sx={{ '& .MuiInputBase-root': { fontSize: '14px' } }}
                 />
-                <Typography sx={{ fontSize: '11px', color: 'var(--mui-palette-text-disabled, #94a3b8)', lineHeight: 1.4 }}>
+                <Typography
+                  sx={{ fontSize: '11px', color: 'var(--mui-palette-text-disabled, #94a3b8)', lineHeight: 1.4 }}
+                >
                   Nhập họ tên đầy đủ, viết hoa, không dấu — giống tên hiển thị trên app ngân hàng khi chuyển khoản.
                 </Typography>
                 {transferNameError && (
@@ -375,8 +413,18 @@ return `https://img.vietqr.io/image/${bankInfo.bank_code}-${bankInfo.account_num
                 <Button
                   variant='contained'
                   onClick={handleSaveTransferName}
-                  disabled={!transferNameInput.trim() || transferNameInput.trim().length < 3 || updateTransferName.isPending}
-                  sx={{ fontSize: '13px', textTransform: 'none', color: 'white', borderRadius: '10px', py: 1.2, alignSelf: 'flex-start', px: 4 }}
+                  disabled={
+                    !transferNameInput.trim() || transferNameInput.trim().length < 3 || updateTransferName.isPending
+                  }
+                  sx={{
+                    fontSize: '13px',
+                    textTransform: 'none',
+                    color: 'white',
+                    borderRadius: '10px',
+                    py: 1.2,
+                    alignSelf: 'flex-start',
+                    px: 4
+                  }}
                 >
                   {updateTransferName.isPending ? <Loader size={14} className='spinning-icon me-2' /> : null}
                   Xác nhận
@@ -387,365 +435,434 @@ return `https://img.vietqr.io/image/${bankInfo.bank_code}-${bankInfo.account_num
 
           {/* ===== Form nạp tiền / QR (chỉ hiện khi đã cấu hình tên) ===== */}
           {hasTransferName && (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: hasPending ? '1fr 1fr' : '1fr' },
-              gap: '16px'
-            }}
-          >
-            {/* FORM NHẬP SỐ TIỀN */}
-            {!hasPending && (
-              <Box
-                sx={{
-                  background: 'var(--mui-palette-background-paper, #fff)',
-                  borderRadius: '12px',
-                  border: '1px solid var(--mui-palette-divider, #e2e8f0)',
-                  overflow: 'hidden'
-                }}
-              >
-                {/* Hướng dẫn 3 bước */}
-                <Box sx={{ padding: '20px', paddingBottom: '16px' }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#1e293b', mb: 2, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Wallet size={16} color='var(--primary-color)' />
-                    Nạp tiền qua chuyển khoản ngân hàng
-                  </Typography>
-
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
-                      gap: '12px',
-                      mb: 2
-                    }}
-                  >
-                    {[
-                      { step: '1', title: 'Tạo mã QR', desc: 'Nhập số tiền và bấm tạo QR bên dưới' },
-                      { step: '2', title: 'Chuyển khoản', desc: 'Quét QR hoặc chuyển khoản theo thông tin' },
-                      { step: '3', title: 'Nhận tiền', desc: 'Tiền tự động cộng sau 1–5 phút' }
-                    ].map(item => (
-                      <Box
-                        key={item.step}
-                        sx={{
-                          display: 'flex',
-                          gap: '10px',
-                          alignItems: 'flex-start',
-                          padding: '12px',
-                          borderRadius: '10px',
-                          background: '#f8fafc',
-                          border: '1px solid #f1f5f9'
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: '50%',
-                            background: 'var(--primary-gradient)',
-                            color: '#fff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '13px',
-                            fontWeight: 700,
-                            flexShrink: 0
-                          }}
-                        >
-                          {item.step}
-                        </Box>
-                        <Box>
-                          <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', lineHeight: 1.3 }}>
-                            {item.title}
-                          </Typography>
-                          <Typography sx={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4, mt: 0.3 }}>
-                            {item.desc}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    ))}
-                  </Box>
-
-                  {/* Cảnh báo quan trọng */}
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      background: '#fffbeb',
-                      border: '1px solid #fde68a'
-                    }}
-                  >
-                    <CircleAlert size={15} color='#d97706' style={{ flexShrink: 0 }} />
-                    <Typography sx={{ fontSize: '12px', color: '#92400e', lineHeight: 1.4 }}>
-                      <strong>Quan trọng:</strong> Phải tạo QR trước rồi mới chuyển khoản. Chuyển khoản không qua QR sẽ không được ghi nhận tự động.
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {/* Divider */}
-                <Box sx={{ borderTop: '1px solid var(--mui-palette-divider, #e2e8f0)' }} />
-
-                {/* Form body */}
-                <Box sx={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Số dư hiện tại */}
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      padding: '10px 14px'
-                    }}
-                  >
-                    <Typography sx={{ fontSize: '13px', color: '#64748b' }}>Số dư hiện tại</Typography>
-                    <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
-                      {new Intl.NumberFormat('vi-VN').format(user?.sodu ?? 0)}đ
-                    </Typography>
-                  </Box>
-
-                  {/* Input + Chips trên 1 row trên desktop */}
-                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: '12px', alignItems: { sm: 'flex-end' } }}>
-                    <Box sx={{ flex: 1 }}>
-                      <CustomTextField
-                        label='Số tiền nạp'
-                        placeholder='Nhập số tiền'
-                        type='text'
-                        fullWidth
-                        value={rechargeAmount}
-                        onInput={changeInputAmount}
-                        slotProps={{
-                          input: {
-                            endAdornment: (
-                              <InputAdornment position='end' sx={{ '& .MuiTypography-root': { fontWeight: 700, fontSize: '13px', color: '#94a3b8' } }}>
-                                VNĐ
-                              </InputAdornment>
-                            )
-                          }
-                        }}
-                        sx={{
-                          '& .MuiInputBase-root': { padding: '4px 8px', fontSize: '16px', fontWeight: 700 },
-                          '& .MuiInputLabel-root': { fontSize: '13px', fontWeight: 600 }
-                        }}
-                      />
-                    </Box>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '6px', pb: '4px' }}>
-                      {denominations.map((denominationValue, key) => (
-                        <BoxAmount
-                          key={key}
-                          handleSelectAmount={handleAmountSelect}
-                          amount={denominationValue}
-                          isActive={denominationValue === amount}
-                        />
-                      ))}
-                    </Box>
-                  </Box>
-
-                  {/* CTA */}
-                  <Button
-                    onClick={handleCreateQrCode}
-                    disabled={isButtonDisabled}
-                    variant='contained'
-                    sx={{
-                      padding: '10px 32px',
-                      color: 'white',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      textTransform: 'none',
-                      borderRadius: '10px',
-                      alignSelf: 'flex-start',
-                      '&.Mui-disabled': { backgroundColor: '#f1f5f9', color: '#94a3b8', cursor: 'not-allowed !important' }
-                    }}
-                  >
-                    {isGeneratingQR ? (
-                      <>
-                        <Loader size={15} className='spinning-icon me-2' /> Đang tạo QR...
-                      </>
-                    ) : (
-                      <>
-                        <QrCode size={15} className='me-2' /> Tạo mã QR thanh toán
-                      </>
-                    )}
-                  </Button>
-                </Box>
-              </Box>
-            )}
-
-            {/* BANNER THANH TOÁN THÀNH CÔNG */}
-            {paymentSuccess && !hasPending && (
-              <Box
-                sx={{
-                  gridColumn: '1 / -1',
-                  background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-                  borderRadius: '12px',
-                  border: '1px solid #86efac',
-                  padding: '24px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '8px',
-                  animation: 'fadeIn 0.3s ease'
-                }}
-              >
-                <CheckCircle2 size={40} color='#16a34a' />
-                <Typography sx={{ fontSize: '16px', fontWeight: 700, color: '#15803d' }}>
-                  Nạp tiền thành công!
-                </Typography>
-                <Typography sx={{ fontSize: '13px', color: '#166534' }}>
-                  Số dư của bạn đã được cập nhật. Bạn có thể tiếp tục mua proxy.
-                </Typography>
-              </Box>
-            )}
-
-            {/* KHI CÓ PENDING: Cột trái = thông tin bank, Cột phải = QR */}
-            {hasPending && pendingRecord && (
-              <>
-                {/* Thông tin chuyển khoản */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: hasPending ? '1fr 1fr' : '1fr' },
+                gap: '16px'
+              }}
+            >
+              {/* FORM NHẬP SỐ TIỀN */}
+              {!hasPending && (
                 <Box
                   sx={{
                     background: 'var(--mui-palette-background-paper, #fff)',
-                    borderRadius: '10px',
+                    borderRadius: '12px',
                     border: '1px solid var(--mui-palette-divider, #e2e8f0)',
                     overflow: 'hidden'
                   }}
                 >
-                  {/* Header countdown + polling indicator */}
-                  <Box sx={{ background: 'var(--mui-palette-background-default, #f8fafc)', borderBottom: '1px solid var(--mui-palette-divider, #e2e8f0)', padding: '14px 16px', paddingBottom: '10px' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                      <Typography sx={{ color: 'var(--mui-palette-text-secondary, #64748b)', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Clock size={14} /> Thời gian còn lại
-                      </Typography>
-                      <Typography
-                        sx={{
-                          color: countdown <= 60 ? '#dc2626' : '#1e293b',
-                          fontSize: '16px',
-                          fontWeight: 'bold',
-                          fontFamily: 'monospace'
-                        }}
-                      >
-                        {formatCountdown(countdown)}
-                      </Typography>
-                    </Box>
-                    <LinearProgress
-                      variant='determinate'
-                      value={progressPercent}
+                  {/* Hướng dẫn 3 bước */}
+                  <Box sx={{ padding: '20px', paddingBottom: '16px' }}>
+                    <Typography
                       sx={{
-                        height: 4,
-                        borderRadius: 2,
-                        backgroundColor: '#e2e8f0',
-                        '& .MuiLinearProgress-bar': {
-                          borderRadius: 2,
-                          backgroundColor: countdown <= 60 ? '#dc2626' : 'var(--primary-color)',
-                          transition: 'width 1s linear'
-                        }
-                      }}
-                    />
-                    {/* Polling indicator */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', mt: 1 }}>
-                      <Radio size={10} color='#22c55e' className='animate-pulse' />
-                      <Typography sx={{ fontSize: '11px', color: '#16a34a', fontWeight: 500 }}>
-                        Tự động kiểm tra mỗi 5 giây
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Bank info */}
-                  <Box sx={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <Typography sx={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', color: 'var(--primary-color)' }}>
-                      {formatCurrency(String(pendingRecord.amount))} VNĐ
-                    </Typography>
-                    <InfoRow label='Ngân hàng' value={bankInfo?.bank_name || '—'} />
-                    <InfoRow label='Số tài khoản' value={bankInfo?.account_number || '—'} copy={copy} />
-                    <InfoRow label='Chủ tài khoản' value={bankInfo?.account_name || '—'} copy={copy} />
-                    <InfoRow
-                      label='Nội dung chuyển khoản'
-                      value={pendingRecord.note || pendingRecord.transaction_code}
-                      copy={copy}
-                      highlight
-                    />
-
-                    {/* Lưu ý quan trọng */}
-                    <Box
-                      sx={{
-                        background: '#fffbeb',
-                        border: '1px solid #fde68a',
-                        borderRadius: '8px',
-                        padding: '10px 12px',
-                        mt: 0.5
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        mb: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
                       }}
                     >
-                      <Typography sx={{ fontSize: '12px', color: '#92400e', lineHeight: 1.6, fontWeight: 500 }}>
-                        Chuyển <strong>đúng số tiền</strong> và <strong>đúng nội dung</strong> chuyển khoản.
-                      </Typography>
-                      <Typography sx={{ fontSize: '12px', color: '#92400e', lineHeight: 1.6 }}>
-                        Tiền sẽ tự động cộng sau <strong>1–5 phút</strong>. Vui lòng chờ hệ thống xử lý, không rời khỏi trang.
-                      </Typography>
-                      <Typography sx={{ fontSize: '11px', color: '#78716c', lineHeight: 1.6, mt: 0.5, fontStyle: 'italic' }}>
-                        Nếu quá 10 phút chưa được cộng tiền, hãy liên hệ Admin hoặc{' '}
-                        <a href={`/${params.lang || 'vi'}/tickets`} style={{ color: 'var(--primary-color)', fontWeight: 600, textDecoration: 'underline' }}>
-                          tạo ticket hỗ trợ
-                        </a>.
-                      </Typography>
+                      <Wallet size={16} color='var(--primary-color)' />
+                      Nạp tiền qua chuyển khoản ngân hàng
+                    </Typography>
+
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+                        gap: '12px',
+                        mb: 2
+                      }}
+                    >
+                      {[
+                        { step: '1', title: 'Tạo mã QR', desc: 'Nhập số tiền và bấm tạo QR bên dưới' },
+                        { step: '2', title: 'Chuyển khoản', desc: 'Quét QR hoặc chuyển khoản theo thông tin' },
+                        { step: '3', title: 'Nhận tiền', desc: 'Tiền tự động cộng sau 1–5 phút' }
+                      ].map(item => (
+                        <Box
+                          key={item.step}
+                          sx={{
+                            display: 'flex',
+                            gap: '10px',
+                            alignItems: 'flex-start',
+                            padding: '12px',
+                            borderRadius: '10px',
+                            background: '#f8fafc',
+                            border: '1px solid #f1f5f9'
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: '50%',
+                              background: 'var(--primary-gradient)',
+                              color: '#fff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              flexShrink: 0
+                            }}
+                          >
+                            {item.step}
+                          </Box>
+                          <Box>
+                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', lineHeight: 1.3 }}>
+                              {item.title}
+                            </Typography>
+                            <Typography sx={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4, mt: 0.3 }}>
+                              {item.desc}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))}
                     </Box>
 
-                    <Box sx={{ display: 'flex', gap: '8px' }}>
-                      <Button
-                        variant='tonal'
-                        fullWidth
-                        onClick={handleCopyAll}
-                        sx={{ padding: '10px', fontSize: '13px', textTransform: 'none', borderRadius: '10px' }}
-                      >
-                        <Copy size={14} className='me-2' /> Sao chép tất cả
-                      </Button>
-                      <Button
-                        variant='outlined'
-                        fullWidth
-                        onClick={handleCancelPending}
-                        disabled={cancelBankQr.isPending}
-                        sx={{
-                          padding: '10px',
-                          fontSize: '13px',
-                          textTransform: 'none',
-                          borderRadius: '10px',
-                          color: '#dc2626',
-                          borderColor: '#fecaca',
-                          '&:hover': { backgroundColor: '#fef2f2', borderColor: '#dc2626' }
-                        }}
-                      >
-                        {cancelBankQr.isPending ? <Loader size={14} className='spinning-icon' /> : 'Hủy giao dịch'}
-                      </Button>
+                    {/* Cảnh báo quan trọng */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        background: '#fffbeb',
+                        border: '1px solid #fde68a'
+                      }}
+                    >
+                      <CircleAlert size={15} color='#d97706' style={{ flexShrink: 0 }} />
+                      <Typography sx={{ fontSize: '12px', color: '#92400e', lineHeight: 1.4 }}>
+                        <strong>Quan trọng:</strong> Phải tạo QR trước rồi mới chuyển khoản. Chuyển khoản không qua QR
+                        sẽ không được ghi nhận tự động.
+                      </Typography>
                     </Box>
                   </Box>
-                </Box>
 
-                {/* QR Code */}
+                  {/* Divider */}
+                  <Box sx={{ borderTop: '1px solid var(--mui-palette-divider, #e2e8f0)' }} />
+
+                  {/* Form body */}
+                  <Box sx={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Số dư hiện tại */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '10px 14px'
+                      }}
+                    >
+                      <Typography sx={{ fontSize: '13px', color: '#64748b' }}>Số dư hiện tại</Typography>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
+                        {new Intl.NumberFormat('vi-VN').format(user?.sodu ?? 0)}đ
+                      </Typography>
+                    </Box>
+
+                    {/* Input + Chips trên 1 row trên desktop */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        gap: '12px',
+                        alignItems: { sm: 'flex-end' }
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <CustomTextField
+                          label='Số tiền nạp'
+                          placeholder='Nhập số tiền'
+                          type='text'
+                          fullWidth
+                          value={rechargeAmount}
+                          onInput={changeInputAmount}
+                          slotProps={{
+                            input: {
+                              endAdornment: (
+                                <InputAdornment
+                                  position='end'
+                                  sx={{
+                                    '& .MuiTypography-root': { fontWeight: 700, fontSize: '13px', color: '#94a3b8' }
+                                  }}
+                                >
+                                  VNĐ
+                                </InputAdornment>
+                              )
+                            }
+                          }}
+                          sx={{
+                            '& .MuiInputBase-root': { padding: '4px 8px', fontSize: '16px', fontWeight: 700 },
+                            '& .MuiInputLabel-root': { fontSize: '13px', fontWeight: 600 }
+                          }}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '6px', pb: '4px' }}>
+                        {denominations.map((denominationValue, key) => (
+                          <BoxAmount
+                            key={key}
+                            handleSelectAmount={handleAmountSelect}
+                            amount={denominationValue}
+                            isActive={denominationValue === amount}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+
+                    <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
+
+                    {/* CTA */}
+                    <Button
+                      onClick={handleCreateQrCode}
+                      disabled={isButtonDisabled}
+                      variant='contained'
+                      sx={{
+                        padding: '10px 32px',
+                        color: 'white',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        borderRadius: '10px',
+                        alignSelf: 'flex-start',
+                        '&.Mui-disabled': {
+                          backgroundColor: '#f1f5f9',
+                          color: '#94a3b8',
+                          cursor: 'not-allowed !important'
+                        }
+                      }}
+                    >
+                      {isGeneratingQR ? (
+                        <>
+                          <Loader size={15} className='spinning-icon me-2' /> Đang tạo QR...
+                        </>
+                      ) : (
+                        <>
+                          <QrCode size={15} className='me-2' /> Tạo mã QR thanh toán
+                        </>
+                      )}
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+
+              {/* BANNER THANH TOÁN THÀNH CÔNG */}
+              {paymentSuccess && !hasPending && (
                 <Box
                   sx={{
-                    background: 'var(--mui-palette-background-paper, #fff)',
-                    borderRadius: '10px',
-                    border: '1px solid var(--mui-palette-divider, #e2e8f0)',
+                    gridColumn: '1 / -1',
+                    background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                    borderRadius: '12px',
+                    border: '1px solid #86efac',
+                    padding: '24px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '20px'
+                    gap: '8px',
+                    animation: 'fadeIn 0.3s ease'
                   }}
                 >
-                  <Typography sx={{ fontSize: '13px', fontWeight: 600, mb: 1.5, display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--mui-palette-text-primary, #1e293b)' }}>
-                    <QrCode size={15} color='var(--primary-color)' /> Quét mã để thanh toán
+                  <CheckCircle2 size={40} color='#16a34a' />
+                  <Typography sx={{ fontSize: '16px', fontWeight: 700, color: '#15803d' }}>
+                    Nạp tiền thành công!
                   </Typography>
-                  <img
-                    src={getQrUrl()}
-                    alt='VietQR Code'
-                    style={{ width: '100%', maxWidth: '280px', height: 'auto', borderRadius: '8px' }}
-                  />
+                  <Typography sx={{ fontSize: '13px', color: '#166534' }}>
+                    Số dư của bạn đã được cập nhật. Bạn có thể tiếp tục mua proxy.
+                  </Typography>
                 </Box>
-              </>
-            )}
-          </Box>
+              )}
+
+              {/* KHI CÓ PENDING: Cột trái = thông tin bank, Cột phải = QR */}
+              {hasPending && pendingRecord && (
+                <>
+                  {/* Thông tin chuyển khoản */}
+                  <Box
+                    sx={{
+                      background: 'var(--mui-palette-background-paper, #fff)',
+                      borderRadius: '10px',
+                      border: '1px solid var(--mui-palette-divider, #e2e8f0)',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {/* Header countdown + polling indicator */}
+                    <Box
+                      sx={{
+                        background: 'var(--mui-palette-background-default, #f8fafc)',
+                        borderBottom: '1px solid var(--mui-palette-divider, #e2e8f0)',
+                        padding: '14px 16px',
+                        paddingBottom: '10px'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Typography
+                          sx={{
+                            color: 'var(--mui-palette-text-secondary, #64748b)',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Clock size={14} /> Thời gian còn lại
+                        </Typography>
+                        <Typography
+                          sx={{
+                            color: countdown <= 60 ? '#dc2626' : '#1e293b',
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            fontFamily: 'monospace'
+                          }}
+                        >
+                          {formatCountdown(countdown)}
+                        </Typography>
+                      </Box>
+                      <LinearProgress
+                        variant='determinate'
+                        value={progressPercent}
+                        sx={{
+                          height: 4,
+                          borderRadius: 2,
+                          backgroundColor: '#e2e8f0',
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 2,
+                            backgroundColor: countdown <= 60 ? '#dc2626' : 'var(--primary-color)',
+                            transition: 'width 1s linear'
+                          }
+                        }}
+                      />
+                      {/* Polling indicator */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', mt: 1 }}>
+                        <Radio size={10} color='#22c55e' className='animate-pulse' />
+                        <Typography sx={{ fontSize: '11px', color: '#16a34a', fontWeight: 500 }}>
+                          Tự động kiểm tra mỗi 5 giây
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {/* Bank info */}
+                    <Box sx={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <Typography
+                        sx={{
+                          fontSize: '20px',
+                          fontWeight: 'bold',
+                          textAlign: 'center',
+                          color: 'var(--primary-color)'
+                        }}
+                      >
+                        {formatCurrency(String(pendingRecord.amount))} VNĐ
+                      </Typography>
+                      <InfoRow label='Ngân hàng' value={bankInfo?.bank_name || '—'} />
+                      <InfoRow label='Số tài khoản' value={bankInfo?.account_number || '—'} copy={copy} />
+                      <InfoRow label='Chủ tài khoản' value={bankInfo?.account_name || '—'} copy={copy} />
+                      <InfoRow
+                        label='Nội dung chuyển khoản'
+                        value={pendingRecord.note || pendingRecord.transaction_code}
+                        copy={copy}
+                        highlight
+                      />
+
+                      {/* Lưu ý quan trọng */}
+                      <Box
+                        sx={{
+                          background: '#fffbeb',
+                          border: '1px solid #fde68a',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          mt: 0.5
+                        }}
+                      >
+                        <Typography sx={{ fontSize: '12px', color: '#92400e', lineHeight: 1.6, fontWeight: 500 }}>
+                          Chuyển <strong>đúng số tiền</strong> và <strong>đúng nội dung</strong> chuyển khoản.
+                        </Typography>
+                        <Typography sx={{ fontSize: '12px', color: '#92400e', lineHeight: 1.6 }}>
+                          Tiền sẽ tự động cộng sau <strong>1–5 phút</strong>. Vui lòng chờ hệ thống xử lý, không rời
+                          khỏi trang.
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: '11px', color: '#78716c', lineHeight: 1.6, mt: 0.5, fontStyle: 'italic' }}
+                        >
+                          Nếu quá 10 phút chưa được cộng tiền, hãy liên hệ Admin hoặc{' '}
+                          <a
+                            href={`/${params.lang || 'vi'}/tickets`}
+                            style={{ color: 'var(--primary-color)', fontWeight: 600, textDecoration: 'underline' }}
+                          >
+                            tạo ticket hỗ trợ
+                          </a>
+                          .
+                        </Typography>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', gap: '8px' }}>
+                        <Button
+                          variant='tonal'
+                          fullWidth
+                          onClick={handleCopyAll}
+                          sx={{ padding: '10px', fontSize: '13px', textTransform: 'none', borderRadius: '10px' }}
+                        >
+                          <Copy size={14} className='me-2' /> Sao chép tất cả
+                        </Button>
+                        <Button
+                          variant='outlined'
+                          fullWidth
+                          onClick={handleCancelPending}
+                          disabled={cancelBankQr.isPending}
+                          sx={{
+                            padding: '10px',
+                            fontSize: '13px',
+                            textTransform: 'none',
+                            borderRadius: '10px',
+                            color: '#dc2626',
+                            borderColor: '#fecaca',
+                            '&:hover': { backgroundColor: '#fef2f2', borderColor: '#dc2626' }
+                          }}
+                        >
+                          {cancelBankQr.isPending ? <Loader size={14} className='spinning-icon' /> : 'Hủy giao dịch'}
+                        </Button>
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  {/* QR Code */}
+                  <Box
+                    sx={{
+                      background: 'var(--mui-palette-background-paper, #fff)',
+                      borderRadius: '10px',
+                      border: '1px solid var(--mui-palette-divider, #e2e8f0)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '20px'
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        mb: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        color: 'var(--mui-palette-text-primary, #1e293b)'
+                      }}
+                    >
+                      <QrCode size={15} color='var(--primary-color)' /> Quét mã để thanh toán
+                    </Typography>
+                    <img
+                      src={getQrUrl()}
+                      alt='VietQR Code'
+                      style={{ width: '100%', maxWidth: '280px', height: 'auto', borderRadius: '8px' }}
+                    />
+                  </Box>
+                </>
+              )}
+            </Box>
           )}
 
           {/* ===== PHẦN DƯỚI: TABS ===== */}
@@ -889,8 +1006,7 @@ function DepositHistoryTab() {
         cell: ({ row }: any) => {
           const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
 
-          
-return <span className='text-sm font-bold'>{formatter.format(row.original.amount || 0)}</span>
+          return <span className='text-sm font-bold'>{formatter.format(row.original.amount || 0)}</span>
         }
       },
       {
@@ -916,8 +1032,8 @@ return <span className='text-sm font-bold'>{formatter.format(row.original.amount
           if (status === 'success') return <Chip label='Thành công' size='small' color='success' />
           if (status === 'pending') return <Chip label='Đang chờ' size='small' color='warning' />
           if (status === 'failed') return <Chip label='Thất bại' size='small' color='error' />
-          
-return <Chip label={status || '-'} size='small' />
+
+          return <Chip label={status || '-'} size='small' />
         }
       },
       {
@@ -926,7 +1042,9 @@ return <Chip label={status || '-'} size='small' />
         cell: ({ row }: any) => (
           <div className='d-flex align-items-center gap-1'>
             <Clock3 size={14} />
-            <span style={{ marginTop: '2px' }}>{row.original.created_at ? formatDateTimeLocal(row.original.created_at) : '-'}</span>
+            <span style={{ marginTop: '2px' }}>
+              {row.original.created_at ? formatDateTimeLocal(row.original.created_at) : '-'}
+            </span>
           </div>
         )
       },
@@ -940,8 +1058,7 @@ return <Chip label={status || '-'} size='small' />
           if (status !== 'pending') return null
           const isDeleting = deletingId === row.original.id
 
-          
-return (
+          return (
             <Button
               size='small'
               variant='text'
@@ -986,8 +1103,7 @@ function TransactionHistoryTab() {
     queryFn: async () => {
       const res = await axiosAuth.get('/get-transaction-history')
 
-      
-return res.data ?? []
+      return res.data ?? []
     }
   })
 
@@ -1036,8 +1152,7 @@ return res.data ?? []
         cell: ({ row }: any) => {
           const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
 
-          
-return <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.original.sotientruoc)}</span>
+          return <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.original.sotientruoc)}</span>
         }
       },
       {
@@ -1046,8 +1161,7 @@ return <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.o
         cell: ({ row }: any) => {
           const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
 
-          
-return <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.original.sotienthaydoi)}</span>
+          return <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.original.sotienthaydoi)}</span>
         }
       },
       {
@@ -1056,8 +1170,7 @@ return <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.o
         cell: ({ row }: any) => {
           const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
 
-          
-return <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.original.sotiensau)}</span>
+          return <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.original.sotiensau)}</span>
         }
       },
       {
@@ -1087,7 +1200,17 @@ return <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.o
 }
 
 // ======== Shared DataTable ========
-function DataTable({ table, columns, isLoading, data }: { table: any; columns: any[]; isLoading: boolean; data: any[] }) {
+function DataTable({
+  table,
+  columns,
+  isLoading,
+  data
+}: {
+  table: any
+  columns: any[]
+  isLoading: boolean
+  data: any[]
+}) {
   const { pageIndex, pageSize } = table.getState().pagination
   const totalRows = table.getFilteredRowModel().rows.length
   const startRow = pageIndex * pageSize + 1

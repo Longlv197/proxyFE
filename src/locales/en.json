@@ -93,7 +93,8 @@
       "enterEmail": "Enter email",
       "enterPassword": "********",
       "enterName": "Enter full name",
-      "enterUsername": "Enter username"
+      "enterUsername": "Enter username",
+      "confirmPassword": "Confirm Password"
     },
     "buttons": {
       "login": "Login",

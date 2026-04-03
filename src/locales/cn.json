@@ -92,7 +92,8 @@
       "enterEmail": "输入邮箱",
       "enterPassword": "********",
       "enterName": "输入姓名",
-      "enterUsername": "输入用户名"
+      "enterUsername": "输入用户名",
+      "confirmPassword": "请确认密码"
     },
     "buttons": {
       "login": "登录",

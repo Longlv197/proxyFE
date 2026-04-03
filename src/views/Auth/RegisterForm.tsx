@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next'
 
 import axiosInstance from '@/libs/axios'
 import { useModalContext } from '@/app/contexts/ModalContext'
+import { useBranding } from '@/app/contexts/BrandingContext'
+import TurnstileWidget from '@/components/TurnstileWidget'
 
 type RegisterFormInputs = {
   name: string
@@ -34,8 +36,10 @@ const registerUser = async (data: RegisterFormInputs) => {
 export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showPasswordConfirmation, setPasswordConfirmation] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   const { closeAuthModal, setAuthModalMode, referralCode } = useModalContext()
+  const { turnstile_enabled } = useBranding()
   const { t } = useTranslation()
 
   const schema = yup
@@ -104,7 +108,13 @@ export default function RegisterForm() {
   })
 
   const onSubmit = (data: RegisterFormInputs) => {
-    const payload: RegisterFormInputs = { ...data, ref: referralCode ?? undefined }
+    if (turnstile_enabled === 'true' && !turnstileToken) {
+      toast.error(t('auth.turnstileRequired') || 'Vui lòng xác minh bảo mật.')
+      return
+    }
+
+    const payload: any = { ...data, ref: referralCode ?? undefined }
+    if (turnstileToken) payload.turnstile_token = turnstileToken
 
     mutate(payload)
   }
@@ -181,6 +191,8 @@ export default function RegisterForm() {
           <p className='text-red-500 text-sm mt-1'>{errors.password_confirmation.message}</p>
         )}
       </div>
+
+      <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
       <button type='submit' className='login-submit-btn' disabled={isPending}>
         {isPending ? t('auth.buttons.loading') : t('auth.register')}

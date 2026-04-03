@@ -73,10 +73,11 @@ export const authOptions = {
       credentials: {
         email: { label: 'Email', type: 'text' },
         password: { label: 'Password', type: 'password' },
-        token: { label: 'Token', type: 'text' }
+        token: { label: 'Token', type: 'text' },
+        turnstile_token: { label: 'Turnstile', type: 'text' }
       },
       async authorize(credentials, req) {
-        const { email, password, token = null } = credentials as { email?: string; password?: string; token?: string }
+        const { email, password, token = null, turnstile_token = null } = credentials as { email?: string; password?: string; token?: string; turnstile_token?: string }
         const apiUrl = process.env.API_URL
         const userAgent = req.headers?.['user-agent'] || ''
 
@@ -107,7 +108,7 @@ export const authOptions = {
           const res = await fetch(`${apiUrl}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'User-Agent': userAgent },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, turnstile_token })
           })
 
           const data = await res.json()

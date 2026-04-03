@@ -94,7 +94,8 @@
       "enterEmail": "Nhập email",
       "enterPassword": "********",
       "enterName": "Nhập họ tên",
-      "enterUsername": "Nhập tên người dùng"
+      "enterUsername": "Nhập tên người dùng",
+      "confirmPassword": "********"
     },
     "buttons": {
       "login": "Đăng nhập",

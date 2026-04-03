@@ -19,6 +19,8 @@ import * as yup from 'yup'
 import { useTranslation } from 'react-i18next'
 
 import { useModalContext } from '@/app/contexts/ModalContext'
+import { useBranding } from '@/app/contexts/BrandingContext'
+import TurnstileWidget from '@/components/TurnstileWidget'
 import UnverifiedEmailModal from './UnverifiedEmailModal'
 
 type LoginFormInputs = {
@@ -34,11 +36,13 @@ export default function LoginForm() {
   const [showModal, setShowModal] = useState(false)
   const [showError, setError] = useState('')
   const [email, setEmail] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   const router = useRouter()
   const params = useParams()
   const pathname = usePathname()
   const { closeAuthModal, setAuthModalMode, referralCode } = useModalContext()
+  const { turnstile_enabled } = useBranding()
 
   const { lang: locale } = params
 
@@ -61,11 +65,17 @@ export default function LoginForm() {
   })
 
   const onSubmit = async (data: LoginFormInputs) => {
+    if (turnstile_enabled === 'true' && !turnstileToken) {
+      toast.error(t('auth.turnstileRequired') || 'Vui lòng xác minh bảo mật.')
+      return
+    }
+
     setLoading(true)
 
     const res = await signIn('credentials', {
       email: data.email,
       password: data.password,
+      turnstile_token: turnstileToken || undefined,
       redirect: false,
       callbackUrl: `/${locale}/home`,
       ref: referralCode ?? undefined
@@ -168,6 +178,8 @@ export default function LoginForm() {
             {t('auth.buttons.forgotPassword')}
           </button>
         </div>
+
+        <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
         {loading ? (
           <button type='button' disabled={loading} className='login-submit-btn'>

@@ -83,13 +83,21 @@ const defaultBranding: BrandingContextValue = {
   deposit_notify_telegram: null,
   landing_pricing: null,
   menu_labels: null,
+  turnstile_enabled: null,
+  turnstile_site_key: null
 }
 
 const BrandingContext = createContext<BrandingContextValue>(defaultBranding)
 
 export const useBranding = () => useContext(BrandingContext)
 
-export function BrandingProvider({ children, initialData }: { children: React.ReactNode; initialData?: BrandingSettings }) {
+export function BrandingProvider({
+  children,
+  initialData
+}: {
+  children: React.ReactNode
+  initialData?: BrandingSettings
+}) {
   const { data, isLoading } = useBrandingSettings(initialData)
 
   const siteMode: SiteMode = (data?.site_mode || 'child') as SiteMode
@@ -98,58 +106,63 @@ export function BrandingProvider({ children, initialData }: { children: React.Re
   // Site mẹ: DB → env var → default
   const isChild = siteMode === 'child'
 
-  const branding = useMemo<BrandingContextValue>(() => ({
-    name: data?.site_name || '',
-    description: data?.site_description || '',
-    logo: resolveAssetUrl(data?.logo_url),
-    logoIcon: resolveAssetUrl(data?.logo_icon_url),
-    favicon: resolveAssetUrl(data?.favicon_url),
-    primaryColor: data?.primary_color || siteConfig.primaryColor,
-    primaryHover: data?.primary_hover || siteConfig.primaryHover,
-    primaryGradient: data?.primary_gradient || siteConfig.primaryGradient,
-    siteMode,
-    isParent: siteMode === 'parent',
-    isChild: siteMode === 'child',
-    isLoading,
+  const branding = useMemo<BrandingContextValue>(
+    () => ({
+      name: data?.site_name || '',
+      description: data?.site_description || '',
+      logo: resolveAssetUrl(data?.logo_url),
+      logoIcon: resolveAssetUrl(data?.logo_icon_url),
+      favicon: resolveAssetUrl(data?.favicon_url),
+      primaryColor: data?.primary_color || siteConfig.primaryColor,
+      primaryHover: data?.primary_hover || siteConfig.primaryHover,
+      primaryGradient: data?.primary_gradient || siteConfig.primaryGradient,
+      siteMode,
+      isParent: siteMode === 'parent',
+      isChild: siteMode === 'child',
+      isLoading,
 
-    // All raw fields from API
-    site_name: data?.site_name ?? null,
-    site_description: data?.site_description ?? null,
-    logo_url: data?.logo_url ?? null,
-    logo_icon_url: data?.logo_icon_url ?? null,
-    favicon_url: data?.favicon_url ?? null,
-    og_image_url: data?.og_image_url ?? null,
-    primary_color: data?.primary_color ?? null,
-    primary_hover: data?.primary_hover ?? null,
-    primary_gradient: data?.primary_gradient ?? null,
-    seo_meta: data?.seo_meta ?? null,
-    google_verification: data?.google_verification ?? null,
-    gtm_id: data?.gtm_id ?? null,
-    organization_name: data?.organization_name ?? null,
-    organization_phone: data?.organization_phone ?? null,
-    organization_email: data?.organization_email ?? null,
-    organization_address: data?.organization_address ?? null,
-    website_url: data?.website_url ?? null,
-    working_hours: data?.working_hours ?? null,
-    tax_id: data?.tax_id ?? null,
-    social_links: data?.social_links ?? null,
-    sidebar_description: data?.sidebar_description ?? null,
-    footer_text: data?.footer_text ?? null,
-    support_contact: data?.support_contact ?? null,
-    head_scripts: data?.head_scripts ?? null,
-    body_scripts: data?.body_scripts ?? null,
-    pay2s_webhook_token: data?.pay2s_webhook_token ?? null,
-    telegram_bot_token_system: data?.telegram_bot_token_system ?? null,
-    telegram_chat_id_system: data?.telegram_chat_id_system ?? null,
-    telegram_bot_token_deposit: data?.telegram_bot_token_deposit ?? null,
-    telegram_chat_id_deposit: data?.telegram_chat_id_deposit ?? null,
-    telegram_bot_token_error: data?.telegram_bot_token_error ?? null,
-    telegram_chat_id_error: data?.telegram_chat_id_error ?? null,
-    show_product_code: data?.show_product_code ?? null,
-    deposit_min_amount: data?.deposit_min_amount ?? null,
-    deposit_preset_amounts: data?.deposit_preset_amounts ?? null,
-    deposit_notify_telegram: data?.deposit_notify_telegram ?? null,
-  }), [data, isLoading, siteMode])
+      // All raw fields from API
+      site_name: data?.site_name ?? null,
+      site_description: data?.site_description ?? null,
+      logo_url: data?.logo_url ?? null,
+      logo_icon_url: data?.logo_icon_url ?? null,
+      favicon_url: data?.favicon_url ?? null,
+      og_image_url: data?.og_image_url ?? null,
+      primary_color: data?.primary_color ?? null,
+      primary_hover: data?.primary_hover ?? null,
+      primary_gradient: data?.primary_gradient ?? null,
+      seo_meta: data?.seo_meta ?? null,
+      google_verification: data?.google_verification ?? null,
+      gtm_id: data?.gtm_id ?? null,
+      organization_name: data?.organization_name ?? null,
+      organization_phone: data?.organization_phone ?? null,
+      organization_email: data?.organization_email ?? null,
+      organization_address: data?.organization_address ?? null,
+      website_url: data?.website_url ?? null,
+      working_hours: data?.working_hours ?? null,
+      tax_id: data?.tax_id ?? null,
+      social_links: data?.social_links ?? null,
+      sidebar_description: data?.sidebar_description ?? null,
+      footer_text: data?.footer_text ?? null,
+      support_contact: data?.support_contact ?? null,
+      head_scripts: data?.head_scripts ?? null,
+      body_scripts: data?.body_scripts ?? null,
+      pay2s_webhook_token: data?.pay2s_webhook_token ?? null,
+      telegram_bot_token_system: data?.telegram_bot_token_system ?? null,
+      telegram_chat_id_system: data?.telegram_chat_id_system ?? null,
+      telegram_bot_token_deposit: data?.telegram_bot_token_deposit ?? null,
+      telegram_chat_id_deposit: data?.telegram_chat_id_deposit ?? null,
+      telegram_bot_token_error: data?.telegram_bot_token_error ?? null,
+      telegram_chat_id_error: data?.telegram_chat_id_error ?? null,
+      show_product_code: data?.show_product_code ?? null,
+      deposit_min_amount: data?.deposit_min_amount ?? null,
+      deposit_preset_amounts: data?.deposit_preset_amounts ?? null,
+      deposit_notify_telegram: data?.deposit_notify_telegram ?? null,
+      turnstile_enabled: data?.turnstile_enabled ?? null,
+      turnstile_site_key: data?.turnstile_site_key ?? null
+    }),
+    [data, isLoading, siteMode]
+  )
 
   // Inject CSS variables — chỉ khi giá trị thực sự đổi
   const { primaryColor, primaryHover, primaryGradient, favicon } = branding
@@ -175,12 +188,14 @@ export function BrandingProvider({ children, initialData }: { children: React.Re
     if (isLoading || !favicon) return
 
     const faviconUrl = favicon.replace(/^http:\/\//i, 'https://')
-    const existingIcons = document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]')
+    const existingIcons = document.querySelectorAll(
+      'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
+    )
 
     if (existingIcons.length > 0) {
       existingIcons.forEach(el => {
         if ((el as HTMLLinkElement).href !== faviconUrl) {
-          (el as HTMLLinkElement).href = faviconUrl
+          ;(el as HTMLLinkElement).href = faviconUrl
         }
       })
     } else {
@@ -192,9 +207,5 @@ export function BrandingProvider({ children, initialData }: { children: React.Re
     }
   }, [isLoading, favicon])
 
-  return (
-    <BrandingContext.Provider value={branding}>
-      {children}
-    </BrandingContext.Provider>
-  )
+  return <BrandingContext.Provider value={branding}>{children}</BrandingContext.Provider>
 }
