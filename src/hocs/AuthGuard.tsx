@@ -19,25 +19,14 @@ let _wasEverAuthenticated = false
 
 export default function AuthGuard({ children, locale }: ChildrenType & { locale: Locale }) {
   const pathname = usePathname()
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const [confirmedUnauth, setConfirmedUnauth] = useState(false)
 
   if (status === 'authenticated') {
     _wasEverAuthenticated = true
   }
 
-  // DEBUG LOG — bật tạm để bắt trigger thật sự, xóa sau khi xác nhận fix
-  useEffect(() => {
-    console.log('[AuthGuard]', {
-      status,
-      _wasEverAuthenticated,
-      confirmedUnauth,
-      hasSession: !!session,
-      sessionError: (session as any)?.error,
-      pathname,
-      timestamp: new Date().toISOString()
-    })
-  }, [status, confirmedUnauth, session, pathname])
+  // Debug log đã xác nhận: mất session do network (ERR_NAME_NOT_RESOLVED) → đã fix ở useAxiosAuth
 
   useEffect(() => {
     setConfirmedUnauth(false)

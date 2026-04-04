@@ -12,10 +12,12 @@ const useAxiosAuth = () => {
   const tokenRef = useRef<string | null>(null)
 
   // Sync token khi session thay đổi - chỉ update reference, không add/remove interceptor
+  // KHÔNG xóa token khi session tạm null (network mất → NextAuth set session=null)
+  // Chỉ update khi có token MỚI — tránh domino: null token → 401 → signOut
   useEffect(() => {
     const newToken = (session as any)?.access_token || null
 
-    if (newToken !== tokenRef.current) {
+    if (newToken && newToken !== tokenRef.current) {
       tokenRef.current = newToken
       setAccessToken(newToken)
     }
