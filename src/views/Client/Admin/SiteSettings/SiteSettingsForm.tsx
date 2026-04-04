@@ -40,7 +40,7 @@ import { toast } from 'react-toastify'
 
 import { useSidebarSettings, useUpdateSidebarSettings } from '@/hooks/apis/useSidebarSettings'
 import type { SupportLink, YoutubeVideo } from '@/hooks/apis/useSidebarSettings'
-import { useBrandingSettings, useUpdateBrandingSettings } from '@/hooks/apis/useBrandingSettings'
+import { useAdminBrandingSettings, useUpdateBrandingSettings } from '@/hooks/apis/useBrandingSettings'
 import type { BrandingSettings, SocialLink, SeoMeta } from '@/hooks/apis/useBrandingSettings'
 import { useSupplierSettings, useUpdateSupplierSettings } from '@/hooks/apis/useSupplierSettings'
 import { useBankSettings, useUpdateBankSettings } from '@/hooks/apis/useBankSettings'
@@ -254,7 +254,7 @@ export default function SiteSettingsForm() {
   const axiosAuth = useAxiosAuth()
   const { isChild, name: brandingName } = useBranding()
   const { data: sidebarData, isLoading: loadingSidebar } = useSidebarSettings()
-  const { data: brandingData, isLoading: loadingBranding } = useBrandingSettings()
+  const { data: brandingData, isLoading: loadingBranding } = useAdminBrandingSettings()
   const updateSidebarMutation = useUpdateSidebarSettings()
   const updateBrandingMutation = useUpdateBrandingSettings()
 

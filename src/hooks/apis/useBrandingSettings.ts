@@ -110,6 +110,24 @@ export const useBrandingSettings = (serverData?: BrandingSettings) => {
   })
 }
 
+/**
+ * Admin: load branding có auth → BE trả thêm turnstile_secret_key masked
+ */
+export const useAdminBrandingSettings = () => {
+  const axiosAuth = useAxiosAuth()
+
+  return useQuery({
+    queryKey: ['branding-settings-admin'],
+    queryFn: async () => {
+      const res = await axiosAuth.get('/get-branding-settings')
+
+      return (res?.data?.data ?? {}) as BrandingSettings & { turnstile_secret_key?: string; turnstile_secret_key_saved?: boolean }
+    },
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
+}
+
 export const useUpdateBrandingSettings = () => {
   const axiosAuth = useAxiosAuth()
   const queryClient = useQueryClient()
@@ -121,9 +139,11 @@ export const useUpdateBrandingSettings = () => {
       return res?.data
     },
     onSuccess: () => {
-      // Force refetch (staleTime=Infinity nên invalidate không tự refetch)
+      // Force refetch cả public + admin query
       queryClient.invalidateQueries({ queryKey: ['branding-settings'] })
       queryClient.refetchQueries({ queryKey: ['branding-settings'] })
+      queryClient.invalidateQueries({ queryKey: ['branding-settings-admin'] })
+      queryClient.refetchQueries({ queryKey: ['branding-settings-admin'] })
 
       // Invalidate server cache (Next.js) → SEO metadata cập nhật ngay
       fetch('/api/revalidate?tag=branding', { method: 'POST' }).catch(() => { })
