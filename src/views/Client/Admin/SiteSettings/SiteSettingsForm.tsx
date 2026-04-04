@@ -447,13 +447,7 @@ export default function SiteSettingsForm() {
           support_links: validLinks,
           youtube_videos: validVideos
         }),
-        updateBrandingMutation.mutateAsync({
-          ...branding,
-          // Chỉ gửi secret_key khi admin nhập mới, không gửi masked value
-          turnstile_secret_key: (branding as any).turnstile_secret_key_input || undefined,
-          turnstile_secret_key_input: undefined,
-          turnstile_secret_key_saved: undefined,
-        }),
+        updateBrandingMutation.mutateAsync(branding),
         axiosAuth.post('/admin/affiliate-settings', {
           default_affiliate_percent: affiliatePercent
         })
@@ -2800,13 +2794,10 @@ export default function SiteSettingsForm() {
                   <span style={{ width: 160, fontSize: 13, color: '#64748b' }}>Secret Key</span>
                   <TextField
                     size='small'
-                    placeholder={(branding as any).turnstile_secret_key_saved ? 'Đã lưu — nhập mới để thay đổi' : '0x4AAAAAAA...'}
-                    value={(branding as any).turnstile_secret_key_input || ''}
-                    onChange={e => updateBrandingField('turnstile_secret_key_input' as any, e.target.value)}
+                    placeholder='0x4AAAAAAA...'
+                    value={(branding as any).turnstile_secret_key || ''}
+                    onChange={e => updateBrandingField('turnstile_secret_key' as any, e.target.value)}
                     sx={{ flex: 1, maxWidth: 400 }}
-                    helperText={(branding as any).turnstile_secret_key_saved && !(branding as any).turnstile_secret_key_input
-                      ? `Đã lưu: ${(branding as any).turnstile_secret_key}`
-                      : undefined}
                   />
                 </div>
 
