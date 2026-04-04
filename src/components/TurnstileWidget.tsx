@@ -24,35 +24,38 @@ export default function TurnstileWidget({ onVerify, onExpire }: TurnstileWidgetP
   const { turnstile_enabled, turnstile_site_key } = useBranding()
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
+  const onVerifyRef = useRef(onVerify)
+  const onExpireRef = useRef(onExpire)
 
-  const renderWidget = useCallback(() => {
-    if (!containerRef.current || !window.turnstile || !turnstile_site_key) return
-    if (widgetIdRef.current) return // da render roi
-
-    widgetIdRef.current = window.turnstile.render(containerRef.current, {
-      sitekey: turnstile_site_key,
-      callback: (token: string) => onVerify(token),
-      'expired-callback': () => {
-        onExpire?.()
-        onVerify('')
-      },
-      'error-callback': () => {
-        onVerify('')
-      },
-      theme: 'light',
-      size: 'flexible',
-    })
-  }, [turnstile_site_key, onVerify, onExpire])
+  onVerifyRef.current = onVerify
+  onExpireRef.current = onExpire
 
   useEffect(() => {
     if (turnstile_enabled !== 'true' || !turnstile_site_key) return
 
-    // Load script neu chua co
+    const renderWidget = () => {
+      if (!containerRef.current || !window.turnstile || widgetIdRef.current) return
+
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: turnstile_site_key,
+        callback: (token: string) => onVerifyRef.current(token),
+        'expired-callback': () => {
+          onExpireRef.current?.()
+          onVerifyRef.current('')
+        },
+        'error-callback': () => onVerifyRef.current(''),
+        theme: 'light',
+        size: 'flexible',
+      })
+    }
+
     if (!window.turnstile) {
       const existing = document.querySelector('script[src*="turnstile"]')
+
       if (!existing) {
         window.onTurnstileLoad = renderWidget
         const script = document.createElement('script')
+
         script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad'
         script.async = true
         document.head.appendChild(script)
@@ -67,7 +70,7 @@ export default function TurnstileWidget({ onVerify, onExpire }: TurnstileWidgetP
         widgetIdRef.current = null
       }
     }
-  }, [turnstile_enabled, turnstile_site_key, renderWidget])
+  }, [turnstile_enabled, turnstile_site_key])
 
   if (turnstile_enabled !== 'true' || !turnstile_site_key) return null
 
