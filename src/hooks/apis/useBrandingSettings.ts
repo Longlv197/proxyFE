@@ -97,7 +97,7 @@ export const useBrandingSettings = (serverData?: BrandingSettings) => {
     queryFn: async () => {
       // Public API — không cần auth
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
-      const res = await fetch(`${apiUrl}/get-branding-settings`)
+      const res = await fetch(`${apiUrl}/get-settings`)
       const json = await res.json()
 
       return (json?.data ?? {}) as BrandingSettings
@@ -119,7 +119,7 @@ export const useAdminBrandingSettings = () => {
   return useQuery({
     queryKey: ['branding-settings-admin'],
     queryFn: async () => {
-      const res = await axiosAuth.get('/get-branding-settings')
+      const res = await axiosAuth.get('/get-settings')
 
       return (res?.data?.data ?? {}) as BrandingSettings & { turnstile_secret_key?: string; turnstile_secret_key_saved?: boolean }
     },

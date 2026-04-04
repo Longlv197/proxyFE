@@ -24,7 +24,7 @@ export async function getServerBranding(): Promise<BrandingSettings> {
 
     // Cache 5 phút ở Next.js + tag 'branding' để admin save gọi revalidateTag xóa cache
     // 3-tier: BE Laravel cache → Next.js fetch cache → Client TanStack Query
-    const res = await fetch(`${apiUrl}/get-branding-settings`, {
+    const res = await fetch(`${apiUrl}/get-settings`, {
       next: { tags: ['branding'], revalidate: 300 }
     })
 

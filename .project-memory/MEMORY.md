@@ -75,6 +75,19 @@ Sau mỗi session có sửa code/thêm tính năng, **tự động cập nhật 
 
 - [Toast under Modal](bug_toast_under_modal.md) — ĐÃ FIX 26/03
 - [Auth Flash Debug](bug_auth_flash_debug.md) — ĐANG DEBUG: user nói "auth flash" = gửi log
+- [Lộ NCC site con](bug_provider_leak_child_site.md) — ĐÃ FIX 02/04: middleware api_admin + model $hidden + BE strip log
+
+## Setup Guide
+
+- **Workspace**: `SETUP.md` ở root — hướng dẫn clone, config, deploy, supervisor
+- **Dev mới**: đọc `SETUP.md` → `BE/CLAUDE.md` → `FE/CLAUDE.md` → `FE/.project-memory/MEMORY.md`
+
+## Security (ĐÃ IMPLEMENT 02/04)
+
+- Middleware `api_admin`: tự apply cho mọi route `api/admin/*` → user thường 403
+- Model `$hidden`: ServiceType (api_body, api_type, cost_price...), Provider (token_api, api_config)
+- Log xoay: site con admin thấy log nhưng BE strip provider_code/request/response
+- Route `GET /api/proxies` đã xóa (public, lộ ALL OrderItems)
 
 ## IP Whitelist & Sync
 
@@ -82,6 +95,7 @@ Sau mỗi session có sửa code/thêm tính năng, **tự động cập nhật 
 
 ## TODO
 
+- **⚠️ RÀ SOÁT BẮT BUỘC**: Sau mỗi thay đổi logic, rà soát lộ thông tin NCC trên site con (provider_code, provider_name, URL NCC, api_config). Grep `provider` trong files đã sửa + liên quan → đảm bảo có `!isChild` guard. Không báo xong nếu chưa rà soát.
 - [Naming Refactor](project_naming_refactor.md) — CHƯA: rename supplier→provider variables
 - Params mapping FE admin UI
 
@@ -96,3 +110,5 @@ Sau mỗi session có sửa code/thêm tính năng, **tự động cập nhật 
 - [E2E trace](feedback_e2e_trace.md) — verify xuyên suốt input→DB, không từng method rời
 - [Config UI](feedback_config_ui_principles.md) — trực quan, config-driven, ghi đè có ngữ cảnh
 - [Review against design](feedback_review_against_design.md) — đọc design doc TRƯỚC khi suy luận
+- [Ẩn NCC site con](feedback_hide_provider_child.md) — TUYỆT ĐỐI không lộ provider info trên site con
+- [Verify UX flow](feedback_verify_ux_flow.md) — verify PHẢI bao gồm UX (admin thấy gì, hiểu gì), không chỉ data path

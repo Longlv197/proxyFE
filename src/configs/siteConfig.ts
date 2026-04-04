@@ -1,6 +1,6 @@
 /**
  * Centralized site configuration.
- * Branding (name, logo, favicon, description) lấy từ DB qua API /get-branding-settings.
+ * Branding (name, logo, favicon, description) lấy từ DB qua API /get-settings.
  *
  * .env.production chỉ cần:
  *   NEXTAUTH_URL, NEXTAUTH_SECRET, API_URL, NEXT_PUBLIC_API_URL
