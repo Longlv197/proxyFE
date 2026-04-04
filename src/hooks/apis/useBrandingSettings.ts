@@ -126,7 +126,7 @@ export const useUpdateBrandingSettings = () => {
       queryClient.refetchQueries({ queryKey: ['branding-settings'] })
 
       // Invalidate server cache (Next.js) → SEO metadata cập nhật ngay
-      fetch('/api/revalidate?tag=branding', { method: 'POST' }).catch(() => {})
+      fetch('/api/revalidate?tag=branding', { method: 'POST' }).catch(() => { })
     },
   })
 }
