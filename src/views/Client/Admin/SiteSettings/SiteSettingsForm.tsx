@@ -270,7 +270,15 @@ export default function SiteSettingsForm() {
 
   const [affiliatePercent, setAffiliatePercent] = useState(2)
 
-  const [activeTab, setActiveTab] = useState(0)
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('settings_active_tab')
+
+      return saved ? parseInt(saved) || 0 : 0
+    }
+
+    return 0
+  })
   const [colorMode, setColorMode] = useState<'preset' | 'custom'>('preset')
   const [seoLangTab, setSeoLangTab] = useState(0)
 
@@ -548,6 +556,9 @@ export default function SiteSettingsForm() {
     { label: 'Cài đặt chung', icon: <Settings size={16} /> }
   ]
 
+  // Clamp tab nếu saved tab > số tab hiện có
+  const safeTab = activeTab < availableTabs.length ? activeTab : 0
+
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
@@ -607,8 +618,8 @@ export default function SiteSettingsForm() {
         {/* Tabs */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
           <Tabs
-            value={activeTab}
-            onChange={(_, v) => setActiveTab(v)}
+            value={safeTab}
+            onChange={(_, v) => { setActiveTab(v); localStorage.setItem('settings_active_tab', String(v)) }}
             variant='scrollable'
             scrollButtons='auto'
             sx={{
@@ -626,7 +637,7 @@ export default function SiteSettingsForm() {
         {/* Tab content */}
         <div style={{ padding: 20 }}>
           {/* ═══════════════ Tab 0: Thương hiệu ═══════════════ */}
-          {activeTab === 0 && (
+          {safeTab === 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               <div>
                 <h6 style={sectionTitleSx}>Thông tin cơ bản</h6>
@@ -1010,7 +1021,7 @@ export default function SiteSettingsForm() {
           )}
 
           {/* ═══════════════ Tab 1: Màu sắc ═══════════════ */}
-          {activeTab === 1 &&
+          {safeTab === 1 &&
             (() => {
               const pc = branding.primary_color || '#FC4336'
               const ph = branding.primary_hover || '#e63946'
@@ -1539,7 +1550,7 @@ export default function SiteSettingsForm() {
             })()}
 
           {/* ═══════════════ Tab 2: SEO ═══════════════ */}
-          {activeTab === 2 && (
+          {safeTab === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div>
                 <h6 style={sectionTitleSx}>Nội dung hiển thị trên Google</h6>
@@ -1816,7 +1827,7 @@ export default function SiteSettingsForm() {
           )}
 
           {/* ═══════════════ Tab 3: Hỗ trợ & Liên hệ ═══════════════ */}
-          {activeTab === 3 && (
+          {safeTab === 3 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* Tổng quan tab */}
               <div
@@ -2086,7 +2097,7 @@ export default function SiteSettingsForm() {
           )}
 
           {/* ═══════════════ Tab 5: Sản phẩm ═══════════════ */}
-          {activeTab === 4 && (
+          {safeTab === 4 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               <div>
                 <h6 style={sectionTitleSx}>Hiển thị sản phẩm</h6>
@@ -2132,7 +2143,7 @@ export default function SiteSettingsForm() {
           )}
 
           {/* ═══════════════ Tab 6: Thanh toán ═══════════════ */}
-          {activeTab === 5 && (
+          {safeTab === 5 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* ── Section 1: Ngân hàng nhận tiền ── */}
               <div>
@@ -2556,7 +2567,7 @@ export default function SiteSettingsForm() {
           )}
 
           {/* ═══════════════ Tab Landing Page ═══════════════ */}
-          {activeTab === availableTabs.findIndex(t => t.label === 'Landing Page') && activeTab >= 0 && (
+          {safeTab === availableTabs.findIndex(t => t.label === 'Landing Page') && activeTab >= 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               <div style={{ background: '#f8fafc', borderRadius: 12, padding: 20, border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>
@@ -2678,7 +2689,7 @@ export default function SiteSettingsForm() {
           )}
 
           {/* ═══════════════ Tab Cài đặt chung ═══════════════ */}
-          {activeTab === availableTabs.findIndex(t => t.label === 'Cài đặt chung') && activeTab >= 0 && (
+          {safeTab === availableTabs.findIndex(t => t.label === 'Cài đặt chung') && activeTab >= 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* Affiliate */}
               <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 20, border: '1px solid #bbf7d0' }}>
