@@ -1528,6 +1528,20 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
                       // Đồng bộ giá nhập từ supplier product
                       const applySyncData = (product: any) => {
+                        // Sync custom_fields (tuỳ chọn khi mua) từ site mẹ
+                        if (product?.custom_fields && Array.isArray(product.custom_fields)) {
+                          setPurchaseOptions(
+                            product.custom_fields.map((f: any) => ({
+                              key: f.key || '', param_name: f.param_name || f.key || '',
+                              label: f.label || '', type: f.type || 'select',
+                              required: f.required || false, default: f.default || '',
+                              options: f.options || [{ value: '', label: '' }]
+                            }))
+                          )
+                        }
+                        if (product?.allow_custom_auth !== undefined) {
+                          setAllowCustomAuth(!!product.allow_custom_auth)
+                        }
                         if (parentIsPerUnit && product?.price_per_unit) {
                           const newCostPerDay = parseInt(product.price_per_unit) || 0
 
