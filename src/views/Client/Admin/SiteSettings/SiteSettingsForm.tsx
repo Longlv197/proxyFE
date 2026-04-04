@@ -261,6 +261,7 @@ export default function SiteSettingsForm() {
   const { data: supplierData } = useSupplierSettings()
   const updateSupplierMutation = useUpdateSupplierSettings()
   const [supplier, setSupplier] = useState({ provider_api_url: '', provider_api_key: '' })
+  const [brandingLoaded, setBrandingLoaded] = useState(false)
   const [supplierTestResult, setSupplierTestResult] = useState<any>(null)
 
   const { data: bankData } = useBankSettings()
@@ -301,7 +302,8 @@ export default function SiteSettingsForm() {
   }, [sidebarData])
 
   useEffect(() => {
-    if (brandingData) {
+    if (brandingData && !brandingLoaded) {
+      setBrandingLoaded(true)
       setBranding({
         site_name: brandingData.site_name || '',
         site_description: brandingData.site_description || '',
@@ -343,7 +345,9 @@ export default function SiteSettingsForm() {
         landing_pricing: migrateLandingPricing(brandingData.landing_pricing),
         menu_labels: brandingData.menu_labels ?? null,
         turnstile_enabled: brandingData.turnstile_enabled ?? null,
-        turnstile_site_key: brandingData.turnstile_site_key ?? null
+        turnstile_site_key: brandingData.turnstile_site_key ?? null,
+        turnstile_secret_key: (brandingData as any).turnstile_secret_key ?? null,
+        turnstile_secret_key_saved: (brandingData as any).turnstile_secret_key_saved ?? false
       })
     }
   }, [brandingData])
