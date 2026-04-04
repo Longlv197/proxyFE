@@ -221,7 +221,9 @@ const defaultBranding: BrandingSettings = {
   deposit_preset_amounts: null,
   deposit_notify_telegram: null,
   landing_pricing: null,
-  menu_labels: null
+  menu_labels: null,
+  turnstile_enabled: null,
+  turnstile_site_key: null
 }
 
 const defaultBank: BankSettings = {
@@ -339,7 +341,9 @@ export default function SiteSettingsForm() {
         deposit_preset_amounts: brandingData.deposit_preset_amounts ?? null,
         deposit_notify_telegram: brandingData.deposit_notify_telegram ?? null,
         landing_pricing: migrateLandingPricing(brandingData.landing_pricing),
-        menu_labels: brandingData.menu_labels ?? null
+        menu_labels: brandingData.menu_labels ?? null,
+        turnstile_enabled: brandingData.turnstile_enabled ?? null,
+        turnstile_site_key: brandingData.turnstile_site_key ?? null
       })
     }
   }, [brandingData])
