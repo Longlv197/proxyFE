@@ -318,6 +318,7 @@ return row.original.is_processed
             <SummaryCard icon={<ArrowDownUp size={18} />} label='Tổng giao dịch' value={summary.total} color='#6366f1' />
             <SummaryCard icon={<Landmark size={18} />} label='Tổng tiền vào' value={`${fmtMoney(summary.total_in)} đ`} color='#16a34a' />
             <SummaryCard icon={<BadgeCheck size={18} />} label='Đã cộng tiền' value={summary.count_processed} color='#0ea5e9' />
+            <SummaryCard icon={<CreditCard size={18} />} label='Tổng tiền đã nhận' value={`${fmtMoney(summary.total_processed || 0)} đ`} color='#059669' highlight={summary.total_processed > 0} />
             <SummaryCard
               icon={<CircleAlert size={18} />}
               label='Chưa xử lý'
