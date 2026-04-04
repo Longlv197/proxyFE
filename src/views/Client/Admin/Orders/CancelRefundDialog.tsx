@@ -38,7 +38,7 @@ export default function CancelRefundDialog({
   cancelMutation,
   handleConfirmCancel
 }: CancelRefundDialogProps) {
-  ;<Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} maxWidth='xs' fullWidth>
+  return <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} maxWidth='xs' fullWidth>
     <DialogTitle>Hủy đơn + Hoàn tiền</DialogTitle>
     <DialogContent>
       <DialogContentText sx={{ mb: 2 }}>
