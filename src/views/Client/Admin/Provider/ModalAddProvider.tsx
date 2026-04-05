@@ -359,75 +359,74 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                     {statsData?.trend && statsData.trend.length > 0 && (() => {
                       const fmtX = (val: string) => { try { return format(parseISO(val), 'dd/MM') } catch { return val } }
                       const fmtLabel = (lbl: any) => { try { return format(parseISO(lbl as string), 'dd/MM/yyyy') } catch { return String(lbl) } }
-                      const fmtMoney = (value: any) => [`${Number(value || 0).toLocaleString('vi-VN')}đ`, '']
-                      const axisSx = { fontSize: '11px' }
-                      const legendSx = { fontSize: '12px', paddingTop: '8px' }
+                      const axisSx = { fontSize: '10px' }
+                      const legendSx = { fontSize: '10px', paddingTop: '6px' }
 
                       return (
-                        <Grid container spacing={3}>
-                          {/* Doanh thu & Chi phí (mua + gia hạn) */}
-                          <Grid item xs={12} lg={6}>
-                            <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
-                              <Typography sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>Doanh thu & Chi phí</Typography>
-                              <Box sx={{ width: '100%', height: 280 }}>
-                                <ResponsiveContainer>
-                                  <BarChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                                    <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
-                                    <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
-                                    <YAxis style={axisSx} />
-                                    <RechartsTooltip labelFormatter={fmtLabel} formatter={fmtMoney} />
-                                    <Legend wrapperStyle={legendSx} />
-                                    <Bar name='Doanh thu' dataKey='total_revenue' fill='#4caf50' radius={[4, 4, 0, 0]} />
-                                    <Bar name='Gia hạn' dataKey='renewal_revenue' fill='#059669' radius={[4, 4, 0, 0]} />
-                                    <Bar name='Chi phí' dataKey='total_cost' fill='#f44336' radius={[4, 4, 0, 0]} />
-                                    <Bar name='Lợi nhuận' dataKey='total_profit' fill='#2196f3' radius={[4, 4, 0, 0]} />
-                                  </BarChart>
-                                </ResponsiveContainer>
-                              </Box>
-                            </Paper>
-                          </Grid>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {/* Chart 1: Doanh thu & Chi phí */}
+                          <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
+                            <Typography sx={{ fontSize: 12, fontWeight: 600, mb: 1, color: '#475569' }}>Doanh thu & Chi phí</Typography>
+                            <Box sx={{ width: '100%', height: 300 }}>
+                              <ResponsiveContainer>
+                                <BarChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                                  <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
+                                  <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
+                                  <YAxis style={axisSx} />
+                                  <RechartsTooltip
+                                    labelFormatter={fmtLabel}
+                                    formatter={(value: any, name: string) => [`${Number(value || 0).toLocaleString('vi-VN')}đ`, name]}
+                                  />
+                                  <Legend wrapperStyle={legendSx} />
+                                  <Bar name='Doanh thu mua' dataKey='total_revenue' fill='#4caf50' radius={[4, 4, 0, 0]} />
+                                  <Bar name='Doanh thu gia hạn' dataKey='renewal_revenue' fill='#059669' radius={[4, 4, 0, 0]} />
+                                  <Bar name='Chi phí' dataKey='total_cost' fill='#f44336' radius={[4, 4, 0, 0]} />
+                                  <Bar name='Lợi nhuận' dataKey='total_profit' fill='#2196f3' radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </Box>
+                          </Paper>
 
-                          {/* Đơn hàng + Gia hạn */}
-                          <Grid item xs={12} lg={6}>
-                            <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
-                              <Typography sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>Đơn hàng & Gia hạn</Typography>
-                              <Box sx={{ width: '100%', height: 280 }}>
-                                <ResponsiveContainer>
-                                  <LineChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                                    <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
-                                    <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
-                                    <YAxis style={axisSx} />
-                                    <RechartsTooltip labelFormatter={fmtLabel} />
-                                    <Legend wrapperStyle={legendSx} />
-                                    <Line name='Đơn mua' type='monotone' dataKey='total_orders' stroke='#ff9800' strokeWidth={2} dot={{ r: 3 }} />
-                                    <Line name='Gia hạn' type='monotone' dataKey='renewal_orders' stroke='#8b5cf6' strokeWidth={2} dot={{ r: 3 }} />
-                                    <Line name='Proxy hoạt động' type='monotone' dataKey='active_proxies' stroke='#6366f1' strokeWidth={2} dot={{ r: 3 }} />
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              </Box>
-                            </Paper>
-                          </Grid>
+                          {/* Chart 2: Đơn hàng & Gia hạn & Proxy */}
+                          <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
+                            <Typography sx={{ fontSize: 12, fontWeight: 600, mb: 1, color: '#475569' }}>Đơn hàng & Gia hạn & Proxy</Typography>
+                            <Box sx={{ width: '100%', height: 300 }}>
+                              <ResponsiveContainer>
+                                <LineChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                                  <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
+                                  <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
+                                  <YAxis style={axisSx} />
+                                  <RechartsTooltip labelFormatter={fmtLabel} />
+                                  <Legend wrapperStyle={legendSx} />
+                                  <Line name='Đơn mua' type='monotone' dataKey='total_orders' stroke='#ff9800' strokeWidth={2} dot={{ r: 3 }} />
+                                  <Line name='Gia hạn' type='monotone' dataKey='renewal_orders' stroke='#8b5cf6' strokeWidth={2} dot={{ r: 3 }} />
+                                  <Line name='Proxy hoạt động' type='monotone' dataKey='active_proxies' stroke='#6366f1' strokeWidth={2} dot={{ r: 3 }} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </Box>
+                          </Paper>
 
-                          {/* Margin % + Tỷ lệ thành công */}
-                          <Grid item xs={12}>
-                            <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
-                              <Typography sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>Biên lợi nhuận & Tỷ lệ thành công</Typography>
-                              <Box sx={{ width: '100%', height: 250 }}>
-                                <ResponsiveContainer>
-                                  <LineChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                                    <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
-                                    <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
-                                    <YAxis unit='%' style={axisSx} />
-                                    <RechartsTooltip labelFormatter={fmtLabel} formatter={(value: any) => [`${value}%`, '']} />
-                                    <Legend wrapperStyle={legendSx} />
-                                    <Line name='Margin %' type='monotone' dataKey='margin_percent' stroke='#2563eb' strokeWidth={2} dot={{ r: 3 }} />
-                                    <Line name='Tỷ lệ OK %' type='monotone' dataKey='success_rate' stroke='#16a34a' strokeWidth={2} dot={{ r: 3 }} />
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              </Box>
-                            </Paper>
-                          </Grid>
-                        </Grid>
+                          {/* Chart 3: Margin % + Tỷ lệ thành công */}
+                          <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
+                            <Typography sx={{ fontSize: 12, fontWeight: 600, mb: 1, color: '#475569' }}>Biên lợi nhuận & Tỷ lệ thành công</Typography>
+                            <Box sx={{ width: '100%', height: 280 }}>
+                              <ResponsiveContainer>
+                                <LineChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                                  <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
+                                  <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
+                                  <YAxis unit='%' style={axisSx} />
+                                  <RechartsTooltip
+                                    labelFormatter={fmtLabel}
+                                    formatter={(value: any, name: string) => [`${value}%`, name]}
+                                  />
+                                  <Legend wrapperStyle={legendSx} />
+                                  <Line name='Margin' type='monotone' dataKey='margin_percent' stroke='#2563eb' strokeWidth={2} dot={{ r: 3 }} />
+                                  <Line name='Tỷ lệ thành công' type='monotone' dataKey='success_rate' stroke='#16a34a' strokeWidth={2} dot={{ r: 3 }} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </Box>
+                          </Paper>
+                        </Box>
                       )
                     })()}
                   </>
