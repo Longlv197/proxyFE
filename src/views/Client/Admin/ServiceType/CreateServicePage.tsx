@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 import { useRouter, useParams } from 'next/navigation'
 
@@ -160,7 +160,31 @@ return { values: {}, errors: formattedErrors }
 
   const watchProviderId = watch('provider_id')
   const watchType = watch('type')
+  const watchName = watch('name')
+  const watchProxyType = watch('proxy_type')
+  const watchCountry = watch('country')
   const selectedProvider = providers?.find((p: any) => String(p.id) === String(watchProviderId)) || null
+
+  // Auto-generate code từ type + proxy_type + country + tên
+  const autoCode = useMemo(() => {
+    const parts: string[] = []
+    const typeLabel = watchType === '0' ? 'static' : watchType === '1' ? 'rotating' : ''
+
+    if (typeLabel) parts.push(typeLabel)
+    if (watchProxyType) parts.push(watchProxyType.toLowerCase().replace(/[^a-z0-9]/g, ''))
+    if (watchCountry) parts.push(watchCountry.toLowerCase().replace(/[^a-z0-9]/g, ''))
+    if (watchName) {
+      // Lấy phần ngắn gọn từ tên — bỏ dấu, lowercase, lấy tối đa 3 từ
+      const slug = watchName
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim()
+        .split(/\s+/).slice(0, 3).join('-')
+
+      if (slug && !parts.some(p => slug.includes(p))) parts.push(slug)
+    }
+
+    return parts.length > 0 ? parts.join('-') : ''
+  }, [watchType, watchProxyType, watchCountry, watchName])
 
   const [isMultiInputModalOpen, setIsMultiInputModalOpen] = useState(false)
 
@@ -347,10 +371,30 @@ return { values: {}, errors: formattedErrors }
                       {...field}
                       size='medium'
                       fullWidth
-                      label='Code'
-                      placeholder='Nhập code'
+                      label='Mã sản phẩm (Code)'
+                      placeholder={autoCode || 'Để trống tự tạo'}
                       error={!!errors.code}
-                      helperText={errors.code?.message}
+                      helperText={
+                        errors.code?.message ||
+                        (autoCode && !field.value ? `Gợi ý: ${autoCode}` : 'Để trống sẽ tự tạo từ tên')
+                      }
+                      slotProps={{
+                        input: {
+                          endAdornment: autoCode && !field.value ? (
+                            <button
+                              type='button'
+                              onClick={() => field.onChange(autoCode)}
+                              style={{
+                                border: 'none', background: '#eef2ff', color: '#4f46e5',
+                                padding: '4px 10px', borderRadius: 6, fontSize: 11,
+                                cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap'
+                              }}
+                            >
+                              Dùng gợi ý
+                            </button>
+                          ) : undefined
+                        }
+                      }}
                     />
                   )}
                 />
@@ -501,9 +545,15 @@ return { values: {}, errors: formattedErrors }
                       <MenuItem value=''>
                         <em>{loadingProviders ? 'Đang tải...' : 'Chọn nhà cung cấp'}</em>
                       </MenuItem>
-                      {providers?.map((provider: any) => (
+                      {providers?.filter((p: any) => p.status === 'active').map((provider: any) => (
                         <MenuItem key={provider.id} value={provider.id}>
+                          <span style={{ color: '#94a3b8', fontSize: 12, marginRight: 6 }}>#{provider.id}</span>
                           {provider.title || provider.name}
+                          {provider.provider_code && (
+                            <span style={{ color: '#6366f1', fontSize: 11, marginLeft: 6, fontFamily: 'monospace' }}>
+                              [{provider.provider_code}]
+                            </span>
+                          )}
                         </MenuItem>
                       ))}
                     </CustomTextField>

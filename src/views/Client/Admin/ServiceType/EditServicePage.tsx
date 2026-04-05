@@ -462,10 +462,10 @@ return Array.from(allProtocols).map(protocol => ({
                       {...field}
                       size='medium'
                       fullWidth
-                      label='Code'
+                      label='Mã sản phẩm (Code)'
                       placeholder='Nhập code'
                       error={!!errors.code}
-                      helperText={errors.code?.message}
+                      helperText={errors.code?.message || `ID: ${serviceId}`}
                     />
                   )}
                 />
@@ -616,9 +616,15 @@ return Array.from(allProtocols).map(protocol => ({
                       <MenuItem value=''>
                         <em>{loadingProviders ? 'Đang tải...' : 'Chọn nhà cung cấp'}</em>
                       </MenuItem>
-                      {providers?.map((provider: any) => (
+                      {providers?.filter((p: any) => p.status === 'active').map((provider: any) => (
                         <MenuItem key={provider.id} value={provider.id}>
+                          <span style={{ color: '#94a3b8', fontSize: 12, marginRight: 6 }}>#{provider.id}</span>
                           {provider.title || provider.name}
+                          {provider.provider_code && (
+                            <span style={{ color: '#6366f1', fontSize: 11, marginLeft: 6, fontFamily: 'monospace' }}>
+                              [{provider.provider_code}]
+                            </span>
+                          )}
                         </MenuItem>
                       ))}
                     </CustomTextField>

@@ -1223,9 +1223,15 @@ return { values: {}, errors: formattedErrors }
                     render={({ field }) => (
                       <CustomTextField {...field} fullWidth select label='Provider' disabled={loadingProviders}>
                         <MenuItem value=''><em>{loadingProviders ? '...' : '—'}</em></MenuItem>
-                        {providers?.map((provider: any) => (
+                        {providers?.filter((p: any) => p.status === 'active').map((provider: any) => (
                           <MenuItem key={provider.id} value={provider.id}>
-                            {provider.provider_code ? `[${provider.provider_code}] ` : ''}{provider.title || provider.name}
+                            <span style={{ color: '#94a3b8', fontSize: 12, marginRight: 4 }}>#{provider.id}</span>
+                            {provider.title || provider.name}
+                            {provider.provider_code && (
+                              <span style={{ color: '#6366f1', fontSize: 11, marginLeft: 4, fontFamily: 'monospace' }}>
+                                [{provider.provider_code}]
+                              </span>
+                            )}
                           </MenuItem>
                         ))}
                       </CustomTextField>
