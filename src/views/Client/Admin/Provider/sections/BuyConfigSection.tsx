@@ -308,6 +308,7 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
   const proxyFormat = useWatch({ control, name: `${prefix}.response.proxy_format` })
   const fetchProxyFormat = useWatch({ control, name: `${prefix}.fetch_proxies.proxy_format` })
   const fetchResponseType = useWatch({ control, name: `${prefix}.fetch_proxies.response_type` })
+  const fetchOrderCodeMode = useWatch({ control, name: `${prefix}.fetch_proxies.order_code_mode` })
   const fetchPaginationEnabled = useWatch({ control, name: `${prefix}.fetch_proxies.pagination_enabled` })
 
   return (
@@ -417,21 +418,31 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
               </Box>
             </Grid2>
 
-            <Grid2 size={{ xs: 12, sm: 4 }}>
+            <Grid2 size={{ xs: 12, sm: 2 }}>
+              <Controller name={`${prefix}.fetch_proxies.order_code_mode`} control={control} render={({ field }) => (
+                <CustomTextField {...field} fullWidth select label='Cách truyền mã đơn'>
+                  <MenuItem value='path'>Trong URL path (dùng {'{order_id}'})</MenuItem>
+                  <MenuItem value='param'>Trong params (query/body)</MenuItem>
+                </CustomTextField>
+              )} />
+            </Grid2>
+            <Grid2 size={{ xs: 12, sm: fetchOrderCodeMode === 'param' ? 3 : 5 }}>
               <Controller name={`${prefix}.fetch_proxies.url`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth label='URL lấy proxy'
-                  helperText='Dạng path: /orders/{order_id}/proxies. Dạng query: URL sạch + dùng "Param mã đơn"'
-                  placeholder='https://api.provider.com/api/proxy.php' />
+                  helperText={fetchOrderCodeMode === 'path' ? 'Dùng {order_id} trong URL' : 'URL sạch, mã đơn gửi qua params'}
+                  placeholder={fetchOrderCodeMode === 'path' ? 'https://api.ncc.com/orders/{order_id}/proxies' : 'https://api.ncc.com/api/proxy.php'} />
               )} />
             </Grid2>
-            <Grid2 size={{ xs: 6, sm: 2 }}>
-              <Controller name={`${prefix}.fetch_proxies.order_code_param`} control={control} render={({ field }) => (
-                <CustomTextField {...field} fullWidth label='Param mã đơn'
-                  helperText='Bỏ trống nếu mã đơn nằm trong URL path'
-                  placeholder='ma_don_hang' />
-              )} />
-            </Grid2>
-            <Grid2 size={{ xs: 6, sm: 2 }}>
+            {fetchOrderCodeMode === 'param' && (
+              <Grid2 size={{ xs: 6, sm: 2 }}>
+                <Controller name={`${prefix}.fetch_proxies.order_code_param`} control={control} render={({ field }) => (
+                  <CustomTextField {...field} fullWidth label='Tên param mã đơn'
+                    helperText='VD: ma_don_hang, order_id'
+                    placeholder='ma_don_hang' />
+                )} />
+              </Grid2>
+            )}
+            <Grid2 size={{ xs: 6, sm: 1.5 }}>
               <Controller name={`${prefix}.fetch_proxies.method`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth select label='Method'>
                   <MenuItem value='GET'>GET</MenuItem>
@@ -439,7 +450,7 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
                 </CustomTextField>
               )} />
             </Grid2>
-            <Grid2 size={{ xs: 6, sm: 2 }}>
+            <Grid2 size={{ xs: 6, sm: 1.5 }}>
               <Controller name={`${prefix}.fetch_proxies.auth_type`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth select label='Xác thực'>
                   <MenuItem value='inherit'>Giống API mua</MenuItem>

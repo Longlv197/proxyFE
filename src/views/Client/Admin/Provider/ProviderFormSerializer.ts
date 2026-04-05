@@ -177,6 +177,7 @@ export function parseBuySection(buy: any): ApiConfigBuy {
         method: fp.method || 'GET',
         auth_type: fp.auth_type ? fp.auth_type : 'inherit',
         auth_param: fp.auth_param || '',
+        order_code_mode: fp.order_code_param ? 'param' : ((fp.url || '').includes('{') ? 'path' : 'param'),
         order_code_param: fp.order_code_param || '',
         default_params: fp.params ? JSON.stringify(fp.params) : '',
         response_type: fpResp.type || 'object',

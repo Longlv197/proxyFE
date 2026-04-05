@@ -68,6 +68,7 @@ export interface FetchProxiesConfig {
   method: string
   auth_type: string
   auth_param: string
+  order_code_mode: string  // 'path' | 'param'
   order_code_param: string
   default_params: string
   response_type: string
@@ -309,6 +310,7 @@ export const defaultFetchProxies: FetchProxiesConfig = {
   method: 'GET',
   auth_type: 'inherit',
   auth_param: '',
+  order_code_mode: 'param',
   order_code_param: '',
   default_params: '',
   response_type: 'object',
