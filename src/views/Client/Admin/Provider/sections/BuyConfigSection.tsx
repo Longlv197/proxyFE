@@ -731,8 +731,8 @@ function StepParamsMapping({ prefix, control }: BuySectionProps) {
   return (
     <PipelineStepCard
       step={6}
-      title='Params Mapping — biến chuẩn hệ thống'
-      description='Mỗi dòng = 1 biến hệ thống được gửi sang NCC bằng tên param khác. Biến nào map ở đây sẽ thay config cũ tương ứng.'
+      title='Params Mapping — biến chuẩn hệ thống (chỉ dùng khi MUA HÀNG)'
+      description='Dùng khi gọi API MUA proxy — dịch biến hệ thống (quantity, duration...) sang tên param NCC yêu cầu. Không ảnh hưởng xoay, gia hạn, lấy proxy.'
     >
       <Grid2 container spacing={2}>
         <Grid2 size={{ xs: 12 }}>
