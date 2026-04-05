@@ -260,8 +260,9 @@ function StepSuccessCheck({ prefix, control }: BuySectionProps) {
               label='Dạng kết quả trả về'
               helperText='Gọi thử API đối tác, xem kết quả rồi chọn dạng phù hợp'
             >
-              <MenuItem value='object'>Dạng 1 — Chỉ có 1 cặp {'{ }'} duy nhất</MenuItem>
-              <MenuItem value='array_last_status'>Dạng 2 — Có nhiều cặp {'{ }'} liên tiếp (bao bởi [ ])</MenuItem>
+              <MenuItem value='object'>Dạng 1 — Một object {'{ }'} duy nhất</MenuItem>
+              <MenuItem value='array_last_status'>Dạng 2 — Mảng [ ], phần tử cuối là trạng thái</MenuItem>
+              <MenuItem value='array_each_status'>Dạng 3 — Mảng [ ], mỗi phần tử là 1 proxy có trạng thái riêng</MenuItem>
             </CustomTextField>
           )} />
         </Grid2>
