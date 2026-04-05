@@ -159,6 +159,23 @@ export const useRetryOrder = () => {
   })
 }
 
+export const useRetryFetch = () => {
+  const axiosAuth = useAxiosAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (orderId: number) => {
+      const res = await axiosAuth.post('/admin/retry-fetch', { order_id: orderId })
+
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] })
+      queryClient.invalidateQueries({ queryKey: ['orderDetail'] })
+    }
+  })
+}
+
 export const useRefundPartial = () => {
   const axiosAuth = useAxiosAuth()
   const queryClient = useQueryClient()

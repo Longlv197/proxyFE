@@ -57,7 +57,7 @@ import { useAdminOrders } from '@/hooks/apis/useOrderReport'
 import { useCancelOrder, useResendOrder } from '@/hooks/apis/useOrders'
 import { useProviders } from '@/hooks/apis/useProviders'
 import { useOrderConfirm } from '@/hooks/apis/useRenewal'
-import { useRefundPartial, useRetryOrder, useRetryPartial } from '@/hooks/apis/useTickets'
+import { useRefundPartial, useRetryOrder, useRetryPartial, useRetryFetch } from '@/hooks/apis/useTickets'
 import FillProxiesDialog from '@/views/Client/Admin/Orders/FillProxiesDialog'
 import OrderDetailModal from '@/views/Client/Admin/TransactionHistory/OrderDetailModal'
 import CancelRefundDialog from './CancelRefundDialog'
@@ -207,6 +207,7 @@ export default function AdminOrdersPage() {
   const [retryFailedOrder, setRetryFailedOrder] = useState<any>(null)
   const [refundOrder, setRefundOrder] = useState<any>(null)
   const [fillProxiesOrder, setFillProxiesOrder] = useState<any>(null)
+  const [retryFetchOrder, setRetryFetchOrder] = useState<any>(null)
 
   // Confirm order state (timeout orders)
   const [confirmOrder, setConfirmOrder] = useState<any>(null)
@@ -241,6 +242,7 @@ export default function AdminOrdersPage() {
 
   const retryMutation = useRetryPartial()
   const retryFailedMutation = useRetryOrder()
+  const retryFetchMutation = useRetryFetch()
   const refundMutation = useRefundPartial()
 
   const { data: providers = [] } = useProviders()
@@ -516,11 +518,18 @@ export default function AdminOrdersPage() {
                 </>
               )}
               {status === 10 && (
-                <Tooltip title='Thêm thủ công'>
-                  <IconButton size='small' color='primary' onClick={() => setFillProxiesOrder(order)}>
-                    <PlusCircle size={16} />
-                  </IconButton>
-                </Tooltip>
+                <>
+                  <Tooltip title='Thử lấy proxy lại'>
+                    <IconButton size='small' color='warning' onClick={() => setRetryFetchOrder(order)}>
+                      <RefreshCw size={16} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title='Thêm thủ công'>
+                    <IconButton size='small' color='primary' onClick={() => setFillProxiesOrder(order)}>
+                      <PlusCircle size={16} />
+                    </IconButton>
+                  </Tooltip>
+                </>
               )}
               {status === 12 && (
                 <>
@@ -1244,6 +1253,38 @@ export default function AdminOrdersPage() {
           }}
         />
       )}
+
+      {/* Retry Fetch Dialog */}
+      <Dialog open={!!retryFetchOrder} onClose={() => setRetryFetchOrder(null)}>
+        <DialogTitle>Thử lấy proxy lại</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Đẩy đơn <strong>#{retryFetchOrder?.order_code}</strong> vào queue lấy proxy lại từ NCC.
+            Retry sẽ được reset về 0.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRetryFetchOrder(null)} color='inherit'>Hủy</Button>
+          <Button
+            onClick={() => {
+              retryFetchMutation.mutate(retryFetchOrder?.id, {
+                onSuccess: (res: any) => {
+                  toast.info(res?.message || 'Đã đẩy lại đơn hàng')
+                  setRetryFetchOrder(null)
+                },
+                onError: (err: any) => {
+                  toast.error(err?.response?.data?.message || 'Có lỗi xảy ra')
+                }
+              })
+            }}
+            color='warning'
+            variant='contained'
+            disabled={retryFetchMutation.isPending}
+          >
+            {retryFetchMutation.isPending ? 'Đang xử lý...' : 'Thử lại'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Renewal Retry Dialog */}
       <RenewalRetryDialog
