@@ -307,6 +307,7 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
   const responseType = useWatch({ control, name: `${prefix}.response.type` })
   const proxyFormat = useWatch({ control, name: `${prefix}.response.proxy_format` })
   const fetchProxyFormat = useWatch({ control, name: `${prefix}.fetch_proxies.proxy_format` })
+  const fetchResponseType = useWatch({ control, name: `${prefix}.fetch_proxies.response_type` })
   const fetchPaginationEnabled = useWatch({ control, name: `${prefix}.fetch_proxies.pagination_enabled` })
 
   return (
@@ -433,21 +434,32 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
               )} />
             </Grid2>
 
-            <Grid2 size={{ xs: 6, sm: 2.5 }}>
+            <Grid2 size={{ xs: 12, sm: 3 }}>
+              <Controller name={`${prefix}.fetch_proxies.response_type`} control={control} render={({ field }) => (
+                <CustomTextField {...field} fullWidth select label='Dạng kết quả'>
+                  <MenuItem value='object'>Object — proxy nằm trong 1 field</MenuItem>
+                  <MenuItem value='array_last_status'>Mảng — phần tử cuối là trạng thái</MenuItem>
+                  <MenuItem value='array_each_status'>Mảng — mỗi phần tử là 1 proxy</MenuItem>
+                </CustomTextField>
+              )} />
+            </Grid2>
+            <Grid2 size={{ xs: 6, sm: 2 }}>
               <Controller name={`${prefix}.fetch_proxies.success_field`} control={control} render={({ field }) => (
-                <CustomTextField {...field} fullWidth label='Tên field kiểm tra' helperText='Bỏ trống nếu không cần' placeholder='success' />
+                <CustomTextField {...field} fullWidth label='Field kiểm tra' helperText='Bỏ trống nếu không cần' placeholder='maloi' />
               )} />
             </Grid2>
             <Grid2 size={{ xs: 6, sm: 1.5 }}>
               <Controller name={`${prefix}.fetch_proxies.success_value`} control={control} render={({ field }) => (
-                <CustomTextField {...field} fullWidth label='Giá trị OK' placeholder='true' />
+                <CustomTextField {...field} fullWidth label='Giá trị OK' placeholder='0' />
               )} />
             </Grid2>
-            <Grid2 size={{ xs: 12, sm: 4 }}>
-              <Controller name={`${prefix}.fetch_proxies.proxies_path`} control={control} render={({ field }) => (
-                <CustomTextField {...field} fullWidth label='Vị trí danh sách proxy' helperText='Lấy tên trường từ kết quả API' placeholder='data.proxies' />
-              )} />
-            </Grid2>
+            {(!fetchResponseType || fetchResponseType === 'object') && (
+              <Grid2 size={{ xs: 12, sm: 3 }}>
+                <Controller name={`${prefix}.fetch_proxies.proxies_path`} control={control} render={({ field }) => (
+                  <CustomTextField {...field} fullWidth label='Vị trí danh sách proxy' helperText='VD: data.proxies, result' placeholder='data.proxies' />
+                )} />
+              </Grid2>
+            )}
             <Grid2 size={{ xs: 12, sm: 3 }}>
               <Controller name={`${prefix}.fetch_proxies.proxy_format`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth select label='Format proxy'>

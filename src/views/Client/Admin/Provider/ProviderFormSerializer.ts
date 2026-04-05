@@ -177,6 +177,7 @@ export function parseBuySection(buy: any): ApiConfigBuy {
         method: fp.method || 'GET',
         auth_type: fp.auth_type ? fp.auth_type : 'inherit',
         auth_param: fp.auth_param || '',
+        response_type: fpResp.type || 'object',
         success_field: fpResp.success_field || '',
         success_value: fpResp.success_value != null ? String(fpResp.success_value) : '',
         proxies_path: fpResp.proxies_path || 'data.proxies',
@@ -449,12 +450,13 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
       }
 
       const fpResp: any = {}
+      if (fp.response_type) fpResp.type = fp.response_type
       if (fp.success_field) fpResp.success_field = fp.success_field
       if (fp.success_value !== '') {
         const numVal = Number(fp.success_value)
         fpResp.success_value = isNaN(numVal) ? fp.success_value : numVal
       }
-      if (fp.proxies_path) fpResp.proxies_path = fp.proxies_path
+      if (fp.response_type === 'object' && fp.proxies_path) fpResp.proxies_path = fp.proxies_path
       fpResp.proxy_format = fp.proxy_format || 'fields'
 
       if (fp.proxy_format === 'key' && fp.proxy_key_field) {
