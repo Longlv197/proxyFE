@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspens
 import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 
-import { CircleQuestionMark, BadgeCheck, BadgeMinus, ShoppingCart, ShoppingCartIcon, List, Copy, SquarePen, Trash2, SquarePlus, Search, DollarSign, Loader2, GripVertical, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react'
+import { CircleQuestionMark, BadgeCheck, BadgeMinus, ShoppingCart, ShoppingCartIcon, List, Copy, SquarePen, Trash2, SquarePlus, Search, DollarSign, Loader2, GripVertical, ChevronUp, ChevronDown, RefreshCw, History } from 'lucide-react'
 
 import {
   useReactTable,
@@ -49,6 +49,7 @@ const ChildServiceFormModal = lazy(() => import('@/views/Client/Admin/ServiceTyp
 import CustomPriceModal from '@/views/Client/Admin/ServiceType/CustomPriceModal'
 import { getTagStyle } from '@/configs/tagConfig'
 import { useBranding } from '@/app/contexts/BrandingContext'
+import ConfigVersionDrawer from '@/views/Client/Admin/ConfigVersions/ConfigVersionDrawer'
 
 // ─── EditableOrderCell — isolated component, không rerender bảng ───
 const EditableOrderCell = React.memo(function EditableOrderCell({ value, onSave }: { value: number; onSave: (newOrder: number) => void }) {
@@ -155,6 +156,8 @@ export default function TableServiceType() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingData, setEditingData] = useState<any>(null)
   const [customPriceService, setCustomPriceService] = useState<any>(null)
+  const [versionDrawerOpen, setVersionDrawerOpen] = useState(false)
+  const [versionDrawerService, setVersionDrawerService] = useState<{ id: number; name: string } | null>(null)
 
   const router = useRouter()
   const params = useParams()
@@ -629,6 +632,19 @@ return (
                 </Tooltip>
               )}
 
+              <Tooltip title='Lịch sử cấu hình'>
+                <IconButton
+                  size='small'
+                  sx={{ color: '#7c3aed' }}
+                  onClick={() => {
+                    setVersionDrawerService({ id: row.original.id, name: row.original.name })
+                    setVersionDrawerOpen(true)
+                  }}
+                >
+                  <History size={18} />
+                </IconButton>
+              </Tooltip>
+
               <Tooltip title='Sao chép dịch vụ'>
                 <span>
                   <IconButton
@@ -983,6 +999,19 @@ return (
           open={!!customPriceService}
           onClose={() => setCustomPriceService(null)}
           serviceType={customPriceService}
+        />
+      )}
+
+      {versionDrawerService && (
+        <ConfigVersionDrawer
+          open={versionDrawerOpen}
+          onClose={() => {
+            setVersionDrawerOpen(false)
+            setVersionDrawerService(null)
+          }}
+          modelType='type_services'
+          modelId={versionDrawerService.id}
+          modelName={versionDrawerService.name}
         />
       )}
     </>

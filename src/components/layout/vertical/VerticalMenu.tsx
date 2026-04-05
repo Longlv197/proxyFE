@@ -537,6 +537,15 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
                 Cài đặt chung
               </MenuItem>
             )}
+            {hasPermission('admin.announcements') && (
+              <MenuItem
+                icon={<History size={20} strokeWidth={1.5} />}
+                {...nav('admin/config-versions')}
+                href={`/${locale}/admin/config-versions`}
+              >
+                Lịch sử cấu hình
+              </MenuItem>
+            )}
           </MenuSection>
         )}
       </Menu>

@@ -42,7 +42,7 @@ import { useSidebarSettings, useUpdateSidebarSettings } from '@/hooks/apis/useSi
 import type { SupportLink, YoutubeVideo } from '@/hooks/apis/useSidebarSettings'
 import { useAdminBrandingSettings, useUpdateBrandingSettings } from '@/hooks/apis/useBrandingSettings'
 import type { BrandingSettings, SocialLink, SeoMeta } from '@/hooks/apis/useBrandingSettings'
-import { useSupplierSettings, useUpdateSupplierSettings } from '@/hooks/apis/useSupplierSettings'
+import { useProviderSettings, useupdateProviderSettings } from '@/hooks/apis/useSupplierSettings'
 import { useBankSettings, useUpdateBankSettings } from '@/hooks/apis/useBankSettings'
 import type { BankSettings } from '@/hooks/apis/useBankSettings'
 import { useBranding } from '@/app/contexts/BrandingContext'
@@ -258,8 +258,8 @@ export default function SiteSettingsForm() {
   const updateSidebarMutation = useUpdateSidebarSettings()
   const updateBrandingMutation = useUpdateBrandingSettings()
 
-  const { data: supplierData } = useSupplierSettings()
-  const updateSupplierMutation = useUpdateSupplierSettings()
+  const { data: supplierData } = useProviderSettings()
+  const updateSupplierMutation = useupdateProviderSettings()
   const [supplier, setSupplier] = useState({ provider_api_url: '', provider_api_key: '' })
   const [brandingLoaded, setBrandingLoaded] = useState(false)
   const [supplierTestResult, setSupplierTestResult] = useState<any>(null)

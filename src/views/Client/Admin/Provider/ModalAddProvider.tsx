@@ -167,7 +167,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       onClose={onClose}
       open={open}
       closeAfterTransition={false}
-      PaperProps={{ sx: { overflow: 'visible' } }}
+      PaperProps={{ sx: { overflow: 'visible', minHeight: 'calc(100vh - 100px)' } }}
       fullWidth
       maxWidth='xl'
     >

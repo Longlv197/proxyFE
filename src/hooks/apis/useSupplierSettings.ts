@@ -11,13 +11,13 @@ export interface SupplierSettings {
   configured: boolean
 }
 
-export const useSupplierSettings = () => {
+export const useProviderSettings = () => {
   const axiosAuth = useAxiosAuth()
 
   return useQuery({
     queryKey: ['supplierSettings'],
     queryFn: async () => {
-      const res = await axiosAuth.get('/admin/supplier-settings')
+      const res = await axiosAuth.get('/admin/provider-settings')
 
       return (res?.data?.data ?? {}) as SupplierSettings
     },
@@ -26,7 +26,7 @@ export const useSupplierSettings = () => {
   })
 }
 
-export const useUpdateSupplierSettings = () => {
+export const useupdateProviderSettings = () => {
   const axiosAuth = useAxiosAuth()
   const queryClient = useQueryClient()
 
@@ -35,7 +35,7 @@ export const useUpdateSupplierSettings = () => {
       provider_api_url: string
       provider_api_key: string
     }) => {
-      const res = await axiosAuth.post('/admin/update-supplier-settings', data)
+      const res = await axiosAuth.post('/admin/update-provider-settings', data)
 
       return res?.data
     },

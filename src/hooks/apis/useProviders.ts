@@ -4,23 +4,31 @@ import axios from 'axios'
 
 import useAxiosAuth from '@/hocs/useAxiosAuth'
 
-export const useProviders = () => {
+export const useProviders = (params?: { search?: string; status?: string }) => {
   const axiosAuth = useAxiosAuth()
+  const queryClient = useQueryClient()
 
-  return useQuery({
-    queryKey: ['providers'],
+  const query = useQuery({
+    queryKey: ['providers', params?.search ?? '', params?.status ?? ''],
     queryFn: async () => {
-      const res = await axiosAuth.get('/get-provider')
-      const data = res?.data?.data ?? res?.data ?? []
+      const searchParams = new URLSearchParams()
 
-      console.log('Providers data from API:', data)
+      if (params?.search) searchParams.set('search', params.search)
+      if (params?.status) searchParams.set('status', params.status)
 
-return data
+      const qs = searchParams.toString()
+      const res = await axiosAuth.get(`/get-provider${qs ? `?${qs}` : ''}`)
+
+      return res?.data?.data ?? res?.data ?? []
     },
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000 // Cache 5 phút
+    staleTime: 0,
+    refetchOnWindowFocus: false
   })
+
+  return {
+    ...query,
+    forceRefetch: () => queryClient.invalidateQueries({ queryKey: ['providers'] })
+  }
 }
 
 // Hook để tạo mới nhà cung cấp

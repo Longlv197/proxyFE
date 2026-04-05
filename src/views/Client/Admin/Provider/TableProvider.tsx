@@ -5,7 +5,7 @@ import { useMemo, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 
-import { CircleQuestionMark, BadgeCheck, BadgeMinus, List, SquarePen, Trash2, SquarePlus, Wallet, QrCode, History } from 'lucide-react'
+import { CircleQuestionMark, BadgeCheck, BadgeMinus, List, SquarePen, Trash2, SquarePlus, Wallet, QrCode, History, ClipboardList, Search, Loader2 } from 'lucide-react'
 
 import {
   useReactTable,
@@ -39,6 +39,7 @@ import { toast } from 'react-toastify'
 import { useProviders, useDeleteProvider } from '@/hooks/apis/useProviders'
 import QrCodeDialog from '@/views/Client/Admin/Provider/QrCodeDialog'
 import TransactionModal from '@/views/Client/Admin/Provider/TransactionModal'
+import ConfigVersionDrawer from '@/views/Client/Admin/ConfigVersions/ConfigVersionDrawer'
 
 interface TableProviderProps {
   onOpenModal?: (type: 'create' | 'edit', data?: any) => void
@@ -69,21 +70,81 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
   const [transactionModalOpen, setTransactionModalOpen] = useState(false)
   const [providerForTransaction, setProviderForTransaction] = useState<any>(null)
 
+  const [versionDrawerOpen, setVersionDrawerOpen] = useState(false)
+  const [versionDrawerProvider, setVersionDrawerProvider] = useState<{ id: number; title: string } | null>(null)
+
+  const [searchText, setSearchText] = useState('')
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [appliedSearch, setAppliedSearch] = useState('')
+  const [appliedStatus, setAppliedStatus] = useState<string>('all')
+
   const router = useRouter()
   const params = useParams()
   const { lang: locale } = params
 
-  const { data: dataProviders = [], isLoading } = useProviders()
+  const { data: dataProviders = [], isLoading, isFetching, forceRefetch } = useProviders({
+    search: appliedSearch || undefined,
+    status: appliedStatus !== 'all' ? appliedStatus : undefined
+  })
+
+  const handleSearch = useCallback(() => {
+    const newSearch = searchText.trim()
+    const newStatus = filterStatus
+
+    if (newSearch === appliedSearch && newStatus === appliedStatus) {
+      // Cùng params → force refetch
+      forceRefetch()
+    } else {
+      setAppliedSearch(newSearch)
+      setAppliedStatus(newStatus)
+    }
+
+    setPagination(prev => ({ ...prev, pageIndex: 0 }))
+  }, [searchText, filterStatus, appliedSearch, appliedStatus, forceRefetch])
+
+  const handleClearSearch = useCallback(() => {
+    setSearchText('')
+    setFilterStatus('all')
+    setAppliedSearch('')
+    setAppliedStatus('all')
+    setPagination(prev => ({ ...prev, pageIndex: 0 }))
+  }, [])
   const deleteMutation = useDeleteProvider()
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Chip label='ACTIVE' size='small' icon={<BadgeCheck />} color='success' />
+        return (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+            background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0'
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+            Hoạt động
+          </span>
+        )
       case 'inactive':
-        return <Chip label='INACTIVE' size='small' icon={<BadgeMinus />} color='error' />
+        return (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+            background: '#f8fafc', color: '#94a3b8', border: '1px solid #e2e8f0'
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#cbd5e1' }} />
+            Tắt
+          </span>
+        )
       default:
-        return <Chip label='Không xác định' size='small' icon={<CircleQuestionMark />} color='secondary' />
+        return (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+            background: '#fefce8', color: '#ca8a04', border: '1px solid #fde68a'
+          }}>
+            Không rõ
+          </span>
+        )
     }
   }
 
@@ -197,73 +258,86 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
       {
         accessorKey: 'id',
         header: 'ID',
-        size: 60
+        size: 50,
+        cell: ({ getValue }: { getValue: () => any }) => (
+          <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: 13 }}>#{getValue()}</span>
+        )
       },
-
       {
-        header: 'Tên nhà cung cấp',
+        header: 'Tên',
         cell: ({ row }: { row: any }) => (
-          <div>
-            <div className='font-bold'>{row.original?.title || row.original?.name || '-'}</div>
-          </div>
+          <span style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
+            {row.original?.title || row.original?.name || '-'}
+          </span>
         ),
-        size: 1000,
-        minSize: 200
+        size: 180
+      },
+      {
+        header: 'Mã code',
+        accessorKey: 'provider_code',
+        size: 140,
+        cell: ({ row }: { row: any }) => (
+          <span style={{ fontSize: 12, color: '#6366f1', fontFamily: 'monospace', background: '#eef2ff', padding: '2px 8px', borderRadius: 4 }}>
+            {row.original?.provider_code || '-'}
+          </span>
+        )
       },
       {
         header: 'Trạng thái',
-        cell: ({ row }: { row: any }) => {
-          return getStatusBadge(row.original?.status)
-        },
-        size: 120
+        cell: ({ row }: { row: any }) => getStatusBadge(row.original?.status),
+        size: 110
       },
       {
-        header: 'Action',
+        header: 'Thao tác',
         cell: ({ row }: { row: any }) => {
           return (
-            <div className='flex gap-2'>
-              <Tooltip title='Chỉnh sửa nhà cung cấp'>
-                <IconButton size='small' color='info' onClick={() => handleOpenEdit(row.original.id)}>
-                  <SquarePen size={18} />
+            <div style={{ display: 'flex', gap: 2 }}>
+              <Tooltip title='Chỉnh sửa'>
+                <IconButton size='small' onClick={() => handleOpenEdit(row.original.id)}
+                  sx={{ color: '#94a3b8', '&:hover': { color: '#3b82f6', background: '#eff6ff' } }}>
+                  <SquarePen size={16} />
                 </IconButton>
               </Tooltip>
 
               <Tooltip title='Nạp tiền'>
-                <IconButton
-                  size='small'
-                  color='success'
-                  onClick={() => handleOpenRechargeDialog(row.original.id)}
-                >
-                  <Wallet size={18} />
+                <IconButton size='small' onClick={() => handleOpenRechargeDialog(row.original.id)}
+                  sx={{ color: '#94a3b8', '&:hover': { color: '#10b981', background: '#ecfdf5' } }}>
+                  <Wallet size={16} />
                 </IconButton>
               </Tooltip>
 
               <Tooltip title='Lịch sử giao dịch'>
-                <IconButton
-                  size='small'
-                  color='primary'
-                  onClick={() => handleOpenTransactionModal(row.original.id)}
-                >
-                  <History size={18} />
+                <IconButton size='small' onClick={() => handleOpenTransactionModal(row.original.id)}
+                  sx={{ color: '#94a3b8', '&:hover': { color: '#6366f1', background: '#eef2ff' } }}>
+                  <History size={16} />
                 </IconButton>
               </Tooltip>
 
-              <Tooltip title='Xóa nhà cung cấp'>
+              <Tooltip title='Lịch sử cấu hình'>
+                <IconButton size='small'
+                  onClick={() => {
+                    setVersionDrawerProvider({ id: row.original.id, title: row.original.title })
+                    setVersionDrawerOpen(true)
+                  }}
+                  sx={{ color: '#94a3b8', '&:hover': { color: '#7c3aed', background: '#f5f3ff' } }}>
+                  <ClipboardList size={16} />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title='Xóa'>
                 <span>
-                  <IconButton
-                    size='small'
-                    color='error'
+                  <IconButton size='small'
                     onClick={() => handleOpenDeleteDialog(row.original.id)}
                     disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 size={18} />
+                    sx={{ color: '#94a3b8', '&:hover': { color: '#ef4444', background: '#fef2f2' } }}>
+                    <Trash2 size={16} />
                   </IconButton>
                 </span>
               </Tooltip>
             </div>
           )
         },
-        size: 180
+        size: 210
       }
     ],
     [handleOpenEdit, handleOpenDeleteDialog, handleOpenRechargeDialog, handleOpenTransactionModal, deleteMutation.isPending]
@@ -315,18 +389,96 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
               <Button
                 onClick={handleOpenCreate}
                 variant='contained'
-                color='primary'
-                className='text-white'
                 size='small'
                 startIcon={<SquarePlus size={16} />}
+                sx={{
+                  background: 'var(--primary-gradient, linear-gradient(45deg, #fc4336, #f88a4b))',
+                  color: '#fff',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  textTransform: 'none',
+                  '&:hover': { opacity: 0.9, boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)' }
+                }}
               >
                 Thêm nhà cung cấp
               </Button>
             </div>
           </div>
+
+          {/* Search & Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200, maxWidth: 300,
+              border: '1px solid #e2e8f0', borderRadius: 8, padding: '0 12px', background: '#f8fafc'
+            }}>
+              <Search size={16} style={{ color: '#94a3b8', flexShrink: 0 }} />
+              <input
+                type='text'
+                placeholder='Tìm theo tên, mã code...'
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                style={{
+                  border: 'none', outline: 'none', background: 'transparent',
+                  fontSize: 13, padding: '8px 0', width: '100%', color: '#374151'
+                }}
+              />
+            </div>
+
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              style={{
+                border: '1px solid #e2e8f0', borderRadius: 8, padding: '7px 12px',
+                fontSize: 13, color: '#374151', background: '#f8fafc', outline: 'none', cursor: 'pointer'
+              }}
+            >
+              <option value='all'>Tất cả trạng thái</option>
+              <option value='active'>Hoạt động</option>
+              <option value='inactive'>Tắt</option>
+            </select>
+
+            <Button
+              size='small'
+              variant='contained'
+              onClick={handleSearch}
+              disabled={isFetching}
+              startIcon={isFetching
+                ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} />
+                : <Search size={14} />
+              }
+              sx={{
+                textTransform: 'none', fontSize: 13,
+                background: 'var(--primary-gradient, linear-gradient(45deg, #fc4336, #f88a4b))',
+                color: '#fff', boxShadow: 'none',
+                '&:hover': { opacity: 0.9, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' },
+                '&.Mui-disabled': { opacity: 0.6, color: '#fff' },
+                '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } }
+              }}
+            >
+              {isFetching ? 'Đang tìm...' : 'Tìm kiếm'}
+            </Button>
+
+            {(appliedSearch || appliedStatus !== 'all') && (
+              <Button
+                size='small'
+                variant='text'
+                onClick={handleClearSearch}
+                sx={{ textTransform: 'none', fontSize: 12, color: '#94a3b8' }}
+              >
+                Xoá bộ lọc
+              </Button>
+            )}
+
+            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>
+              {(Array.isArray(dataProviders) ? dataProviders : []).length} kết quả
+            </span>
+          </div>
+
           {/* Table */}
-          <div className='table-wrapper'>
-            <table className='data-table' style={isLoading || (Array.isArray(dataProviders) && dataProviders.length === 0) ? { height: '100%' } : {}}>
+          <div className='table-wrapper' style={{ padding: '0 16px 16px' }}>
+            <table className='data-table' style={{ ...(isLoading || (Array.isArray(dataProviders) && dataProviders.length === 0) ? { height: '100%' } : {}), borderRadius: 10, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
               <thead className='table-header'>
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
@@ -540,6 +692,20 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
           onClose={handleCloseTransactionModal}
           providerId={providerForTransaction?.id}
           providerName={providerForTransaction?.title || providerForTransaction?.name}
+        />
+      )}
+
+      {/* Config Version Drawer */}
+      {versionDrawerProvider && (
+        <ConfigVersionDrawer
+          open={versionDrawerOpen}
+          onClose={() => {
+            setVersionDrawerOpen(false)
+            setVersionDrawerProvider(null)
+          }}
+          modelType='providers'
+          modelId={versionDrawerProvider.id}
+          modelName={versionDrawerProvider.title}
         />
       )}
     </>
