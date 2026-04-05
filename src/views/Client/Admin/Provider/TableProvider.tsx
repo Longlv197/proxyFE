@@ -1,66 +1,64 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 
 import {
-  CircleQuestionMark,
-  BadgeCheck,
-  BadgeMinus,
-  List,
-  SquarePen,
-  Trash2,
-  SquarePlus,
-  Wallet,
-  QrCode,
-  History,
+  ChartNoAxesColumn,
   ClipboardList,
-  Search,
+  Coins,
+  History,
+  List,
   Loader2,
-  Eye
+  QrCode,
+  Search,
+  SquarePen,
+  SquarePlus,
+  Trash2,
+  Wallet
 } from 'lucide-react'
 
 import {
-  useReactTable,
-  getCoreRowModel,
   flexRender,
-  getFilteredRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
+  getCoreRowModel,
   getFacetedRowModel,
-  getFacetedUniqueValues
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable
 } from '@tanstack/react-table'
-
-import Chip from '@mui/material/Chip'
 
 import Pagination from '@mui/material/Pagination'
 
 import {
   Button,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
   DialogContentText,
-  Tooltip,
+  DialogTitle,
   IconButton,
-  TextField
+  TextField,
+  Tooltip
 } from '@mui/material'
 
 import { toast } from 'react-toastify'
 
-import { useProviders, useDeleteProvider } from '@/hooks/apis/useProviders'
+import { useDeleteProvider, useProviders } from '@/hooks/apis/useProviders'
+import ConfigVersionDrawer from '@/views/Client/Admin/ConfigVersions/ConfigVersionDrawer'
 import QrCodeDialog from '@/views/Client/Admin/Provider/QrCodeDialog'
 import TransactionModal from '@/views/Client/Admin/Provider/TransactionModal'
-import ConfigVersionDrawer from '@/views/Client/Admin/ConfigVersions/ConfigVersionDrawer'
 
 interface TableProviderProps {
   onOpenModal?: (type: 'create' | 'edit', data?: any) => void
+  onOpenStatistic?: (data: any) => void
+  onOpenInvoice?: (data: any) => void
 }
 
-export default function TableProvider({ onOpenModal }: TableProviderProps) {
+export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvoice }: TableProviderProps) {
   const [columnFilters, setColumnFilters] = useState<any[]>([])
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<any[]>([])
@@ -287,17 +285,30 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
     [dataProviders]
   )
 
+  const handleOpenStatistic = useCallback(
+    (providerId: number) => {
+      const provider = dataProviders.find((p: any) => p.id === providerId)
+      if (onOpenStatistic && provider) {
+        onOpenStatistic(provider)
+      }
+    },
+    [onOpenStatistic, dataProviders]
+  )
+
+  const handleOpenInvoice = useCallback(
+    (providerId: number) => {
+      const provider = dataProviders.find((p: any) => p.id === providerId)
+      if (onOpenInvoice && provider) {
+        onOpenInvoice(provider)
+      }
+    },
+    [onOpenInvoice, dataProviders]
+  )
+
   const handleCloseTransactionModal = useCallback(() => {
     setTransactionModalOpen(false)
     setProviderForTransaction(null)
   }, [])
-
-  const handleOpenDetail = useCallback(
-    (providerId: number) => {
-      router.push(`/${locale}/admin/providers/${providerId}`)
-    },
-    [router, locale]
-  )
 
   const handleConfirmDelete = useCallback(() => {
     if (providerToDelete) {
@@ -373,11 +384,17 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
                 </IconButton>
               </Tooltip>
 
-              {/* <Tooltip title='Xem chi tiết thống kê & hoá đơn'>
-                <IconButton size='small' color='secondary' onClick={() => handleOpenDetail(row.original.id)}>
-                  <Eye size={18} />
+              <Tooltip title='Xem chi tiết thống kê & hoá đơn'>
+                <IconButton size='small' color='secondary' onClick={() => handleOpenStatistic(row.original.id)}>
+                  <ChartNoAxesColumn size={16} />
                 </IconButton>
-              </Tooltip> */}
+              </Tooltip>
+
+              <Tooltip title='Hoá đơn'>
+                <IconButton size='small' color='secondary' onClick={() => handleOpenInvoice(row.original.id)}>
+                  <Coins size={16} />
+                </IconButton>
+              </Tooltip>
 
               <Tooltip title='Nạp tiền'>
                 <IconButton
@@ -430,7 +447,14 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
         size: 210
       }
     ],
-    [handleOpenEdit, handleOpenDeleteDialog, handleOpenRechargeDialog, handleOpenTransactionModal]
+    [
+      handleOpenEdit,
+      handleOpenDeleteDialog,
+      handleOpenRechargeDialog,
+      handleOpenTransactionModal,
+      handleOpenStatistic,
+      handleOpenInvoice
+    ]
   )
 
   const table = useReactTable({
