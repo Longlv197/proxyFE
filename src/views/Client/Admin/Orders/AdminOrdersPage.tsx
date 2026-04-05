@@ -474,7 +474,7 @@ export default function AdminOrdersPage() {
               )}
               {status === 1 && order.retry >= (order.max_retry ?? 3) && (
                 <>
-                  <Tooltip title='Xác nhận NCC đã xử lý OK'>
+                  <Tooltip title='Xác nhận: NCC đã xử lý, nhập mã đơn NCC'>
                     <IconButton
                       size='small'
                       color='success'
@@ -486,12 +486,12 @@ export default function AdminOrdersPage() {
                       <CheckCircle size={16} />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title='Thêm thủ công'>
+                  <Tooltip title='Nhập proxy thủ công'>
                     <IconButton size='small' color='primary' onClick={() => setFillProxiesOrder(order)}>
                       <PlusCircle size={16} />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title='Thử lại đơn hàng'>
+                  <Tooltip title='Mua lại (chưa mua được trên NCC)'>
                     <IconButton size='small' color='warning' onClick={() => setRetryFailedOrder(order)}>
                       <RotateCcw size={16} />
                     </IconButton>
@@ -519,14 +519,26 @@ export default function AdminOrdersPage() {
               )}
               {status === 10 && (
                 <>
-                  <Tooltip title='Retry fetch order-items'>
+                  <Tooltip title='Đã mua NCC — lấy lại hàng từ NCC'>
                     <IconButton size='small' color='warning' onClick={() => setRetryFetchOrder(order)}>
                       <RefreshCw size={16} />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title='Thêm thủ công'>
+                  <Tooltip title='Nhập proxy thủ công'>
                     <IconButton size='small' color='primary' onClick={() => setFillProxiesOrder(order)}>
                       <PlusCircle size={16} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title='Xác nhận: NCC đã xử lý, nhập mã đơn NCC'>
+                    <IconButton
+                      size='small'
+                      color='success'
+                      onClick={() => {
+                        setConfirmOrder(order)
+                        setConfirmProviderCode('')
+                      }}
+                    >
+                      <CheckCircle size={16} />
                     </IconButton>
                   </Tooltip>
                 </>
@@ -600,15 +612,25 @@ export default function AdminOrdersPage() {
           } = row.original
           const config = STATUS_CONFIG[status] || { label: `#${status}`, color: '#94A3B8' }
           const isMissing = delivered > 0 && delivered < total
+          const isRetryMax = (retry ?? 0) >= maxRetry
+          const isProcessingError = status === 1 && isRetryMax
+          const isAwaitingError = status === 10 && isRetryMax
+
+          // Override badge cho đơn lỗi
+          const displayConfig = isProcessingError
+            ? { label: 'Chưa mua được', color: '#EF4444' }
+            : isAwaitingError
+            ? { label: 'Đã mua, chờ lấy hàng', color: '#F59E0B' }
+            : config
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Chip
-                label={config.label}
+                label={displayConfig.label}
                 size='small'
                 sx={{
-                  backgroundColor: config.color + '18',
-                  color: config.color,
+                  backgroundColor: displayConfig.color + '18',
+                  color: displayConfig.color,
                   fontWeight: 600,
                   fontSize: '11px',
                   width: 'fit-content'
@@ -619,15 +641,25 @@ export default function AdminOrdersPage() {
                   {delivered}/{total}
                 </span>
               )}
-              {status === 1 && (retry ?? 0) > 0 && (
+              {isProcessingError && (
+                <span style={{ fontSize: '10px', color: '#dc2626' }}>
+                  ❌ Chưa trừ tiền NCC
+                </span>
+              )}
+              {isAwaitingError && (
+                <span style={{ fontSize: '10px', color: '#f59e0b' }}>
+                  ✅ Đã trừ tiền NCC · ❌ Chưa có proxy
+                </span>
+              )}
+              {(status === 1 || status === 10) && (retry ?? 0) > 0 && (
                 <span
                   style={{
                     fontSize: '10px',
                     fontFamily: 'monospace',
-                    color: (retry ?? 0) >= maxRetry ? '#dc2626' : '#94a3b8'
+                    color: isRetryMax ? '#dc2626' : '#94a3b8'
                   }}
                 >
-                  {retry}/{maxRetry} {(retry ?? 0) >= maxRetry ? '⚠️' : ''}
+                  {retry}/{maxRetry} {isRetryMax ? '⚠️' : ''}
                 </span>
               )}
               {is_locked && <span style={{ fontSize: '10px', color: '#f59e0b' }}>🔒</span>}
@@ -1256,11 +1288,13 @@ export default function AdminOrdersPage() {
 
       {/* Retry Fetch Dialog */}
       <Dialog open={!!retryFetchOrder} onClose={() => setRetryFetchOrder(null)}>
-        <DialogTitle>Retry fetch order-items</DialogTitle>
+        <DialogTitle>Lấy lại hàng từ NCC</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Đơn <strong>#{retryFetchOrder?.order_code}</strong> đã mua thành công trên NCC nhưng chưa lấy được proxy.
-            Hệ thống sẽ gọi lại API NCC để lấy danh sách proxy (poll order-items). Retry giảm 1.
+            Đơn <strong>#{retryFetchOrder?.order_code}</strong>:<br />
+            ✅ Đã mua trên NCC — tiền NCC đã trừ<br />
+            ❌ Chưa lấy được proxy về hệ thống<br /><br />
+            Bấm xác nhận → hệ thống gọi lại API NCC để lấy danh sách proxy.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -1281,7 +1315,7 @@ export default function AdminOrdersPage() {
             variant='contained'
             disabled={retryFetchMutation.isPending}
           >
-            {retryFetchMutation.isPending ? 'Đang xử lý...' : 'Retry fetch'}
+            {retryFetchMutation.isPending ? 'Đang xử lý...' : 'Lấy lại hàng'}
           </Button>
         </DialogActions>
       </Dialog>
