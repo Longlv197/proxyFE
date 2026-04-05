@@ -69,6 +69,7 @@ export interface FetchProxiesConfig {
   auth_type: string
   auth_param: string
   order_code_param: string
+  default_params: string
   response_type: string
   success_field: string
   success_value: string
@@ -309,6 +310,7 @@ export const defaultFetchProxies: FetchProxiesConfig = {
   auth_type: 'inherit',
   auth_param: '',
   order_code_param: '',
+  default_params: '',
   response_type: 'object',
   success_field: '',
   success_value: '',

@@ -417,21 +417,21 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
               </Box>
             </Grid2>
 
-            <Grid2 size={{ xs: 12, sm: 5 }}>
+            <Grid2 size={{ xs: 12, sm: 4 }}>
               <Controller name={`${prefix}.fetch_proxies.url`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth label='URL lấy proxy'
-                  helperText='Có thể dùng {order_id} trong URL hoặc dùng field "Tên param mã đơn" bên dưới'
+                  helperText='Dạng path: /orders/{order_id}/proxies. Dạng query: URL sạch + dùng "Param mã đơn"'
                   placeholder='https://api.provider.com/api/proxy.php' />
               )} />
             </Grid2>
             <Grid2 size={{ xs: 6, sm: 2 }}>
               <Controller name={`${prefix}.fetch_proxies.order_code_param`} control={control} render={({ field }) => (
-                <CustomTextField {...field} fullWidth label='Tên param mã đơn'
-                  helperText='Tự gắn mã đơn NCC vào param này'
+                <CustomTextField {...field} fullWidth label='Param mã đơn'
+                  helperText='Bỏ trống nếu mã đơn nằm trong URL path'
                   placeholder='ma_don_hang' />
               )} />
             </Grid2>
-            <Grid2 size={{ xs: 6, sm: 2.5 }}>
+            <Grid2 size={{ xs: 6, sm: 2 }}>
               <Controller name={`${prefix}.fetch_proxies.method`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth select label='Method'>
                   <MenuItem value='GET'>GET</MenuItem>
@@ -439,7 +439,7 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
                 </CustomTextField>
               )} />
             </Grid2>
-            <Grid2 size={{ xs: 6, sm: 2.5 }}>
+            <Grid2 size={{ xs: 6, sm: 2 }}>
               <Controller name={`${prefix}.fetch_proxies.auth_type`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth select label='Xác thực'>
                   <MenuItem value='inherit'>Giống API mua</MenuItem>
@@ -447,6 +447,14 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
                   <MenuItem value='header'>Header</MenuItem>
                   <MenuItem value='bearer'>Bearer token</MenuItem>
                 </CustomTextField>
+              )} />
+            </Grid2>
+            <Grid2 size={{ xs: 12, sm: 2 }}>
+              <Controller name={`${prefix}.fetch_proxies.default_params`} control={control} render={({ field }) => (
+                <CustomTextField {...field} fullWidth label='Params mặc định'
+                  helperText='JSON: {"sukien":"listproxy"}'
+                  placeholder='{"sukien":"listproxy"}'
+                  multiline minRows={1} maxRows={3} />
               )} />
             </Grid2>
 

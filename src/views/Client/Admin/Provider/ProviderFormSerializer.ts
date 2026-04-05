@@ -178,6 +178,7 @@ export function parseBuySection(buy: any): ApiConfigBuy {
         auth_type: fp.auth_type ? fp.auth_type : 'inherit',
         auth_param: fp.auth_param || '',
         order_code_param: fp.order_code_param || '',
+        default_params: fp.params ? JSON.stringify(fp.params) : '',
         response_type: fpResp.type || 'object',
         success_field: fpResp.success_field || '',
         success_value: fpResp.success_value != null ? String(fpResp.success_value) : '',
@@ -446,6 +447,14 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
       }
 
       if (fp.order_code_param) fetchResult.order_code_param = fp.order_code_param
+
+      if (fp.default_params) {
+        try {
+          const parsed = JSON.parse(fp.default_params)
+
+          if (typeof parsed === 'object' && parsed !== null) fetchResult.params = parsed
+        } catch { /* ignore invalid JSON */ }
+      }
 
       if (fp.auth_type !== 'inherit') {
         fetchResult.auth_type = fp.auth_type
