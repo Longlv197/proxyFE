@@ -10,15 +10,22 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import Grid2 from '@mui/material/Grid2'
+import Grid from '@mui/material/Grid'
+import Paper from '@mui/material/Paper'
 import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 
 import { toast } from 'react-toastify'
+import {
+  ResponsiveContainer, BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend
+} from 'recharts'
+import { format, parseISO } from 'date-fns'
 
 import DialogCloseButton from '@/components/modals/DialogCloseButton'
 
-import { useCreateProvider, useUpdateProvider } from '@/hooks/apis/useProviders'
+import { useCreateProvider, useUpdateProvider, useProviderStatistics, useProviderInvoiceSummary } from '@/hooks/apis/useProviders'
 
 import type { FormValues, ModalAddProviderProps } from './ProviderFormTypes'
 import { defaultValues } from './ProviderFormTypes'
@@ -31,10 +38,11 @@ import IpWhitelistSection from './sections/IpWhitelistSection'
 import RenewSection from './sections/RenewSection'
 import ContactInfoSection from './sections/ContactInfoSection'
 import JsonPreviewPanel from './components/JsonPreviewPanel'
+import ProviderInvoiceTab from './ProviderInvoiceTab'
 
 // ─── Tab config ─────────────────────────────────────
 
-const TABS = [
+const BASE_TABS = [
   { label: 'Cơ bản', icon: 'tabler-settings' },
   { label: 'Mua proxy', icon: 'tabler-shopping-cart' },
   { label: 'Xoay proxy', icon: 'tabler-refresh' },
@@ -43,14 +51,30 @@ const TABS = [
   { label: 'Liên hệ', icon: 'tabler-address-book' },
 ]
 
+const EDIT_TABS = [
+  { label: 'Thống kê', icon: 'tabler-chart-bar' },
+  { label: 'Hoá đơn', icon: 'tabler-file-invoice' },
+]
+
 // ─── Component ──────────────────────────────────────
 
 export default function ModalAddProvider({ open, onClose, type, providerData }: ModalAddProviderProps) {
   const [activeTab, setActiveTab] = useState(0)
   const [renderedTabs, setRenderedTabs] = useState<Set<number>>(new Set([0]))
 
+  const isEditMode = type === 'edit' && !!providerData?.id
+  const TABS = isEditMode ? [...BASE_TABS, ...EDIT_TABS] : BASE_TABS
+
   const createMutation = useCreateProvider()
   const updateMutation = useUpdateProvider(providerData?.id)
+
+  // Thống kê + hoá đơn (chỉ fetch khi edit + tab active)
+  const { data: statsData, isLoading: isLoadingStats } = useProviderStatistics(
+    providerData?.id, undefined, undefined, isEditMode && activeTab === 6
+  )
+  const { data: invoiceSumData } = useProviderInvoiceSummary(
+    providerData?.id, isEditMode && (activeTab === 6 || activeTab === 7)
+  )
 
   const {
     control,
@@ -75,6 +99,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     ipEnabled,
     renewEnabled,
     true, // Liên hệ luôn cho phép
+    ...(isEditMode ? [true, true] : []), // Thống kê + Hoá đơn
   ]
 
   // JSON preview
@@ -293,12 +318,94 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                 )}
               </Box>
             </form>
+
+            {/* Tab 6: Thống kê (ngoài form, chỉ khi edit) */}
+            {isEditMode && activeTab === 6 && (
+              <Box sx={{ p: 1 }}>
+                {isLoadingStats ? (
+                  <Typography sx={{ color: '#64748b', fontSize: 13, p: 3, textAlign: 'center' }}>Đang tải thống kê...</Typography>
+                ) : (
+                  <>
+                    {/* Summary cards */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 1.5, mb: 3 }}>
+                      {[
+                        { label: 'Tổng giao dịch', value: statsData?.summary?.total_orders || 0, color: '#6366f1' },
+                        { label: 'Doanh thu', value: `${Number(statsData?.summary?.total_revenue || 0).toLocaleString('vi-VN')}đ`, color: '#16a34a' },
+                        { label: 'Chi phí', value: `${Number(invoiceSumData?.total_amount || 0).toLocaleString('vi-VN')}đ`, color: '#f59e0b' },
+                        { label: 'Tỷ lệ thành công', value: `${statsData?.summary?.avg_success_rate || 0}%`, color: '#0ea5e9' },
+                        { label: 'Hoàn tiền', value: `${Number(statsData?.summary?.total_refunds || 0).toLocaleString('vi-VN')}đ`, color: '#ef4444' },
+                      ].map(card => (
+                        <Box key={card.label} sx={{ p: 1.5, borderRadius: 2, border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                          <Typography sx={{ fontSize: 11, color: '#94a3b8', mb: 0.5 }}>{card.label}</Typography>
+                          <Typography sx={{ fontSize: 16, fontWeight: 700, color: card.color }}>{card.value}</Typography>
+                        </Box>
+                      ))}
+                    </Box>
+
+                    {/* Charts */}
+                    {statsData?.trend && statsData.trend.length > 0 && (
+                      <Grid container spacing={3}>
+                        <Grid item xs={12} lg={6}>
+                          <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
+                            <Typography sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>Doanh thu & Chi phí</Typography>
+                            <Box sx={{ width: '100%', height: 300 }}>
+                              <ResponsiveContainer>
+                                <BarChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                                  <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
+                                  <XAxis dataKey='date' tickFormatter={(val) => { try { return format(parseISO(val), 'dd/MM') } catch { return val } }} style={{ fontSize: '11px' }} />
+                                  <YAxis style={{ fontSize: '11px' }} />
+                                  <RechartsTooltip
+                                    labelFormatter={(lbl) => { try { return format(parseISO(lbl as string), 'dd/MM/yyyy') } catch { return String(lbl) } }}
+                                    formatter={(value: any) => [`${Number(value || 0).toLocaleString('vi-VN')}đ`, '']}
+                                  />
+                                  <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
+                                  <Bar name='Doanh thu' dataKey='total_revenue' fill='#4caf50' radius={[4, 4, 0, 0]} />
+                                  <Bar name='Chi phí' dataKey='total_cost' fill='#f44336' radius={[4, 4, 0, 0]} />
+                                  <Bar name='Lợi nhuận' dataKey='total_profit' fill='#2196f3' radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </Box>
+                          </Paper>
+                        </Grid>
+
+                        <Grid item xs={12} lg={6}>
+                          <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
+                            <Typography sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>Khối lượng giao dịch</Typography>
+                            <Box sx={{ width: '100%', height: 300 }}>
+                              <ResponsiveContainer>
+                                <LineChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                                  <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
+                                  <XAxis dataKey='date' tickFormatter={(val) => { try { return format(parseISO(val), 'dd/MM') } catch { return val } }} style={{ fontSize: '11px' }} />
+                                  <YAxis style={{ fontSize: '11px' }} />
+                                  <RechartsTooltip labelFormatter={(lbl) => { try { return format(parseISO(lbl as string), 'dd/MM/yyyy') } catch { return String(lbl) } }} />
+                                  <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
+                                  <Line name='Tổng giao dịch' type='monotone' dataKey='total_orders' stroke='#ff9800' strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </Box>
+                          </Paper>
+                        </Grid>
+                      </Grid>
+                    )}
+                  </>
+                )}
+              </Box>
+            )}
+
+            {/* Tab 7: Hoá đơn (ngoài form, chỉ khi edit) */}
+            {isEditMode && activeTab === 7 && (
+              <Box sx={{ p: 1 }}>
+                <ProviderInvoiceTab providerId={String(providerData?.id)} />
+              </Box>
+            )}
           </Grid2>
 
-          {/* ═══════ BÊN PHẢI: JSON Preview ═══════ */}
-          <Grid2 size={{ xs: 12, md: 4 }}>
-            <JsonPreviewPanel jsonPreview={jsonPreview} />
-          </Grid2>
+          {/* ═══════ BÊN PHẢI: JSON Preview (ẩn khi tab Liên hệ/Thống kê/Hoá đơn) ═══════ */}
+          {activeTab <= 4 && (
+            <Grid2 size={{ xs: 12, md: 4 }}>
+              <JsonPreviewPanel jsonPreview={jsonPreview} />
+            </Grid2>
+          )}
         </Grid2>
       </DialogContent>
 

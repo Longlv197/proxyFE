@@ -373,11 +373,11 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
                 </IconButton>
               </Tooltip>
 
-              <Tooltip title='Xem chi tiết thống kê & hoá đơn'>
+              {/* <Tooltip title='Xem chi tiết thống kê & hoá đơn'>
                 <IconButton size='small' color='secondary' onClick={() => handleOpenDetail(row.original.id)}>
                   <Eye size={18} />
                 </IconButton>
-              </Tooltip>
+              </Tooltip> */}
 
               <Tooltip title='Nạp tiền'>
                 <IconButton
