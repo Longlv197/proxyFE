@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Controller, useWatch } from 'react-hook-form'
 import Grid2 from '@mui/material/Grid2'
 import Box from '@mui/material/Box'
@@ -8,7 +9,7 @@ import CustomTextField from '@core/components/mui/TextField'
 import FieldHint from '../components/FieldHint'
 import type { SectionProps } from '../ProviderFormTypes'
 
-export default function IpWhitelistSection({ control }: SectionProps) {
+function IpWhitelistSection({ control }: SectionProps) {
   const enabled = useWatch({ control, name: 'ip_whitelist.enabled' })
 
   return (
@@ -101,3 +102,5 @@ export default function IpWhitelistSection({ control }: SectionProps) {
     </Box>
   )
 }
+
+export default memo(IpWhitelistSection)

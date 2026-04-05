@@ -84,7 +84,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       debounceRef.current = setTimeout(() => {
         const config = buildApiConfig(values as FormValues)
         setJsonPreview(config ? JSON.stringify(config, null, 2) : '// Chưa có cấu hình API')
-      }, 300)
+      }, 500)
     })
 
     return () => {

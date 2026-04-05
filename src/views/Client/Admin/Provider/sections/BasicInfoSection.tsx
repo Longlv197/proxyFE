@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Controller } from 'react-hook-form'
 import Grid2 from '@mui/material/Grid2'
 import MenuItem from '@mui/material/MenuItem'
@@ -7,7 +8,7 @@ import CustomTextField from '@core/components/mui/TextField'
 import FieldHint from '../components/FieldHint'
 import type { SectionProps } from '../ProviderFormTypes'
 
-export default function BasicInfoSection({ control, errors }: SectionProps & { errors: any }) {
+function BasicInfoSection({ control, errors }: SectionProps & { errors: any }) {
   return (
     <>
       <Typography variant='subtitle2' fontWeight={600} sx={{ mb: 1 }}>Thông tin cơ bản</Typography>
@@ -64,3 +65,5 @@ export default function BasicInfoSection({ control, errors }: SectionProps & { e
     </>
   )
 }
+
+export default memo(BasicInfoSection)

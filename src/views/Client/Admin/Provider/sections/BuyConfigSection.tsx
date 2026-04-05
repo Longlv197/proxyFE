@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import Grid2 from '@mui/material/Grid2'
 import Box from '@mui/material/Box'
@@ -1009,7 +1009,7 @@ function StepAdvancedOptions({ prefix, control }: BuySectionProps) {
 
 // ─── Main Buy Config Section ────────────────────────
 
-export default function BuyConfigSection({ control, setValue }: { control: BuySectionProps['control']; setValue?: any }) {
+function BuyConfigSection({ control, setValue }: { control: BuySectionProps['control']; setValue?: any }) {
   const [activeType, setActiveType] = useState<'rotating' | 'static'>('rotating')
 
   const rotatingEnabled = useWatch({ control, name: 'buy_rotating.enabled' })
@@ -1092,3 +1092,5 @@ export default function BuyConfigSection({ control, setValue }: { control: BuySe
     </Box>
   )
 }
+
+export default memo(BuyConfigSection)

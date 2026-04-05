@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import Grid2 from '@mui/material/Grid2'
 import Box from '@mui/material/Box'
@@ -79,7 +80,7 @@ function RotateParamRow({ index, control, onRemove }: { index: number; control: 
   )
 }
 
-export default function RotateSection({ control }: SectionProps) {
+function RotateSection({ control }: SectionProps) {
   const enabled = useWatch({ control, name: 'rotate.enabled' })
 
   return (
@@ -233,3 +234,5 @@ export default function RotateSection({ control }: SectionProps) {
     </Box>
   )
 }
+
+export default memo(RotateSection)

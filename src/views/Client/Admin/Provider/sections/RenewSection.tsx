@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 
 import Grid2 from '@mui/material/Grid2'
@@ -280,7 +281,7 @@ function DurationMapSection({ control }: SectionProps) {
 
 // ─── Main Section ───────────────────────────────────
 
-export default function RenewSection({ control }: SectionProps) {
+function RenewSection({ control }: SectionProps) {
   const enabled = useWatch({ control, name: 'renew.enabled' })
   const mode = useWatch({ control, name: 'renew.mode' })
   const renewAuthType = useWatch({ control, name: 'renew.auth_type' })
@@ -490,3 +491,5 @@ export default function RenewSection({ control }: SectionProps) {
     </Box>
   )
 }
+
+export default memo(RenewSection)

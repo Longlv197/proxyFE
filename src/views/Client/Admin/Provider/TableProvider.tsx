@@ -340,7 +340,7 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
         size: 210
       }
     ],
-    [handleOpenEdit, handleOpenDeleteDialog, handleOpenRechargeDialog, handleOpenTransactionModal, deleteMutation.isPending]
+    [handleOpenEdit, handleOpenDeleteDialog, handleOpenRechargeDialog, handleOpenTransactionModal]
   )
 
   const table = useReactTable({

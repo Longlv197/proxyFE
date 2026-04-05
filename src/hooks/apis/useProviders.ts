@@ -21,7 +21,7 @@ export const useProviders = (params?: { search?: string; status?: string }) => {
 
       return res?.data?.data ?? res?.data ?? []
     },
-    staleTime: 0,
+    staleTime: 30 * 1000,
     refetchOnWindowFocus: false
   })
 
