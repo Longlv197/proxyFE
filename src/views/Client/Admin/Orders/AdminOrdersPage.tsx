@@ -519,7 +519,7 @@ export default function AdminOrdersPage() {
               )}
               {status === 10 && (
                 <>
-                  <Tooltip title='Thử lấy proxy lại'>
+                  <Tooltip title='Lấy lại proxy từ NCC'>
                     <IconButton size='small' color='warning' onClick={() => setRetryFetchOrder(order)}>
                       <RefreshCw size={16} />
                     </IconButton>
@@ -1256,11 +1256,11 @@ export default function AdminOrdersPage() {
 
       {/* Retry Fetch Dialog */}
       <Dialog open={!!retryFetchOrder} onClose={() => setRetryFetchOrder(null)}>
-        <DialogTitle>Thử lấy proxy lại</DialogTitle>
+        <DialogTitle>Lấy lại proxy từ NCC</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Đẩy đơn <strong>#{retryFetchOrder?.order_code}</strong> vào queue lấy proxy lại từ NCC.
-            Retry sẽ được reset về 0.
+            Đơn <strong>#{retryFetchOrder?.order_code}</strong> đã mua thành công trên NCC nhưng chưa lấy được proxy.
+            Hệ thống sẽ gọi lại API NCC để lấy danh sách proxy (poll order-items). Retry giảm 1.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -1281,7 +1281,7 @@ export default function AdminOrdersPage() {
             variant='contained'
             disabled={retryFetchMutation.isPending}
           >
-            {retryFetchMutation.isPending ? 'Đang xử lý...' : 'Thử lại'}
+            {retryFetchMutation.isPending ? 'Đang xử lý...' : 'Lấy lại proxy'}
           </Button>
         </DialogActions>
       </Dialog>
