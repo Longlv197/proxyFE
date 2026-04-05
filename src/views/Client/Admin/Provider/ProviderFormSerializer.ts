@@ -177,6 +177,7 @@ export function parseBuySection(buy: any): ApiConfigBuy {
         method: fp.method || 'GET',
         auth_type: fp.auth_type ? fp.auth_type : 'inherit',
         auth_param: fp.auth_param || '',
+        order_code_param: fp.order_code_param || '',
         response_type: fpResp.type || 'object',
         success_field: fpResp.success_field || '',
         success_value: fpResp.success_value != null ? String(fpResp.success_value) : '',
@@ -443,6 +444,8 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
         url: fp.url,
         method: fp.method || 'GET',
       }
+
+      if (fp.order_code_param) fetchResult.order_code_param = fp.order_code_param
 
       if (fp.auth_type !== 'inherit') {
         fetchResult.auth_type = fp.auth_type

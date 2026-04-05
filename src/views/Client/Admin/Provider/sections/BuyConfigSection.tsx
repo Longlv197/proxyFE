@@ -417,12 +417,21 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
               </Box>
             </Grid2>
 
-            <Grid2 size={{ xs: 12, sm: 6 }}>
+            <Grid2 size={{ xs: 12, sm: 5 }}>
               <Controller name={`${prefix}.fetch_proxies.url`} control={control} render={({ field }) => (
-                <CustomTextField {...field} fullWidth label='URL lấy proxy' helperText='Dùng {order_id} thay cho mã đơn hàng' placeholder='https://api.provider.com/orders/{order_id}/proxies' />
+                <CustomTextField {...field} fullWidth label='URL lấy proxy'
+                  helperText='Có thể dùng {order_id} trong URL hoặc dùng field "Tên param mã đơn" bên dưới'
+                  placeholder='https://api.provider.com/api/proxy.php' />
               )} />
             </Grid2>
-            <Grid2 size={{ xs: 6, sm: 3 }}>
+            <Grid2 size={{ xs: 6, sm: 2 }}>
+              <Controller name={`${prefix}.fetch_proxies.order_code_param`} control={control} render={({ field }) => (
+                <CustomTextField {...field} fullWidth label='Tên param mã đơn'
+                  helperText='Tự gắn mã đơn NCC vào param này'
+                  placeholder='ma_don_hang' />
+              )} />
+            </Grid2>
+            <Grid2 size={{ xs: 6, sm: 2.5 }}>
               <Controller name={`${prefix}.fetch_proxies.method`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth select label='Method'>
                   <MenuItem value='GET'>GET</MenuItem>
@@ -430,7 +439,7 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
                 </CustomTextField>
               )} />
             </Grid2>
-            <Grid2 size={{ xs: 6, sm: 3 }}>
+            <Grid2 size={{ xs: 6, sm: 2.5 }}>
               <Controller name={`${prefix}.fetch_proxies.auth_type`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth select label='Xác thực'>
                   <MenuItem value='inherit'>Giống API mua</MenuItem>
