@@ -346,11 +346,18 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
             </Grid2>
 
             {proxyFormat === 'key' && (
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <Controller name={`${prefix}.response.proxy_key_field`} control={control} render={({ field }) => (
-                  <CustomTextField {...field} fullWidth label='Trường chứa key proxy' placeholder='keyxoay' helperText='→ Hệ thống lưu vào: provider_key' />
-                )} />
-              </Grid2>
+              <>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
+                  <Controller name={`${prefix}.response.proxy_key_field`} control={control} render={({ field }) => (
+                    <CustomTextField {...field} fullWidth label='Trường chứa key proxy' placeholder='proxy' helperText='→ Hệ thống lưu vào: provider_key' />
+                  )} />
+                </Grid2>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
+                  <Controller name={`${prefix}.response.item_id_field`} control={control} render={({ field }) => (
+                    <CustomTextField {...field} fullWidth label='Trường ID proxy' placeholder='idproxy' helperText='Bỏ trống nếu không có' />
+                  )} />
+                </Grid2>
+              </>
             )}
             {proxyFormat === 'string' && (
               <>
@@ -481,11 +488,18 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
               </>
             )}
             {(fetchProxyFormat === 'key' || fetchProxyFormat === 'string') && (
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <Controller name={`${prefix}.fetch_proxies.proxy_key_field`} control={control} render={({ field }) => (
-                  <CustomTextField {...field} fullWidth label={fetchProxyFormat === 'key' ? 'Tên field key' : 'Tên field chuỗi proxy'} placeholder={fetchProxyFormat === 'key' ? 'keyxoay' : 'proxy'} />
-                )} />
-              </Grid2>
+              <>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
+                  <Controller name={`${prefix}.fetch_proxies.proxy_key_field`} control={control} render={({ field }) => (
+                    <CustomTextField {...field} fullWidth label={fetchProxyFormat === 'key' ? 'Tên field key' : 'Tên field chuỗi proxy'} placeholder={fetchProxyFormat === 'key' ? 'proxy' : 'proxy'} />
+                  )} />
+                </Grid2>
+                <Grid2 size={{ xs: 12, sm: 2 }}>
+                  <Controller name={`${prefix}.fetch_proxies.item_id_field`} control={control} render={({ field }) => (
+                    <CustomTextField {...field} fullWidth label='ID proxy' placeholder='idproxy' helperText='Bỏ trống nếu không có' />
+                  )} />
+                </Grid2>
+              </>
             )}
 
             {/* Pagination */}
