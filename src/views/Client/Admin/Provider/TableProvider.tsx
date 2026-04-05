@@ -5,7 +5,22 @@ import { useMemo, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 
-import { CircleQuestionMark, BadgeCheck, BadgeMinus, List, SquarePen, Trash2, SquarePlus, Wallet, QrCode, History, ClipboardList, Search, Loader2 } from 'lucide-react'
+import {
+  CircleQuestionMark,
+  BadgeCheck,
+  BadgeMinus,
+  List,
+  SquarePen,
+  Trash2,
+  SquarePlus,
+  Wallet,
+  QrCode,
+  History,
+  ClipboardList,
+  Search,
+  Loader2,
+  Eye
+} from 'lucide-react'
 
 import {
   useReactTable,
@@ -82,7 +97,12 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
   const params = useParams()
   const { lang: locale } = params
 
-  const { data: dataProviders = [], isLoading, isFetching, forceRefetch } = useProviders({
+  const {
+    data: dataProviders = [],
+    isLoading,
+    isFetching,
+    forceRefetch
+  } = useProviders({
     search: appliedSearch || undefined,
     status: appliedStatus !== 'all' ? appliedStatus : undefined
   })
@@ -115,39 +135,65 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
     switch (status) {
       case 'active':
         return (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-            background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0'
-          }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 10px',
+              borderRadius: 20,
+              fontSize: 11,
+              fontWeight: 600,
+              background: '#ecfdf5',
+              color: '#059669',
+              border: '1px solid #a7f3d0'
+            }}
+          >
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
             Hoạt động
           </span>
         )
       case 'inactive':
         return (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-            background: '#f8fafc', color: '#94a3b8', border: '1px solid #e2e8f0'
-          }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 10px',
+              borderRadius: 20,
+              fontSize: 11,
+              fontWeight: 600,
+              background: '#f8fafc',
+              color: '#94a3b8',
+              border: '1px solid #e2e8f0'
+            }}
+          >
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#cbd5e1' }} />
             Tắt
           </span>
         )
       default:
         return (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-            background: '#fefce8', color: '#ca8a04', border: '1px solid #fde68a'
-          }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 10px',
+              borderRadius: 20,
+              fontSize: 11,
+              fontWeight: 600,
+              background: '#fefce8',
+              color: '#ca8a04',
+              border: '1px solid #fde68a'
+            }}
+          >
             Không rõ
           </span>
         )
     }
   }
-
 
   const handleOpenCreate = useCallback(() => {
     if (onOpenModal) {
@@ -168,13 +214,16 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
     [onOpenModal, dataProviders]
   )
 
-  const handleOpenDeleteDialog = useCallback((providerId: number) => {
-    const provider = dataProviders.find((p: any) => p.id === providerId)
+  const handleOpenDeleteDialog = useCallback(
+    (providerId: number) => {
+      const provider = dataProviders.find((p: any) => p.id === providerId)
 
-    setProviderToDelete(providerId)
-    setProviderToDeleteData(provider)
-    setDeleteDialogOpen(true)
-  }, [dataProviders])
+      setProviderToDelete(providerId)
+      setProviderToDeleteData(provider)
+      setDeleteDialogOpen(true)
+    },
+    [dataProviders]
+  )
 
   const handleCloseDeleteDialog = useCallback(() => {
     setDeleteDialogOpen(false)
@@ -182,13 +231,16 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
     setProviderToDeleteData(null)
   }, [])
 
-  const handleOpenRechargeDialog = useCallback((providerId: number) => {
-    const provider = dataProviders.find((p: any) => p.id === providerId)
+  const handleOpenRechargeDialog = useCallback(
+    (providerId: number) => {
+      const provider = dataProviders.find((p: any) => p.id === providerId)
 
-    setProviderToRecharge(provider)
-    setRechargeAmount('')
-    setRechargeDialogOpen(true)
-  }, [dataProviders])
+      setProviderToRecharge(provider)
+      setRechargeAmount('')
+      setRechargeDialogOpen(true)
+    },
+    [dataProviders]
+  )
 
   const handleCloseRechargeDialog = useCallback(() => {
     setRechargeDialogOpen(false)
@@ -200,7 +252,9 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
     if (providerToRecharge && rechargeAmount && Number(rechargeAmount) > 0) {
       // TODO: Implement API call to recharge provider
       console.log('Recharge provider:', providerToRecharge.id, 'Amount:', rechargeAmount)
-      toast.success(`Nạp tiền ${new Intl.NumberFormat('vi-VN').format(Number(rechargeAmount))} đ cho nhà cung cấp thành công!`)
+      toast.success(
+        `Nạp tiền ${new Intl.NumberFormat('vi-VN').format(Number(rechargeAmount))} đ cho nhà cung cấp thành công!`
+      )
       handleCloseRechargeDialog()
     } else {
       toast.error('Vui lòng nhập số tiền hợp lệ')
@@ -221,21 +275,29 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
     }
   }, [providerToRecharge, rechargeAmount])
 
-  const handleOpenTransactionModal = useCallback((providerId: number | string) => {
-    const provider = dataProviders.find((p: any) => p.id === providerId)
+  const handleOpenTransactionModal = useCallback(
+    (providerId: number | string) => {
+      const provider = dataProviders.find((p: any) => p.id === providerId)
 
-    if (provider) {
-      setProviderForTransaction(provider)
-      setTransactionModalOpen(true)
-    }
-  }, [dataProviders])
+      if (provider) {
+        setProviderForTransaction(provider)
+        setTransactionModalOpen(true)
+      }
+    },
+    [dataProviders]
+  )
 
   const handleCloseTransactionModal = useCallback(() => {
     setTransactionModalOpen(false)
     setProviderForTransaction(null)
   }, [])
 
-
+  const handleOpenDetail = useCallback(
+    (providerId: number) => {
+      router.push(`/${locale}/admin/providers/${providerId}`)
+    },
+    [router, locale]
+  )
 
   const handleConfirmDelete = useCallback(() => {
     if (providerToDelete) {
@@ -277,7 +339,16 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
         accessorKey: 'provider_code',
         size: 140,
         cell: ({ row }: { row: any }) => (
-          <span style={{ fontSize: 12, color: '#6366f1', fontFamily: 'monospace', background: '#eef2ff', padding: '2px 8px', borderRadius: 4 }}>
+          <span
+            style={{
+              fontSize: 12,
+              color: '#6366f1',
+              fontFamily: 'monospace',
+              background: '#eef2ff',
+              padding: '2px 8px',
+              borderRadius: 4
+            }}
+          >
             {row.original?.provider_code || '-'}
           </span>
         )
@@ -293,43 +364,62 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
           return (
             <div style={{ display: 'flex', gap: 2 }}>
               <Tooltip title='Chỉnh sửa'>
-                <IconButton size='small' onClick={() => handleOpenEdit(row.original.id)}
-                  sx={{ color: '#94a3b8', '&:hover': { color: '#3b82f6', background: '#eff6ff' } }}>
+                <IconButton
+                  size='small'
+                  onClick={() => handleOpenEdit(row.original.id)}
+                  sx={{ color: '#94a3b8', '&:hover': { color: '#3b82f6', background: '#eff6ff' } }}
+                >
                   <SquarePen size={16} />
                 </IconButton>
               </Tooltip>
 
+              <Tooltip title='Xem chi tiết thống kê & hoá đơn'>
+                <IconButton size='small' color='secondary' onClick={() => handleOpenDetail(row.original.id)}>
+                  <Eye size={18} />
+                </IconButton>
+              </Tooltip>
+
               <Tooltip title='Nạp tiền'>
-                <IconButton size='small' onClick={() => handleOpenRechargeDialog(row.original.id)}
-                  sx={{ color: '#94a3b8', '&:hover': { color: '#10b981', background: '#ecfdf5' } }}>
+                <IconButton
+                  size='small'
+                  onClick={() => handleOpenRechargeDialog(row.original.id)}
+                  sx={{ color: '#94a3b8', '&:hover': { color: '#10b981', background: '#ecfdf5' } }}
+                >
                   <Wallet size={16} />
                 </IconButton>
               </Tooltip>
 
               <Tooltip title='Lịch sử giao dịch'>
-                <IconButton size='small' onClick={() => handleOpenTransactionModal(row.original.id)}
-                  sx={{ color: '#94a3b8', '&:hover': { color: '#6366f1', background: '#eef2ff' } }}>
+                <IconButton
+                  size='small'
+                  onClick={() => handleOpenTransactionModal(row.original.id)}
+                  sx={{ color: '#94a3b8', '&:hover': { color: '#6366f1', background: '#eef2ff' } }}
+                >
                   <History size={16} />
                 </IconButton>
               </Tooltip>
 
               <Tooltip title='Lịch sử cấu hình'>
-                <IconButton size='small'
+                <IconButton
+                  size='small'
                   onClick={() => {
                     setVersionDrawerProvider({ id: row.original.id, title: row.original.title })
                     setVersionDrawerOpen(true)
                   }}
-                  sx={{ color: '#94a3b8', '&:hover': { color: '#7c3aed', background: '#f5f3ff' } }}>
+                  sx={{ color: '#94a3b8', '&:hover': { color: '#7c3aed', background: '#f5f3ff' } }}
+                >
                   <ClipboardList size={16} />
                 </IconButton>
               </Tooltip>
 
               <Tooltip title='Xóa'>
                 <span>
-                  <IconButton size='small'
+                  <IconButton
+                    size='small'
                     onClick={() => handleOpenDeleteDialog(row.original.id)}
                     disabled={deleteMutation.isPending}
-                    sx={{ color: '#94a3b8', '&:hover': { color: '#ef4444', background: '#fef2f2' } }}>
+                    sx={{ color: '#94a3b8', '&:hover': { color: '#ef4444', background: '#fef2f2' } }}
+                  >
                     <Trash2 size={16} />
                   </IconButton>
                 </span>
@@ -407,11 +497,30 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
           </div>
 
           {/* Search & Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200, maxWidth: 300,
-              border: '1px solid #e2e8f0', borderRadius: 8, padding: '0 12px', background: '#f8fafc'
-            }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 16px',
+              borderBottom: '1px solid #e2e8f0',
+              flexWrap: 'wrap'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flex: 1,
+                minWidth: 200,
+                maxWidth: 300,
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+                padding: '0 12px',
+                background: '#f8fafc'
+              }}
+            >
               <Search size={16} style={{ color: '#94a3b8', flexShrink: 0 }} />
               <input
                 type='text'
@@ -420,8 +529,13 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
                 onChange={e => setSearchText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 style={{
-                  border: 'none', outline: 'none', background: 'transparent',
-                  fontSize: 13, padding: '8px 0', width: '100%', color: '#374151'
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  fontSize: 13,
+                  padding: '8px 0',
+                  width: '100%',
+                  color: '#374151'
                 }}
               />
             </div>
@@ -430,8 +544,14 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
               style={{
-                border: '1px solid #e2e8f0', borderRadius: 8, padding: '7px 12px',
-                fontSize: 13, color: '#374151', background: '#f8fafc', outline: 'none', cursor: 'pointer'
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+                padding: '7px 12px',
+                fontSize: 13,
+                color: '#374151',
+                background: '#f8fafc',
+                outline: 'none',
+                cursor: 'pointer'
               }}
             >
               <option value='all'>Tất cả trạng thái</option>
@@ -444,14 +564,19 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
               variant='contained'
               onClick={handleSearch}
               disabled={isFetching}
-              startIcon={isFetching
-                ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} />
-                : <Search size={14} />
+              startIcon={
+                isFetching ? (
+                  <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} />
+                ) : (
+                  <Search size={14} />
+                )
               }
               sx={{
-                textTransform: 'none', fontSize: 13,
+                textTransform: 'none',
+                fontSize: 13,
                 background: 'var(--primary-gradient, linear-gradient(45deg, #fc4336, #f88a4b))',
-                color: '#fff', boxShadow: 'none',
+                color: '#fff',
+                boxShadow: 'none',
                 '&:hover': { opacity: 0.9, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' },
                 '&.Mui-disabled': { opacity: 0.6, color: '#fff' },
                 '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } }
@@ -478,7 +603,17 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
 
           {/* Table */}
           <div className='table-wrapper' style={{ padding: '0 16px 16px' }}>
-            <table className='data-table' style={{ ...(isLoading || (Array.isArray(dataProviders) && dataProviders.length === 0) ? { height: '100%' } : {}), borderRadius: 10, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+            <table
+              className='data-table'
+              style={{
+                ...(isLoading || (Array.isArray(dataProviders) && dataProviders.length === 0)
+                  ? { height: '100%' }
+                  : {}),
+                borderRadius: 10,
+                overflow: 'hidden',
+                border: '1px solid #e2e8f0'
+              }}
+            >
               <thead className='table-header'>
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
@@ -592,10 +727,8 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
         <DialogContent>
           <DialogContentText id='delete-dialog-description'>
             Bạn có chắc chắn muốn xóa nhà cung cấp{' '}
-            <strong>
-              &quot;{providerToDeleteData?.title || providerToDeleteData?.name || 'này'}&quot;
-            </strong>{' '}
-            không? Hành động này không thể hoàn tác.
+            <strong>&quot;{providerToDeleteData?.title || providerToDeleteData?.name || 'này'}&quot;</strong> không?
+            Hành động này không thể hoàn tác.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -637,7 +770,7 @@ export default function TableProvider({ onOpenModal }: TableProviderProps) {
             fullWidth
             variant='outlined'
             value={rechargeAmount}
-            onChange={(e) => {
+            onChange={e => {
               const value = e.target.value.replace(/[^0-9]/g, '')
 
               setRechargeAmount(value)

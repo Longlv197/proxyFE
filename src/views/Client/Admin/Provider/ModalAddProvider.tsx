@@ -29,6 +29,7 @@ import BuyConfigSection from './sections/BuyConfigSection'
 import RotateSection from './sections/RotateSection'
 import IpWhitelistSection from './sections/IpWhitelistSection'
 import RenewSection from './sections/RenewSection'
+import ContactInfoSection from './sections/ContactInfoSection'
 import JsonPreviewPanel from './components/JsonPreviewPanel'
 
 // ─── Tab config ─────────────────────────────────────
@@ -39,6 +40,7 @@ const TABS = [
   { label: 'Xoay proxy', icon: 'tabler-refresh' },
   { label: 'IP Whitelist', icon: 'tabler-shield-check' },
   { label: 'Gia hạn', icon: 'tabler-clock' },
+  { label: 'Liên hệ', icon: 'tabler-address-book' },
 ]
 
 // ─── Component ──────────────────────────────────────
@@ -72,6 +74,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     rotateEnabled,
     ipEnabled,
     renewEnabled,
+    true, // Liên hệ luôn cho phép
   ]
 
   // JSON preview
@@ -107,6 +110,16 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
         order: providerData.order || '',
         status: providerData.status || 'active',
         rotation_interval: providerData.rotation_interval || '',
+        contact: {
+          name: providerData.contact?.name || '',
+          email: providerData.contact?.email || '',
+          phone: providerData.contact?.phone || '',
+          telegram: providerData.contact?.telegram || '',
+          skype: providerData.contact?.skype || '',
+          website: providerData.contact?.website || '',
+          address: providerData.contact?.address || '',
+          note: providerData.contact?.note || ''
+        },
         ...parsed,
       }
 
@@ -142,6 +155,10 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
 
     if (data.rotation_interval) {
       payload.rotation_interval = Number(data.rotation_interval)
+    }
+
+    if (data.contact) {
+      payload.contact = data.contact
     }
 
     if (apiConfig) {
@@ -265,6 +282,13 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                 {renderedTabs.has(4) && (
                   <Box sx={{ display: activeTab === 4 ? 'block' : 'none' }}>
                     <RenewSection control={control} />
+                  </Box>
+                )}
+
+                {/* Tab 5: Liên hệ */}
+                {renderedTabs.has(5) && (
+                  <Box sx={{ display: activeTab === 5 ? 'block' : 'none' }}>
+                    <ContactInfoSection control={control} />
                   </Box>
                 )}
               </Box>

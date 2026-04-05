@@ -198,6 +198,17 @@ export interface RenewConfig {
   batch_delay_ms: string
 }
 
+export interface ContactConfig {
+  name: string
+  email: string
+  phone: string
+  telegram: string
+  skype: string
+  website: string
+  address: string
+  note: string
+}
+
 export interface FormValues {
   title: string
   token_api: string
@@ -205,6 +216,7 @@ export interface FormValues {
   order: string
   status: string
   rotation_interval: string
+  contact: ContactConfig
   buy_rotating: ApiConfigBuy
   buy_static: ApiConfigBuy
   rotate: ApiConfigRotate
@@ -382,6 +394,16 @@ export const defaultValues: FormValues = {
   order: '',
   status: 'active',
   rotation_interval: '',
+  contact: {
+    name: '',
+    email: '',
+    phone: '',
+    telegram: '',
+    skype: '',
+    website: '',
+    address: '',
+    note: ''
+  },
   buy_rotating: { ...defaultBuy },
   buy_static: { ...defaultBuy },
   rotate: {
