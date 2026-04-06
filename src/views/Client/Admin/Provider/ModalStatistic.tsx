@@ -1,8 +1,8 @@
 import { useProviderStatistics } from '@/hooks/apis/useProviders'
 import { Box, Dialog, DialogContent, DialogTitle, Paper, Typography } from '@mui/material'
-import { LineChart } from 'lucide-react'
 import {
   BarChart,
+  LineChart,
   CartesianGrid,
   ResponsiveContainer,
   XAxis,
@@ -57,17 +57,42 @@ export default function ModalStatistic({ onClose, open, providerId }: ModalStati
                   return (
                     <Box sx={{ mb: 3 }}>
                       {/* Row 1: Tổng quan */}
-                      <Typography sx={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tổng quan</Typography>
-                      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 1, mb: 2 }}>
+                      <Typography
+                        sx={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: '#94a3b8',
+                          mb: 0.5,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5
+                        }}
+                      >
+                        Tổng quan
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+                          gap: 1,
+                          mb: 2
+                        }}
+                      >
                         {[
                           { label: 'Đơn mua', value: s.total_orders || 0, color: '#6366f1' },
                           { label: 'Gia hạn', value: s.renewal_orders || 0, color: '#8b5cf6' },
                           { label: 'Tỷ lệ OK', value: `${s.avg_success_rate || 0}%`, color: '#0ea5e9' },
                           { label: 'Proxy hoạt động', value: s.active_proxies || 0, color: '#6366f1' },
-                          { label: 'Margin', value: `${s.margin_percent || 0}%`, color: Number(s.margin_percent) > 20 ? '#16a34a' : '#f59e0b' },
-                          { label: 'Hoàn tiền', value: fmtM(s.total_refunds), color: '#ef4444' },
+                          {
+                            label: 'Margin',
+                            value: `${s.margin_percent || 0}%`,
+                            color: Number(s.margin_percent) > 20 ? '#16a34a' : '#f59e0b'
+                          },
+                          { label: 'Hoàn tiền', value: fmtM(s.total_refunds), color: '#ef4444' }
                         ].map(c => (
-                          <Box key={c.label} sx={{ p: 1, borderRadius: 1.5, border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                          <Box
+                            key={c.label}
+                            sx={{ p: 1, borderRadius: 1.5, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                          >
                             <Typography sx={{ fontSize: 9, color: '#94a3b8' }}>{c.label}</Typography>
                             <Typography sx={{ fontSize: 14, fontWeight: 700, color: c.color }}>{c.value}</Typography>
                           </Box>
@@ -77,31 +102,74 @@ export default function ModalStatistic({ onClose, open, providerId }: ModalStati
                       {/* Row 2: Thực tế vs Dự kiến */}
                       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mb: 2 }}>
                         <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid #bbf7d0', background: '#f0fdf4' }}>
-                          <Typography sx={{ fontSize: 10, fontWeight: 700, color: '#166534', mb: 1 }}>Thực tế (đã hoàn thành)</Typography>
+                          <Typography sx={{ fontSize: 10, fontWeight: 700, color: '#166534', mb: 1 }}>
+                            Thực tế (đã hoàn thành)
+                          </Typography>
                           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1 }}>
-                            <div><Typography sx={{ fontSize: 9, color: '#64748b' }}>Doanh thu</Typography><Typography sx={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>{fmtM(s.actual_revenue)}</Typography></div>
-                            <div><Typography sx={{ fontSize: 9, color: '#64748b' }}>Chi phí</Typography><Typography sx={{ fontSize: 13, fontWeight: 700, color: '#dc2626' }}>{fmtM(s.actual_cost)}</Typography></div>
-                            <div><Typography sx={{ fontSize: 9, color: '#64748b' }}>Lợi nhuận</Typography><Typography sx={{ fontSize: 13, fontWeight: 700, color: '#2563eb' }}>{fmtM(s.actual_profit)}</Typography></div>
+                            <div>
+                              <Typography sx={{ fontSize: 9, color: '#64748b' }}>Doanh thu</Typography>
+                              <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
+                                {fmtM(s.actual_revenue)}
+                              </Typography>
+                            </div>
+                            <div>
+                              <Typography sx={{ fontSize: 9, color: '#64748b' }}>Chi phí</Typography>
+                              <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#dc2626' }}>
+                                {fmtM(s.actual_cost)}
+                              </Typography>
+                            </div>
+                            <div>
+                              <Typography sx={{ fontSize: 9, color: '#64748b' }}>Lợi nhuận</Typography>
+                              <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#2563eb' }}>
+                                {fmtM(s.actual_profit)}
+                              </Typography>
+                            </div>
                           </Box>
                         </Box>
                         <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid #fde68a', background: '#fefce8' }}>
-                          <Typography sx={{ fontSize: 10, fontWeight: 700, color: '#854d0e', mb: 1 }}>Dự kiến (đang sử dụng)</Typography>
+                          <Typography sx={{ fontSize: 10, fontWeight: 700, color: '#854d0e', mb: 1 }}>
+                            Dự kiến (đang sử dụng)
+                          </Typography>
                           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1 }}>
-                            <div><Typography sx={{ fontSize: 9, color: '#64748b' }}>Doanh thu</Typography><Typography sx={{ fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>{fmtM(s.expected_revenue)}</Typography></div>
-                            <div><Typography sx={{ fontSize: 9, color: '#64748b' }}>Chi phí</Typography><Typography sx={{ fontSize: 13, fontWeight: 700, color: '#dc2626' }}>{fmtM(s.expected_cost)}</Typography></div>
-                            <div><Typography sx={{ fontSize: 9, color: '#64748b' }}>Lợi nhuận</Typography><Typography sx={{ fontSize: 13, fontWeight: 700, color: '#2563eb' }}>{fmtM(s.expected_profit)}</Typography></div>
+                            <div>
+                              <Typography sx={{ fontSize: 9, color: '#64748b' }}>Doanh thu</Typography>
+                              <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>
+                                {fmtM(s.expected_revenue)}
+                              </Typography>
+                            </div>
+                            <div>
+                              <Typography sx={{ fontSize: 9, color: '#64748b' }}>Chi phí</Typography>
+                              <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#dc2626' }}>
+                                {fmtM(s.expected_cost)}
+                              </Typography>
+                            </div>
+                            <div>
+                              <Typography sx={{ fontSize: 9, color: '#64748b' }}>Lợi nhuận</Typography>
+                              <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#2563eb' }}>
+                                {fmtM(s.expected_profit)}
+                              </Typography>
+                            </div>
                           </Box>
                         </Box>
                       </Box>
 
                       {/* Row 3: Vốn NCC */}
-                      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 1 }}>
+                      <Box
+                        sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 1 }}
+                      >
                         {[
                           { label: 'Tổng vốn đã nạp NCC', value: fmtM(s.total_invested), color: '#f97316' },
-                          { label: 'Số dư ước tính NCC', value: fmtM(s.estimated_balance), color: Number(s.estimated_balance) > 0 ? '#16a34a' : '#ef4444' },
-                          { label: 'DT gia hạn', value: fmtM(s.renewal_revenue), color: '#059669' },
+                          {
+                            label: 'Số dư ước tính NCC',
+                            value: fmtM(s.estimated_balance),
+                            color: Number(s.estimated_balance) > 0 ? '#16a34a' : '#ef4444'
+                          },
+                          { label: 'DT gia hạn', value: fmtM(s.renewal_revenue), color: '#059669' }
                         ].map(c => (
-                          <Box key={c.label} sx={{ p: 1, borderRadius: 1.5, border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                          <Box
+                            key={c.label}
+                            sx={{ p: 1, borderRadius: 1.5, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                          >
                             <Typography sx={{ fontSize: 9, color: '#94a3b8' }}>{c.label}</Typography>
                             <Typography sx={{ fontSize: 14, fontWeight: 700, color: c.color }}>{c.value}</Typography>
                           </Box>
@@ -132,6 +200,7 @@ export default function ModalStatistic({ onClose, open, providerId }: ModalStati
                     const axisSx = { fontSize: '10px' }
                     const legendSx = { fontSize: '10px', paddingTop: '6px' }
 
+                    console.log(statsData.trend)
                     return (
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                         {/* Chart 1: Thực tế vs Dự kiến */}
@@ -154,7 +223,12 @@ export default function ModalStatistic({ onClose, open, providerId }: ModalStati
                                 />
                                 <Legend wrapperStyle={legendSx} />
                                 <Bar name='DT thực tế' dataKey='actual_revenue' fill='#16a34a' radius={[4, 4, 0, 0]} />
-                                <Bar name='DT dự kiến' dataKey='expected_revenue' fill='#f59e0b' radius={[4, 4, 0, 0]} />
+                                <Bar
+                                  name='DT dự kiến'
+                                  dataKey='expected_revenue'
+                                  fill='#f59e0b'
+                                  radius={[4, 4, 0, 0]}
+                                />
                                 <Bar name='CP thực tế' dataKey='actual_cost' fill='#ef4444' radius={[4, 4, 0, 0]} />
                                 <Bar name='LN thực tế' dataKey='actual_profit' fill='#2563eb' radius={[4, 4, 0, 0]} />
                               </BarChart>
