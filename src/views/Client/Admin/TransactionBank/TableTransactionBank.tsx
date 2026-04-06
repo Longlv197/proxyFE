@@ -1,11 +1,10 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import Image from 'next/image'
 
 import {
-  Search,
   X,
   Loader2,
   Clock3,
@@ -33,6 +32,8 @@ import useMediaQuery from '@/@menu/hooks/useMediaQuery'
 import { formatDateTimeLocal } from '@/utils/formatDate'
 import { useTransactionBank, useTransactionBankSummary } from '@/hooks/apis/useTransactionBank'
 import InvestigationDrawer from '@views/Client/Admin/DepositManagement/InvestigationDrawer'
+import AppReactDatepicker from '@/components/AppReactDatepicker'
+import ExportModal, { type ExportColumn } from '@/components/UI/ExportModal'
 
 /* ── Helpers ── */
 const fmtDate = (d: Date) => {
@@ -45,50 +46,42 @@ const fmtDate = (d: Date) => {
 
 const fmtMoney = (n: number) => new Intl.NumberFormat('vi-VN').format(n)
 
-const exportCsv = (rows: any[]) => {
-  if (!rows.length) return
+const fmtCsvDate = (d: string) => {
+  if (!d) return ''
+  const date = new Date(d)
+  const dd = String(date.getDate()).padStart(2, '0')
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const yyyy = date.getFullYear()
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mi = String(date.getMinutes()).padStart(2, '0')
+  const ss = String(date.getSeconds()).padStart(2, '0')
 
-  const headers = ['Thời gian', 'Nội dung', 'Số tiền', 'Loại', 'Ngân hàng', 'Người nhận', 'Trạng thái']
-
-  const fmtCsvDate = (d: string) => {
-    if (!d) return ''
-    const date = new Date(d)
-    const dd = String(date.getDate()).padStart(2, '0')
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const yyyy = date.getFullYear()
-    const hh = String(date.getHours()).padStart(2, '0')
-    const mi = String(date.getMinutes()).padStart(2, '0')
-    const ss = String(date.getSeconds()).padStart(2, '0')
-
-    return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`
-  }
-
-  const csvRows = rows.map(r => {
-    const user = r.matched_user
-    const status = r.transfer_type !== 'IN' ? 'Tiền ra' : r.dismissed_at ? 'Đã bỏ qua' : r.is_processed ? 'Đã cộng tiền' : 'Chưa xử lý'
-    const receiver = user ? `${user.name || ''} - ${user.email || ''} (ID: ${user.id})` : ''
-
-    return [
-      fmtCsvDate(r.transaction_date),
-      `"${(r.content || '').replace(/"/g, '""')}"`,
-      r.transfer_amount,
-      r.transfer_type || '',
-      r.gateway || '',
-      `"${receiver}"`,
-      status
-    ].join(',')
-  })
-
-  const bom = '\uFEFF'
-  const blob = new Blob([bom + [headers.join(','), ...csvRows].join('\n')], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-
-  a.href = url
-  a.download = `giao-dich-ngan-hang-${fmtDate(new Date())}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`
 }
+
+const getStatus = (r: any) =>
+  r.transfer_type !== 'IN' ? 'Tiền ra' : r.dismissed_at ? 'Đã bỏ qua' : r.is_processed ? 'Đã cộng tiền' : 'Chưa xử lý'
+
+const EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'transaction_date', label: 'Thời gian', accessor: r => fmtCsvDate(r.transaction_date) },
+  { key: 'content', label: 'Nội dung', accessor: r => r.content || '' },
+  { key: 'transfer_amount', label: 'Số tiền', accessor: r => String(r.transfer_amount ?? '') },
+  { key: 'transfer_type', label: 'Loại', accessor: r => r.transfer_type || '' },
+  { key: 'gateway', label: 'Ngân hàng', accessor: r => r.gateway || '' },
+  {
+    key: 'matched_user',
+    label: 'Người nhận',
+    accessor: r => {
+      const u = r.matched_user
+
+      return u ? `${u.name || ''} - ${u.email || ''} (ID: ${u.id})` : ''
+    }
+  },
+  { key: 'user_id', label: 'User ID', accessor: r => String(r.matched_user?.id ?? ''), defaultChecked: false },
+  { key: 'user_name', label: 'Tên user', accessor: r => r.matched_user?.name || '', defaultChecked: false },
+  { key: 'user_email', label: 'Email user', accessor: r => r.matched_user?.email || '', defaultChecked: false },
+  { key: 'status', label: 'Trạng thái', accessor: getStatus }
+]
 
 const getDatePreset = (key: string): { start?: string; end?: string } => {
   const now = new Date()
@@ -157,57 +150,85 @@ export default function TableTransactionBank() {
   // Date preset
   const [datePreset, setDatePreset] = useState<string>('today')
 
-  // Staged filters
-  const [gatewayInput, setGatewayInput] = useState('')
-  const [processedInput, setProcessedInput] = useState('')
-  const [typeInput, setTypeInput] = useState('')
+  // Filters — apply ngay khi thay đổi
+  const [gateway, setGateway] = useState('')
+  const [processed, setProcessed] = useState('')
+  const [type, setType] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [searchDebounced, setSearchDebounced] = useState('')
+  const [startDate, setStartDate] = useState<Date | null>(null)
+  const [endDate, setEndDate] = useState<Date | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
 
-  // Applied filters
-  const [filters, setFilters] = useState<Record<string, any>>({
-    page: 1,
-    per_page: 50,
-    ...getDatePreset('today')
-  })
+  // Debounce search input
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => setSearchDebounced(searchInput), 400)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [searchInput])
+
+  // Custom date range
+  const applyCustomRange = useCallback((start: Date | null, end: Date | null) => {
+    if (start && end) {
+      setDatePreset('custom')
+    }
+  }, [])
+
+  // Build filters from state
+  const filters = useMemo(() => {
+    const dateRange =
+      datePreset === 'custom' && startDate && endDate
+        ? { start: fmtDate(startDate), end: fmtDate(endDate) }
+        : getDatePreset(datePreset)
+
+    return {
+      ...dateRange,
+      ...(gateway ? { gateway } : {}),
+      ...(processed !== '' ? { is_processed: processed } : {}),
+      ...(type ? { transfer_type: type } : {}),
+      ...(searchDebounced ? { search: searchDebounced } : {}),
+      page: 1,
+      per_page: 50
+    }
+  }, [datePreset, startDate, endDate, gateway, processed, type, searchDebounced])
+
+  // Pagination
+  const [page, setPage] = useState(1)
+  const queryFilters = useMemo(() => ({ ...filters, page }), [filters, page])
+
+  // Reset page khi filter thay đổi
+  useEffect(() => {
+    setPage(1)
+  }, [filters])
+
+  const handleDatePreset = useCallback((key: string) => {
+    setDatePreset(key)
+  }, [])
+
+  const handleClearAll = useCallback(() => {
+    setGateway('')
+    setProcessed('')
+    setType('')
+    setSearchInput('')
+    setSearchDebounced('')
+    setStartDate(null)
+    setEndDate(null)
+    setDatePreset('today')
+  }, [])
+
+  const hasFilters = !!(gateway || processed !== '' || type || searchInput)
+
+  // Export modal
+  const [exportOpen, setExportOpen] = useState(false)
 
   // Investigation drawer
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerRow, setDrawerRow] = useState<any>(null)
 
-  const handleApplyFilters = useCallback(() => {
-    setFilters({
-      ...getDatePreset(datePreset),
-      ...(gatewayInput ? { gateway: gatewayInput } : {}),
-      ...(processedInput !== '' ? { is_processed: processedInput } : {}),
-      ...(typeInput ? { transfer_type: typeInput } : {}),
-      ...(searchInput ? { search: searchInput } : {}),
-      page: 1,
-      per_page: 50
-    })
-  }, [gatewayInput, processedInput, typeInput, searchInput, datePreset])
-
-  const handleDatePreset = useCallback((key: string) => {
-    setDatePreset(key)
-    setFilters(prev => ({
-      ...prev,
-      ...getDatePreset(key),
-      page: 1
-    }))
-  }, [])
-
-  const handleClearAll = useCallback(() => {
-    setGatewayInput('')
-    setProcessedInput('')
-    setTypeInput('')
-    setSearchInput('')
-    setDatePreset('today')
-    setFilters({ page: 1, per_page: 50, ...getDatePreset('today') })
-  }, [])
-
-  const hasFilters = !!(gatewayInput || processedInput !== '' || typeInput || searchInput)
-
   // Data
-  const { data: apiResponse, isLoading, isFetching } = useTransactionBank(filters)
+  const { data: apiResponse, isLoading, isFetching } = useTransactionBank(queryFilters)
   const summaryParams = useMemo(() => getDatePreset(datePreset), [datePreset])
   const { data: summary } = useTransactionBankSummary(summaryParams)
 
@@ -352,7 +373,7 @@ export default function TableTransactionBank() {
       },
       {
         id: 'actions',
-        header: '',
+        header: 'Thao tác',
         size: 50,
         cell: ({ row }: { row: any }) => (
           <Tooltip title='Điều tra'>
@@ -398,55 +419,6 @@ export default function TableTransactionBank() {
               </p>
             </div>
           </div>
-          <Button
-            variant='outlined'
-            size='small'
-            disabled={!dataList.length}
-            onClick={() => exportCsv(dataList)}
-            sx={{
-              height: '36px',
-              fontSize: '13px',
-              fontWeight: 600,
-              textTransform: 'none',
-              borderRadius: '8px',
-              gap: '6px',
-              px: 2
-            }}
-          >
-            <Download size={15} />
-            Export CSV
-          </Button>
-        </div>
-
-        {/* Date presets */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '10px 16px',
-            borderBottom: '1px solid var(--border-color, #e2e8f0)'
-          }}
-        >
-          <CalendarDays size={14} style={{ color: 'var(--mui-palette-text-disabled)', marginRight: '4px' }} />
-          {(
-            [
-              ['today', 'Hôm nay'],
-              ['7d', '7 ngày'],
-              ['30d', '30 ngày'],
-              ['all', 'Tất cả']
-            ] as const
-          ).map(([key, label]) => (
-            <Button
-              key={key}
-              size='small'
-              variant='text'
-              onClick={() => handleDatePreset(key)}
-              sx={presetBtnSx(datePreset === key)}
-            >
-              {label}
-            </Button>
-          ))}
         </div>
 
         {/* Summary cards */}
@@ -510,11 +482,82 @@ export default function TableTransactionBank() {
             background: 'var(--mui-palette-background-default, #f8fafc)'
           }}
         >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '10px 16px',
+              borderBottom: '1px solid var(--border-color, #e2e8f0)'
+            }}
+          >
+            <CalendarDays size={14} style={{ color: 'var(--mui-palette-text-disabled)', marginRight: '4px' }} />
+            {datePreset === 'custom' ? (
+              <>
+                <Button
+                  size='small'
+                  variant='text'
+                  onClick={() => handleDatePreset('today')}
+                  sx={{ ...presetBtnSx(false), fontSize: '12px', gap: '4px' }}
+                >
+                  <X size={12} /> Quay lại
+                </Button>
+                <AppReactDatepicker
+                  selected={startDate}
+                  onChange={(date: Date | null) => {
+                    setStartDate(date)
+                    applyCustomRange(date, endDate)
+                  }}
+                  selectsStart
+                  startDate={startDate}
+                  endDate={endDate}
+                  dateFormat='dd/MM/yyyy'
+                  placeholderText='Từ ngày'
+                  className='w-28 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#0B6FFF]'
+                  maxDate={new Date()}
+                />
+                <span className='text-gray-400'>—</span>
+                <AppReactDatepicker
+                  selected={endDate}
+                  onChange={(date: Date | null) => {
+                    setEndDate(date)
+                    applyCustomRange(startDate, date)
+                  }}
+                  selectsEnd
+                  startDate={startDate}
+                  endDate={endDate}
+                  minDate={startDate}
+                  dateFormat='dd/MM/yyyy'
+                  placeholderText='Đến ngày'
+                  className='w-28 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#0B6FFF]'
+                  maxDate={new Date()}
+                />
+              </>
+            ) : (
+              [
+                ['today', 'Hôm nay'],
+                ['7d', '7 ngày'],
+                ['30d', '30 ngày'],
+                ['all', 'Tất cả'],
+                ['custom', 'Tùy chọn']
+              ] as const
+            ).map(([key, label]) => (
+              <Button
+                key={key}
+                size='small'
+                variant='text'
+                onClick={() => handleDatePreset(key)}
+                sx={presetBtnSx(datePreset === key)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
           <CustomTextField
             select
             size='small'
-            value={gatewayInput}
-            onChange={e => setGatewayInput(e.target.value)}
+            value={gateway}
+            onChange={e => setGateway(e.target.value)}
             sx={selectSx}
             slotProps={{ select: { displayEmpty: true } }}
           >
@@ -531,8 +574,8 @@ export default function TableTransactionBank() {
           <CustomTextField
             select
             size='small'
-            value={processedInput}
-            onChange={e => setProcessedInput(e.target.value)}
+            value={processed}
+            onChange={e => setProcessed(e.target.value)}
             sx={selectSx}
             slotProps={{ select: { displayEmpty: true } }}
           >
@@ -547,8 +590,8 @@ export default function TableTransactionBank() {
           <CustomTextField
             select
             size='small'
-            value={typeInput}
-            onChange={e => setTypeInput(e.target.value)}
+            value={type}
+            onChange={e => setType(e.target.value)}
             sx={{ ...selectSx, minWidth: '120px' }}
             slotProps={{ select: { displayEmpty: true } }}
           >
@@ -564,36 +607,47 @@ export default function TableTransactionBank() {
             placeholder='Tìm nội dung / mã GD...'
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === 'Enter') handleApplyFilters()
-            }}
             sx={{
               minWidth: '200px',
               '& .MuiOutlinedInput-root': { fontSize: '13px', borderRadius: '8px', minHeight: '38px' }
             }}
+            slotProps={{
+              input: {
+                endAdornment: isFetching ? (
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: '#94a3b8' }} />
+                ) : searchInput ? (
+                  <IconButton
+                    size='small'
+                    onClick={() => {
+                      setSearchInput('')
+                      setSearchDebounced('')
+                    }}
+                    sx={{ p: 0.25 }}
+                  >
+                    <X size={14} />
+                  </IconButton>
+                ) : null
+              }
+            }}
           />
 
           <Button
-            variant='contained'
+            variant='outlined'
             size='small'
-            onClick={handleApplyFilters}
-            disabled={isFetching}
+            disabled={!dataList.length}
+            onClick={() => setExportOpen(true)}
             sx={{
-              height: '38px',
+              height: '36px',
               fontSize: '13px',
               fontWeight: 600,
               textTransform: 'none',
               borderRadius: '8px',
-              boxShadow: 'none',
-              gap: '4px',
-              color: '#fff',
-              px: 2,
-              minWidth: '110px',
-              '&.Mui-disabled': { backgroundColor: 'var(--mui-palette-primary-main)', opacity: 0.65, color: '#fff' }
+              gap: '6px',
+              px: 2
             }}
           >
-            {isFetching ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={15} />}
-            {isFetching ? 'Đang tìm...' : 'Tìm kiếm'}
+            <Download size={15} />
+            Xuất file
           </Button>
 
           {hasFilters && (
@@ -705,7 +759,7 @@ export default function TableTransactionBank() {
             <Pagination
               count={meta.last_page}
               page={meta.current_page}
-              onChange={(_, page) => setFilters(prev => ({ ...prev, page }))}
+              onChange={(_, p) => setPage(p)}
               size='small'
               color='primary'
             />
@@ -733,6 +787,15 @@ export default function TableTransactionBank() {
               }
             : undefined
         }
+      />
+
+      {/* Export Modal */}
+      <ExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        fileName={`giao-dich-ngan-hang-${fmtDate(new Date())}`}
+        columns={EXPORT_COLUMNS}
+        data={dataList}
       />
     </div>
   )

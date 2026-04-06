@@ -13,10 +13,7 @@ const PartnersBannerInline = () => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hovered, setHovered] = useState(false)
 
-  const activePartners = React.useMemo(
-    () => partners?.filter(p => p.logo_url) ?? [],
-    [partners]
-  )
+  const activePartners = React.useMemo(() => partners?.filter(p => p.logo_url) ?? [], [partners])
 
   const len = activePartners.length
 
@@ -48,10 +45,12 @@ const PartnersBannerInline = () => {
     setCurrentIndex(0)
   }, [partners?.length])
 
-  if (!activePartners.length) return null
+  console.log(activePartners.length)
+  if (activePartners.length <= 0) return null
 
   const current = activePartners[currentIndex] || activePartners[0]
 
+  console.log(activePartners)
   return (
     <div
       className='partners-banner-inline'
@@ -63,7 +62,6 @@ const PartnersBannerInline = () => {
         <div
           key={partner.id}
           style={{
-            position: 'absolute',
             inset: 0,
             display: 'flex',
             alignItems: 'center',
@@ -88,7 +86,10 @@ const PartnersBannerInline = () => {
       {/* Arrow trái — luôn render, hover hiện */}
       <button
         className='banner-arrow banner-arrow-left'
-        onClick={e => { e.stopPropagation(); prevSlide() }}
+        onClick={e => {
+          e.stopPropagation()
+          prevSlide()
+        }}
       >
         <ChevronLeft size={14} color='#fff' />
       </button>
@@ -96,7 +97,10 @@ const PartnersBannerInline = () => {
       {/* Arrow phải */}
       <button
         className='banner-arrow banner-arrow-right'
-        onClick={e => { e.stopPropagation(); nextSlide() }}
+        onClick={e => {
+          e.stopPropagation()
+          nextSlide()
+        }}
       >
         <ChevronRight size={14} color='#fff' />
       </button>
@@ -107,14 +111,19 @@ const PartnersBannerInline = () => {
           {activePartners.map((_, i) => (
             <span
               key={i}
-              onClick={e => { e.stopPropagation(); setCurrentIndex(i) }}
+              onClick={e => {
+                e.stopPropagation()
+                setCurrentIndex(i)
+              }}
               className={`banner-dot ${i === currentIndex ? 'active' : ''}`}
             />
           ))}
         </div>
       )}
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         .partners-banner-inline {
           flex: 1;
           min-width: 0;
@@ -182,7 +191,9 @@ const PartnersBannerInline = () => {
             display: none !important;
           }
         }
-      `}} />
+      `
+        }}
+      />
     </div>
   )
 }
