@@ -252,3 +252,23 @@ export const usePayProviderInvoice = (providerId?: number | string) => {
     }
   })
 }
+
+// Dashboard tổng hợp tất cả providers
+export const useProviderDashboard = (dateFrom?: string, dateTo?: string, enabled = true) => {
+  const axiosAuth = useAxiosAuth()
+
+  return useQuery({
+    queryKey: ['providerDashboard', dateFrom, dateTo],
+    queryFn: async () => {
+      const params: any = {}
+      if (dateFrom) params.date_from = dateFrom
+      if (dateTo) params.date_to = dateTo
+      const res = await axiosAuth.get('/admin/provider-statistics/dashboard', { params })
+
+      return res?.data?.data ?? null
+    },
+    enabled,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
+  })
+}

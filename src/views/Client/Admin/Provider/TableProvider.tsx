@@ -17,7 +17,8 @@ import {
   SquarePen,
   SquarePlus,
   Trash2,
-  Wallet
+  Wallet,
+  TrendingUp
 } from 'lucide-react'
 
 import {
@@ -499,7 +500,16 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
               </div>
             </div>
 
-            <div className='header-right'>
+            <div className='header-right' style={{ display: 'flex', gap: 8 }}>
+              <Button
+                onClick={() => router.push(`/${locale}/admin/providers/report`)}
+                variant='outlined'
+                size='small'
+                startIcon={<TrendingUp size={15} />}
+                sx={{ fontWeight: 600, fontSize: 13, textTransform: 'none', borderRadius: '8px' }}
+              >
+                Báo cáo
+              </Button>
               <Button
                 onClick={handleOpenCreate}
                 variant='contained'
