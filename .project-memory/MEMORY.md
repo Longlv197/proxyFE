@@ -68,6 +68,7 @@ Sau mỗi session có sửa code/thêm tính năng, **tự động cập nhật 
 - [Deferred Proxy Fetch](project_deferred_proxy_fetch.md) — ĐÃ IMPLEMENT 24/03: config-driven
 - [Quantity Tiers](project_quantity_tiers.md) — ĐÃ IMPLEMENT: chiết khấu theo SL
 - [Report & Affiliate](project_report_redesign.md) — ĐÃ IMPLEMENT 01/04: order_histories, shared affiliate_percent
+- [Provider Report](project_provider_report.md) — ĐÃ IMPLEMENT 06/04: actual/expected, vốn NCC, margin, renewal
 - [Admin Manual Resolve](project_admin_manual_resolve.md) — ĐÃ DEPLOY: timeout, confirm, import proxy
 - [Expired Deposit](project_expired_deposit_flow.md) — ĐÃ DEPLOY: admin cộng tiền lệnh nạp hết hạn
 
