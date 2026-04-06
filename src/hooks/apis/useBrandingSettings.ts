@@ -80,6 +80,17 @@ export interface BrandingSettings {
     vnpt?: { price?: string; originalPrice?: string; discount?: string; period?: string | Record<string, string> }
   } | null
 
+  // Landing hero
+  landing_hero: {
+    title_line1?: Record<string, string>
+    title_line2?: Record<string, string>
+    subtitle?: Record<string, string>
+    features?: { icon: string; text: Record<string, string> }[]
+    cta_text?: Record<string, string>
+    cta_link?: string
+    trust_items?: { number: string; label: Record<string, string> }[]
+  } | null
+
   // Menu labels
   menu_labels: Record<string, string> | null
 

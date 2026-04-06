@@ -82,6 +82,7 @@ const defaultBranding: BrandingContextValue = {
   deposit_preset_amounts: null,
   deposit_notify_telegram: null,
   landing_pricing: null,
+  landing_hero: null,
   menu_labels: null,
   turnstile_enabled: null,
   turnstile_site_key: null
@@ -159,6 +160,7 @@ export function BrandingProvider({
       deposit_preset_amounts: data?.deposit_preset_amounts ?? null,
       deposit_notify_telegram: data?.deposit_notify_telegram ?? null,
       landing_pricing: data?.landing_pricing ?? null,
+      landing_hero: data?.landing_hero ?? null,
       menu_labels: data?.menu_labels ?? null,
       turnstile_enabled: data?.turnstile_enabled ?? null,
       turnstile_site_key: data?.turnstile_site_key ?? null

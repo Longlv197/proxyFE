@@ -4,16 +4,72 @@ import React from 'react'
 
 import { useParams } from 'next/navigation'
 
-import { Shield, Zap, Globe, Users, ArrowRight } from 'lucide-react'
+import { Shield, Zap, Globe, Users, ArrowRight, Clock, Star } from 'lucide-react'
 
 import { useTranslation } from 'react-i18next'
 
 import Link from '@/components/Link'
+import { useBranding } from '@/app/contexts/BrandingContext'
+
+/* ── Icon map cho admin setting ── */
+const HERO_ICON_MAP: Record<string, React.ElementType> = {
+  globe: Globe,
+  zap: Zap,
+  shield: Shield,
+  users: Users,
+  clock: Clock,
+  star: Star
+}
 
 const Hero = () => {
   const params = useParams()
   const { lang: locale } = params
+  const lang = (locale as string) || 'vi'
   const { t } = useTranslation()
+  const branding = useBranding()
+
+  const hero = branding.landing_hero
+
+  console.log(hero)
+  /** Lấy text theo locale, fallback vi → en → '' */
+  const txt = (obj: Record<string, string> | undefined | null, fallback: string) => {
+    if (!obj) return fallback
+
+    return obj[lang] || obj.vi || obj.en || fallback
+  }
+
+  // Resolve data
+  const titleLine1 = txt(hero?.title_line1, t('landing.hero.title.line1'))
+  const titleLine2 = txt(hero?.title_line2, t('landing.hero.title.line2'))
+  const subtitle = txt(hero?.subtitle, t('landing.hero.subtitle'))
+
+  const features =
+    hero?.features && hero.features.length > 0
+      ? hero.features.map(f => ({
+          icon: HERO_ICON_MAP[f.icon] || Globe,
+          text: txt(f.text, '')
+        }))
+      : [
+          { icon: Globe, text: t('landing.hero.features.coverage') },
+          { icon: Zap, text: t('landing.hero.features.speed') },
+          { icon: Shield, text: t('landing.hero.features.uptime') },
+          { icon: Users, text: t('landing.hero.features.support') }
+        ]
+
+  const ctaText = txt(hero?.cta_text, t('landing.hero.actions.buyNow'))
+  const ctaLink = hero?.cta_link || `/${locale}/proxy-tinh`
+
+  const trustItems =
+    hero?.trust_items && hero.trust_items.length > 0
+      ? hero.trust_items.map(item => ({
+          number: item.number,
+          label: txt(item.label, '')
+        }))
+      : [
+          { number: '5000+', label: t('landing.hero.trust.customers') },
+          { number: '99.9%', label: t('landing.hero.trust.uptime') },
+          { number: '24/7', label: t('landing.hero.trust.support') }
+        ]
 
   return (
     <section className='hero-main'>
@@ -46,75 +102,47 @@ const Hero = () => {
           {/* Left Content */}
           <div className='col-lg-6'>
             <div className='hero-content'>
-              {/* Badge */}
-              {/* <div className='hero-badge'>
-                <Shield size={16} />
-                <span>Dịch vụ Proxy #1 Việt Nam</span>
-              </div> */}
-
               {/* Main Title */}
               <h1 className='hero-title'>
-                <span className='title-line-1'>{t('landing.hero.title.line1')}</span>
-                <span className='title-line-2'>{t('landing.hero.title.line2')}</span>
+                <span className='title-line-1'>{titleLine1}</span>
+                <span className='title-line-2'>{titleLine2}</span>
               </h1>
 
               {/* Subtitle */}
-              <p className='hero-subtitle'>
-                {t('landing.hero.subtitle')}
-              </p>
+              <p className='hero-subtitle'>{subtitle}</p>
 
               {/* Key Features */}
               <div className='hero-features'>
-                <div className='feature-item'>
-                  <div className='feature-icon'>
-                    <Globe size={20} />
-                  </div>
-                  <span className='text-gray-300'>{t('landing.hero.features.coverage')}</span>
-                </div>
-                <div className='feature-item'>
-                  <div className='feature-icon'>
-                    <Zap size={20} />
-                  </div>
-                  <span className='text-gray-300'>{t('landing.hero.features.speed')}</span>
-                </div>
-                <div className='feature-item'>
-                  <div className='feature-icon'>
-                    <Shield size={20} />
-                  </div>
-                  <span className='text-gray-300'>{t('landing.hero.features.uptime')}</span>
-                </div>
-                <div className='feature-item'>
-                  <div className='feature-icon'>
-                    <Users size={20} />
-                  </div>
-                  <span className='text-gray-300'>{t('landing.hero.features.support')}</span>
-                </div>
+                {features.map((feat, i) => {
+                  const Icon = feat.icon
+
+                  return (
+                    <div className='feature-item' key={i}>
+                      <div className='feature-icon'>
+                        <Icon size={20} />
+                      </div>
+                      <span className='text-gray-300'>{feat.text}</span>
+                    </div>
+                  )
+                })}
               </div>
 
               {/* CTA Buttons */}
               <div className='hero-actions'>
                 <button className='btn-primary'>
-                  <Link href={`/${locale}/proxy-tinh`}>
-                    {t('landing.hero.actions.buyNow')}
-                  </Link>
+                  <Link href={ctaLink.startsWith('/') ? ctaLink : `/${locale}/${ctaLink}`}>{ctaText}</Link>
                   <ArrowRight size={20} />
                 </button>
               </div>
 
               {/* Trust Indicators */}
               <div className='trust-indicators'>
-                <div className='trust-item'>
-                  <div className='trust-number'>5000+</div>
-                  <div className='trust-label'>{t('landing.hero.trust.customers')}</div>
-                </div>
-                <div className='trust-item'>
-                  <div className='trust-number'>99.9%</div>
-                  <div className='trust-label'>{t('landing.hero.trust.uptime')}</div>
-                </div>
-                <div className='trust-item'>
-                  <div className='trust-number'>24/7</div>
-                  <div className='trust-label'>{t('landing.hero.trust.support')}</div>
-                </div>
+                {trustItems.map((item, i) => (
+                  <div className='trust-item' key={i}>
+                    <div className='trust-number'>{item.number}</div>
+                    <div className='trust-label'>{item.label}</div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

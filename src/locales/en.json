@@ -416,7 +416,7 @@
       },
       "subtitle": "High-quality residential proxy service with nationwide coverage. Full support for 3 major networks: Viettel, FPT, VNPT with speeds up to 1Gbps.",
       "features": {
-        "coverage": "Coverage 64 provinces",
+        "coverage": "Coverage 34 provinces",
         "speed": "Speed up to 1Gbps",
         "uptime": "99.9% Uptime",
         "support": "24/7 Support"
@@ -441,7 +441,7 @@
         },
         "coverage": {
           "title": "Nationwide",
-          "desc": "64 provinces"
+          "desc": "34 provinces"
         }
       }
     },
@@ -537,7 +537,7 @@
         "features": [
           "99.9% Uptime - Absolute stability",
           "24/7 Support - Always ready to serve",
-          "Coverage 64 provinces - Nationwide"
+          "Coverage 34 provinces - Nationwide"
         ],
         "actions": {
           "contact": "Contact for consultation",
@@ -598,7 +598,7 @@
         "features": [
           "99.9% Uptime - Absolute stability",
           "24/7 Support - Always ready to serve",
-          "64 provinces coverage - Nationwide"
+          "34 provinces coverage - Nationwide"
         ],
         "actions": {
           "contact": "Contact for consultation",
