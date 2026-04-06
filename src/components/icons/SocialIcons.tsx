@@ -13,10 +13,10 @@ interface IconProps {
 
 const BrandIcon = ({ icon: Icon, bg, color = '#fff', size = 24 }: { icon: React.ElementType; bg: string; color?: string; size?: number }) => (
   <div style={{
-    width: size, height: size, borderRadius: size * 0.25,
+    width: size, height: size, borderRadius: '50%',
     background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
   }}>
-    <Icon size={size * 0.55} color={color} />
+    <Icon size={size * 0.5} color={color} />
   </div>
 )
 
@@ -27,17 +27,17 @@ export const YoutubeIcon = ({ size = 24 }: IconProps) => <BrandIcon icon={SiYout
 export const TiktokIcon = ({ size = 24 }: IconProps) => <BrandIcon icon={SiTiktok} bg='#000000' size={size} />
 export const InstagramIcon = ({ size = 24 }: IconProps) => (
   <div style={{
-    width: size, height: size, borderRadius: size * 0.25,
+    width: size, height: size, borderRadius: '50%',
     background: 'linear-gradient(135deg, #F58529, #DD2A7B, #8134AF, #515BD4)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   }}>
-    <SiInstagram size={size * 0.55} color='#fff' />
+    <SiInstagram size={size * 0.5} color='#fff' />
   </div>
 )
 
 export const FallbackIcon = ({ size = 24, color = '#64748b' }: IconProps & { color?: string }) => (
   <div style={{
-    width: size, height: size, borderRadius: size * 0.25,
+    width: size, height: size, borderRadius: '50%',
     background: color, display: 'flex', alignItems: 'center', justifyContent: 'center',
   }}>
     <ExternalLink size={size * 0.45} color='#fff' />

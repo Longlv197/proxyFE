@@ -43,9 +43,9 @@ export default function FloatingContact() {
               title={link.label}
               style={{ transitionDelay: hidden ? '0ms' : `${(links.length - 1 - i) * 60}ms` }}
             >
-              {SvgIcon ? <SvgIcon size={34} /> : (
-                <div style={{ width: 34, height: 34, borderRadius: '50%', background: link.color || '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ExternalLink size={16} color='#fff' />
+              {SvgIcon ? <SvgIcon size={46} /> : (
+                <div style={{ width: 46, height: 46, borderRadius: '50%', background: link.color || '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ExternalLink size={20} color='#fff' />
                 </div>
               )}
             </a>
