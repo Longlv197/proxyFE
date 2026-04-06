@@ -17,7 +17,8 @@ import {
   User as UserIcon,
   CalendarDays,
   Ban,
-  Download
+  Download,
+  Search
 } from 'lucide-react'
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from '@tanstack/react-table'
 import Chip from '@mui/material/Chip'
@@ -156,6 +157,9 @@ export default function TableTransactionBank() {
   const [type, setType] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
+  const [perPage, setPerPage] = useState(50)
+  const [customPerPage, setCustomPerPage] = useState(false)
+  const [customPerPageInput, setCustomPerPageInput] = useState('')
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -190,9 +194,9 @@ export default function TableTransactionBank() {
       ...(type ? { transfer_type: type } : {}),
       ...(searchDebounced ? { search: searchDebounced } : {}),
       page: 1,
-      per_page: 50
+      per_page: perPage
     }
-  }, [datePreset, startDate, endDate, gateway, processed, type, searchDebounced])
+  }, [datePreset, startDate, endDate, gateway, processed, type, searchDebounced, perPage])
 
   // Pagination
   const [page, setPage] = useState(1)
@@ -213,12 +217,13 @@ export default function TableTransactionBank() {
     setType('')
     setSearchInput('')
     setSearchDebounced('')
+    setPerPage(50)
     setStartDate(null)
     setEndDate(null)
     setDatePreset('today')
   }, [])
 
-  const hasFilters = !!(gateway || processed !== '' || type || searchInput)
+  const hasFilters = !!(gateway || processed !== '' || type || searchInput || perPage !== 50)
 
   // Export modal
   const [exportOpen, setExportOpen] = useState(false)
@@ -534,24 +539,26 @@ export default function TableTransactionBank() {
                 />
               </>
             ) : (
-              [
-                ['today', 'Hôm nay'],
-                ['7d', '7 ngày'],
-                ['30d', '30 ngày'],
-                ['all', 'Tất cả'],
-                ['custom', 'Tùy chọn']
-              ] as const
-            ).map(([key, label]) => (
-              <Button
-                key={key}
-                size='small'
-                variant='text'
-                onClick={() => handleDatePreset(key)}
-                sx={presetBtnSx(datePreset === key)}
-              >
-                {label}
-              </Button>
-            ))}
+              (
+                [
+                  ['today', 'Hôm nay'],
+                  ['7d', '7 ngày'],
+                  ['30d', '30 ngày'],
+                  ['all', 'Tất cả'],
+                  ['custom', 'Tùy chọn']
+                ] as const
+              ).map(([key, label]) => (
+                <Button
+                  key={key}
+                  size='small'
+                  variant='text'
+                  onClick={() => handleDatePreset(key)}
+                  sx={presetBtnSx(datePreset === key)}
+                >
+                  {label}
+                </Button>
+              ))
+            )}
           </div>
           <CustomTextField
             select
@@ -630,6 +637,76 @@ export default function TableTransactionBank() {
               }
             }}
           />
+
+          {customPerPage ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CustomTextField
+                size='small'
+                type='number'
+                placeholder='Số dòng'
+                value={customPerPageInput}
+                onChange={e => setCustomPerPageInput(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter') {
+                    const n = Math.max(1, Math.min(2000, parseInt(customPerPageInput, 10) || 50))
+
+                    setPerPage(n)
+                    setCustomPerPage(false)
+                  } else if (e.key === 'Escape') {
+                    setCustomPerPage(false)
+                  }
+                }}
+                autoFocus
+                sx={{
+                  width: '90px',
+                  '& .MuiOutlinedInput-root': { fontSize: '13px', borderRadius: '8px', minHeight: '38px' },
+                  '& input': { textAlign: 'center', MozAppearance: 'textfield' },
+                  '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': { WebkitAppearance: 'none' }
+                }}
+                slotProps={{ htmlInput: { min: 1, max: 2000 } }}
+              />
+              <IconButton
+                size='small'
+                color='primary'
+                onClick={() => {
+                  const n = Math.max(1, Math.min(2000, parseInt(customPerPageInput, 10) || 50))
+
+                  setPerPage(n)
+                  setCustomPerPage(false)
+                }}
+                sx={{ p: 0.5 }}
+              >
+                <Search size={14} />
+              </IconButton>
+              <IconButton size='small' onClick={() => setCustomPerPage(false)} sx={{ p: 0.5 }}>
+                <X size={14} />
+              </IconButton>
+            </div>
+          ) : (
+            <CustomTextField
+              select
+              size='small'
+              value={[20, 50, 100, 200].includes(perPage) ? perPage : 'custom'}
+              onChange={e => {
+                if (e.target.value === 'custom') {
+                  setCustomPerPageInput(String(perPage))
+                  setCustomPerPage(true)
+                } else {
+                  setPerPage(Number(e.target.value))
+                }
+              }}
+              sx={{ ...selectSx, minWidth: '110px' }}
+            >
+              {[20, 50, 100, 200].map(n => (
+                <MenuItem key={n} value={n}>
+                  {n} / trang
+                </MenuItem>
+              ))}
+              <MenuItem value='custom'>
+                <em>{![20, 50, 100, 200].includes(perPage) ? `${perPage} / trang` : 'Tùy chọn...'}</em>
+              </MenuItem>
+            </CustomTextField>
+          )}
 
           <Button
             variant='outlined'

@@ -185,6 +185,9 @@ export default function TabDepositRequests() {
   const [typeFilter, setTypeFilter] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
+  const [perPage, setPerPage] = useState(50)
+  const [customPerPage, setCustomPerPage] = useState(false)
+  const [customPerPageInput, setCustomPerPageInput] = useState('')
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -218,9 +221,9 @@ export default function TabDepositRequests() {
       ...(typeFilter && { deposit_type: typeFilter }),
       ...(searchDebounced && { search: searchDebounced }),
       page: 1,
-      per_page: 50
+      per_page: perPage
     }
-  }, [datePreset, startDate, endDate, statusFilter, typeFilter, searchDebounced])
+  }, [datePreset, startDate, endDate, statusFilter, typeFilter, searchDebounced, perPage])
 
   // Pagination
   const [page, setPage] = useState(1)
@@ -270,12 +273,13 @@ export default function TabDepositRequests() {
     setTypeFilter('')
     setSearchInput('')
     setSearchDebounced('')
+    setPerPage(50)
     setStartDate(null)
     setEndDate(null)
     setDatePreset('today')
   }, [])
 
-  const hasFilters = !!(statusFilter || typeFilter || searchInput)
+  const hasFilters = !!(statusFilter || typeFilter || searchInput || perPage !== 50)
 
   // Columns
   const columns = useMemo<ColumnDef<any>[]>(
@@ -620,6 +624,80 @@ export default function TabDepositRequests() {
                 }
               }}
             />
+
+            {customPerPage ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <CustomTextField
+                  size='small'
+                  type='number'
+                  placeholder='Số dòng'
+                  value={customPerPageInput}
+                  onChange={e => setCustomPerPageInput(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                      const n = Math.max(1, Math.min(2000, parseInt(customPerPageInput, 10) || 50))
+
+                      setPerPage(n)
+                      setCustomPerPage(false)
+                    } else if (e.key === 'Escape') {
+                      setCustomPerPage(false)
+                    }
+                  }}
+                  autoFocus
+                  sx={{
+                    width: '90px',
+                    '& .MuiOutlinedInput-root': { fontSize: '13px', borderRadius: '8px', minHeight: '38px' },
+                    '& input': { textAlign: 'center', MozAppearance: 'textfield' },
+                    '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': { WebkitAppearance: 'none' }
+                  }}
+                  slotProps={{ htmlInput: { min: 1, max: 2000 } }}
+                />
+                <IconButton
+                  size='small'
+                  color='primary'
+                  onClick={() => {
+                    const n = Math.max(1, Math.min(2000, parseInt(customPerPageInput, 10) || 50))
+
+                    setPerPage(n)
+                    setCustomPerPage(false)
+                  }}
+                  sx={{ p: 0.5 }}
+                >
+                  <Search size={14} />
+                </IconButton>
+                <IconButton
+                  size='small'
+                  onClick={() => setCustomPerPage(false)}
+                  sx={{ p: 0.5 }}
+                >
+                  <X size={14} />
+                </IconButton>
+              </div>
+            ) : (
+              <CustomTextField
+                select
+                size='small'
+                value={[20, 50, 100, 200].includes(perPage) ? perPage : 'custom'}
+                onChange={e => {
+                  if (e.target.value === 'custom') {
+                    setCustomPerPageInput(String(perPage))
+                    setCustomPerPage(true)
+                  } else {
+                    setPerPage(Number(e.target.value))
+                  }
+                }}
+                sx={{ ...selectSx, minWidth: '110px' }}
+              >
+                {[20, 50, 100, 200].map(n => (
+                  <MenuItem key={n} value={n}>
+                    {n} / trang
+                  </MenuItem>
+                ))}
+                <MenuItem value='custom'>
+                  <em>{![20, 50, 100, 200].includes(perPage) ? `${perPage} / trang` : 'Tùy chọn...'}</em>
+                </MenuItem>
+              </CustomTextField>
+            )}
 
             <Button
               variant='outlined'
