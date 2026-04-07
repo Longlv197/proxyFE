@@ -39,7 +39,8 @@ export default function RegisterForm() {
   const [turnstileToken, setTurnstileToken] = useState('')
 
   const { closeAuthModal, setAuthModalMode, referralCode } = useModalContext()
-  const { turnstile_enabled } = useBranding()
+  const { turnstile_enabled, turnstile_pages } = useBranding()
+  const turnstileActiveForRegister = turnstile_enabled === 'true' && (turnstile_pages || ['login', 'register']).includes('register')
   const { t } = useTranslation()
 
   const schema = yup
@@ -108,7 +109,7 @@ export default function RegisterForm() {
   })
 
   const onSubmit = (data: RegisterFormInputs) => {
-    if (turnstile_enabled === 'true' && !turnstileToken) {
+    if (turnstileActiveForRegister && !turnstileToken) {
       toast.error(t('auth.turnstileRequired') || 'Vui lòng xác minh bảo mật.')
       return
     }
@@ -192,7 +193,7 @@ export default function RegisterForm() {
         )}
       </div>
 
-      <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
+      <TurnstileWidget page='register' onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
       <button type='submit' className='login-submit-btn' disabled={isPending}>
         {isPending ? t('auth.buttons.loading') : t('auth.register')}

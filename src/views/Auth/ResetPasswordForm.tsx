@@ -13,7 +13,9 @@ import { toast } from 'react-toastify'
 import { useTranslation } from 'react-i18next'
 
 import { useModalContext } from '@/app/contexts/ModalContext'
+import { useBranding } from '@/app/contexts/BrandingContext'
 import axiosInstance from '@/libs/axios'
+import TurnstileWidget from '@/components/TurnstileWidget'
 
 interface ResetForm {
   newPassword: string
@@ -24,7 +26,10 @@ export default function ResetPasswordForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
   const { t } = useTranslation()
+  const { turnstile_enabled, turnstile_pages } = useBranding()
+  const turnstileActive = turnstile_enabled === 'true' && (turnstile_pages || ['login', 'register']).includes('reset_password')
 
   const { resetToken, resetEmail, closeAuthModal, openAuthModal } = useModalContext()
   const router = useRouter()
@@ -46,13 +51,20 @@ export default function ResetPasswordForm() {
   } = useForm<ResetForm>({ resolver: yupResolver(resetSchema) })
 
   const onSubmit = async (data: ResetForm) => {
+    if (turnstileActive && !turnstileToken) {
+      toast.error(t('auth.turnstileRequired') || 'Vui lòng xác minh bảo mật.')
+
+      return
+    }
+
     setIsLoading(true)
 
     const res = await axiosInstance.post('/reset-password', {
       email: resetEmail,
       token: resetToken,
       password: data.newPassword,
-      password_confirmation: data.confirmPassword
+      password_confirmation: data.confirmPassword,
+      turnstile_token: turnstileToken || undefined
     })
 
     if (!res.data.success) throw new Error()
@@ -107,6 +119,7 @@ export default function ResetPasswordForm() {
         {errors.confirmPassword && <p className='text-red-500 text-sm'>{errors.confirmPassword.message}</p>}
       </div>
 
+      <TurnstileWidget page='reset_password' onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
       <div className='mb-3'>
         {isLoading ? (
           <button type='button' disabled={isLoading} className='login-submit-btn'>

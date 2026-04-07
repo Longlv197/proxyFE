@@ -12,6 +12,8 @@ import { useTranslation } from 'react-i18next'
 
 import axiosInstance from '@/libs/axios'
 import { useModalContext } from '@/app/contexts/ModalContext'
+import { useBranding } from '@/app/contexts/BrandingContext'
+import TurnstileWidget from '@/components/TurnstileWidget'
 
 interface ForgotForm {
   email: string
@@ -19,8 +21,11 @@ interface ForgotForm {
 
 export default function ForgotPasswordForm() {
   const [isLoading, setIsLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
   const { openAuthModal } = useModalContext()
   const { t } = useTranslation()
+  const { turnstile_enabled, turnstile_pages } = useBranding()
+  const turnstileActive = turnstile_enabled === 'true' && (turnstile_pages || ['login', 'register']).includes('forgot_password')
 
   const forgotSchema = yup.object({
     email: yup.string().required(t('auth.validation.emailRequired')).email(t('auth.validation.emailInvalid'))
@@ -34,10 +39,19 @@ export default function ForgotPasswordForm() {
   } = useForm<ForgotForm>({ resolver: yupResolver(forgotSchema) })
 
   const onSubmit = async (data: ForgotForm) => {
+    if (turnstileActive && !turnstileToken) {
+      toast.error(t('auth.turnstileRequired') || 'Vui lòng xác minh bảo mật.')
+
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const res = await axiosInstance.post('/forgot-password', { email: data.email })
+      const res = await axiosInstance.post('/forgot-password', {
+        email: data.email,
+        turnstile_token: turnstileToken || undefined
+      })
 
       if (!res.data.success) throw new Error()
       toast.success(t('auth.forgotPasswordSuccess'))
@@ -63,6 +77,7 @@ export default function ForgotPasswordForm() {
         />
         {errors.email && <p className='text-red-500 text-sm mt-1'>{errors.email.message}</p>}
       </div>
+      <TurnstileWidget page='forgot_password' onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
       <div className='mb-3'>
         {isLoading ? (
           <button type='button' disabled={isLoading} className='login-submit-btn'>

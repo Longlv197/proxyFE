@@ -18,10 +18,14 @@ declare global {
 interface TurnstileWidgetProps {
   onVerify: (token: string) => void
   onExpire?: () => void
+  /** Page identifier — widget chỉ hiển thị nếu page nằm trong turnstile_pages */
+  page?: 'login' | 'register' | 'recharge' | 'forgot_password' | 'reset_password'
 }
 
-export default function TurnstileWidget({ onVerify, onExpire }: TurnstileWidgetProps) {
-  const { turnstile_enabled, turnstile_site_key } = useBranding()
+export default function TurnstileWidget({ onVerify, onExpire, page }: TurnstileWidgetProps) {
+  const { turnstile_enabled, turnstile_site_key, turnstile_pages } = useBranding()
+  const pages = turnstile_pages || ['login', 'register']
+  const enabledForPage = !page || pages.includes(page)
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
   const onVerifyRef = useRef(onVerify)
@@ -31,7 +35,7 @@ export default function TurnstileWidget({ onVerify, onExpire }: TurnstileWidgetP
   onExpireRef.current = onExpire
 
   useEffect(() => {
-    if (turnstile_enabled !== 'true' || !turnstile_site_key) return
+    if (turnstile_enabled !== 'true' || !turnstile_site_key || !enabledForPage) return
 
     const renderWidget = () => {
       if (!containerRef.current || !window.turnstile || widgetIdRef.current) return
@@ -70,9 +74,9 @@ export default function TurnstileWidget({ onVerify, onExpire }: TurnstileWidgetP
         widgetIdRef.current = null
       }
     }
-  }, [turnstile_enabled, turnstile_site_key])
+  }, [turnstile_enabled, turnstile_site_key, enabledForPage])
 
-  if (turnstile_enabled !== 'true' || !turnstile_site_key) return null
+  if (turnstile_enabled !== 'true' || !turnstile_site_key || !enabledForPage) return null
 
   return (
     <div style={{ margin: '8px 0' }}>

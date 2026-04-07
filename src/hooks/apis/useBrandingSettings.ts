@@ -97,6 +97,7 @@ export interface BrandingSettings {
   // Cloudflare Turnstile
   turnstile_enabled: string | null
   turnstile_site_key: string | null
+  turnstile_pages: string[] | null
 
   // Mode
   site_mode: SiteMode | null

@@ -225,7 +225,8 @@ const defaultBranding: BrandingSettings = {
   landing_hero: null,
   menu_labels: null,
   turnstile_enabled: null,
-  turnstile_site_key: null
+  turnstile_site_key: null,
+  turnstile_pages: null
 }
 
 const defaultBank: BankSettings = {
@@ -357,6 +358,7 @@ export default function SiteSettingsForm() {
         menu_labels: brandingData.menu_labels ?? null,
         turnstile_enabled: brandingData.turnstile_enabled ?? null,
         turnstile_site_key: brandingData.turnstile_site_key ?? null,
+        turnstile_pages: brandingData.turnstile_pages ?? ['login', 'register'],
         turnstile_secret_key: (brandingData as any).turnstile_secret_key ?? null,
         turnstile_secret_key_saved: (brandingData as any).turnstile_secret_key_saved ?? false
       })
@@ -3122,7 +3124,7 @@ export default function SiteSettingsForm() {
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ width: 160, fontSize: 13, color: '#64748b' }}>Secret Key</span>
                   <TextField
                     size='small'
@@ -3131,6 +3133,44 @@ export default function SiteSettingsForm() {
                     onChange={e => updateBrandingField('turnstile_secret_key' as any, e.target.value)}
                     sx={{ flex: 1, maxWidth: 400 }}
                   />
+                </div>
+
+                {/* Chọn page hiển thị Turnstile */}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <span style={{ width: 160, fontSize: 13, color: '#64748b', paddingTop: 4 }}>Hiển thị tại</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {[
+                      { value: 'login', label: 'Trang đăng nhập' },
+                      { value: 'register', label: 'Trang đăng ký' },
+                      { value: 'forgot_password', label: 'Trang quên mật khẩu' },
+                      { value: 'reset_password', label: 'Trang đặt lại mật khẩu' },
+                      { value: 'recharge', label: 'Trang nạp tiền' }
+                    ].map(page => {
+                      const pages = branding.turnstile_pages || []
+                      const checked = pages.includes(page.value)
+
+                      return (
+                        <label key={page.value} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                          <input
+                            type='checkbox'
+                            checked={checked}
+                            onChange={e => {
+                              const next = e.target.checked
+                                ? [...pages, page.value]
+                                : pages.filter(p => p !== page.value)
+
+                              updateBrandingField('turnstile_pages', next)
+                            }}
+                            style={{ width: 16, height: 16, accentColor: '#2563eb' }}
+                          />
+                          <span style={{ fontSize: 13, color: checked ? '#1e293b' : '#94a3b8' }}>{page.label}</span>
+                        </label>
+                      )
+                    })}
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                      Chỉ các trang được chọn mới hiển thị widget xác minh
+                    </span>
+                  </div>
                 </div>
 
                 {branding.turnstile_enabled === 'true' && !branding.turnstile_site_key && (

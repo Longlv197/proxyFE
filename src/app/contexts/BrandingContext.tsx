@@ -85,7 +85,8 @@ const defaultBranding: BrandingContextValue = {
   landing_hero: null,
   menu_labels: null,
   turnstile_enabled: null,
-  turnstile_site_key: null
+  turnstile_site_key: null,
+  turnstile_pages: null
 }
 
 const BrandingContext = createContext<BrandingContextValue>(defaultBranding)
@@ -163,7 +164,8 @@ export function BrandingProvider({
       landing_hero: data?.landing_hero ?? null,
       menu_labels: data?.menu_labels ?? null,
       turnstile_enabled: data?.turnstile_enabled ?? null,
-      turnstile_site_key: data?.turnstile_site_key ?? null
+      turnstile_site_key: data?.turnstile_site_key ?? null,
+      turnstile_pages: data?.turnstile_pages ?? null
     }),
     [data, isLoading, siteMode]
   )

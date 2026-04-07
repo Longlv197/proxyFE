@@ -42,7 +42,8 @@ export default function LoginForm() {
   const params = useParams()
   const pathname = usePathname()
   const { closeAuthModal, setAuthModalMode, referralCode } = useModalContext()
-  const { turnstile_enabled } = useBranding()
+  const { turnstile_enabled, turnstile_pages } = useBranding()
+  const turnstileActiveForLogin = turnstile_enabled === 'true' && (turnstile_pages || ['login', 'register']).includes('login')
 
   const { lang: locale } = params
 
@@ -65,7 +66,7 @@ export default function LoginForm() {
   })
 
   const onSubmit = async (data: LoginFormInputs) => {
-    if (turnstile_enabled === 'true' && !turnstileToken) {
+    if (turnstileActiveForLogin && !turnstileToken) {
       toast.error(t('auth.turnstileRequired') || 'Vui lòng xác minh bảo mật.')
       return
     }
@@ -179,7 +180,7 @@ export default function LoginForm() {
           </button>
         </div>
 
-        <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
+        <TurnstileWidget page='login' onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
         {loading ? (
           <button type='button' disabled={loading} className='login-submit-btn'>

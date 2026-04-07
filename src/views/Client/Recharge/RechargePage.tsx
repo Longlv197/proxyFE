@@ -43,7 +43,8 @@ export default function RechargePage() {
   const dispatch = useDispatch<AppDispatch>()
   const params = useParams()
   const branding = useBranding()
-  const { turnstile_enabled } = branding
+  const { turnstile_enabled, turnstile_pages } = branding
+  const turnstileActiveForRecharge = turnstile_enabled === 'true' && (turnstile_pages || ['login', 'register']).includes('recharge')
   const denominations = useMemo(() => {
     if (branding?.deposit_preset_amounts?.length) {
       return branding.deposit_preset_amounts.map((a: number) => String(a))
@@ -185,7 +186,7 @@ export default function RechargePage() {
   const handleCreateQrCode = async () => {
     if (hasPending) return
 
-    if (turnstile_enabled === 'true' && !turnstileToken) {
+    if (turnstileActiveForRecharge && !turnstileToken) {
       toast.error('Vui lòng xác minh bảo mật trước khi tạo QR.')
 
       return
@@ -615,7 +616,7 @@ export default function RechargePage() {
                       </Box>
                     </Box>
 
-                    <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
+                    <TurnstileWidget page='recharge' onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
                     {/* CTA */}
                     <Button
