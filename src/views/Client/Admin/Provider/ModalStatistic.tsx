@@ -2,15 +2,13 @@ import { useProviderStatistics } from '@/hooks/apis/useProviders'
 import { Box, Dialog, DialogContent, DialogTitle, Paper, Typography } from '@mui/material'
 import {
   BarChart,
-  LineChart,
   CartesianGrid,
   ResponsiveContainer,
   XAxis,
   YAxis,
   Tooltip as RechartsTooltip,
   Legend,
-  Bar,
-  Line
+  Bar
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import DialogCloseButton from '@/components/modals/DialogCloseButton'
@@ -200,20 +198,25 @@ export default function ModalStatistic({ onClose, open, providerId }: ModalStati
                     const axisSx = { fontSize: '10px' }
                     const legendSx = { fontSize: '10px', paddingTop: '6px' }
 
-                    console.log(statsData.trend)
                     return (
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        {/* Chart 1: Thực tế vs Dự kiến */}
+                        {/* Chart 1: Doanh thu thực tế & Dự kiến */}
                         <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
-                          <Typography sx={{ fontSize: 12, fontWeight: 600, mb: 1, color: '#475569' }}>
+                          <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 0.5, color: '#1e293b' }}>
                             Doanh thu thực tế & Dự kiến
                           </Typography>
-                          <Box sx={{ width: '100%', height: 300 }}>
+                          <Typography sx={{ fontSize: 11, color: '#94a3b8', mb: 1.5 }}>
+                            So sánh doanh thu, chi phí, lợi nhuận giữa đơn hoàn thành và đơn đang sử dụng
+                          </Typography>
+                          <Box sx={{ width: '100%', height: 320 }}>
                             <ResponsiveContainer>
                               <BarChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                                <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
+                                <CartesianGrid strokeDasharray='3 3' opacity={0.4} />
                                 <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
-                                <YAxis style={axisSx} />
+                                <YAxis
+                                  style={axisSx}
+                                  tickFormatter={(v: number) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}tr` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+                                />
                                 <RechartsTooltip
                                   labelFormatter={fmtLabel}
                                   formatter={(value: any, name: string) => [
@@ -222,15 +225,10 @@ export default function ModalStatistic({ onClose, open, providerId }: ModalStati
                                   ]}
                                 />
                                 <Legend wrapperStyle={legendSx} />
-                                <Bar name='DT thực tế' dataKey='actual_revenue' fill='#16a34a' radius={[4, 4, 0, 0]} />
-                                <Bar
-                                  name='DT dự kiến'
-                                  dataKey='expected_revenue'
-                                  fill='#f59e0b'
-                                  radius={[4, 4, 0, 0]}
-                                />
-                                <Bar name='CP thực tế' dataKey='actual_cost' fill='#ef4444' radius={[4, 4, 0, 0]} />
-                                <Bar name='LN thực tế' dataKey='actual_profit' fill='#2563eb' radius={[4, 4, 0, 0]} />
+                                <Bar name='Doanh thu (thực tế)' dataKey='actual_revenue' fill='#16a34a' radius={[4, 4, 0, 0]} />
+                                <Bar name='Doanh thu (dự kiến)' dataKey='expected_revenue' fill='#f59e0b' radius={[4, 4, 0, 0]} />
+                                <Bar name='Chi phí' dataKey='actual_cost' fill='#ef4444' radius={[4, 4, 0, 0]} />
+                                <Bar name='Lợi nhuận' dataKey='actual_profit' fill='#2563eb' radius={[4, 4, 0, 0]} />
                               </BarChart>
                             </ResponsiveContainer>
                           </Box>
@@ -238,79 +236,50 @@ export default function ModalStatistic({ onClose, open, providerId }: ModalStati
 
                         {/* Chart 2: Đơn hàng & Gia hạn & Proxy */}
                         <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
-                          <Typography sx={{ fontSize: 12, fontWeight: 600, mb: 1, color: '#475569' }}>
+                          <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 0.5, color: '#1e293b' }}>
                             Đơn hàng & Gia hạn & Proxy
+                          </Typography>
+                          <Typography sx={{ fontSize: 11, color: '#94a3b8', mb: 1.5 }}>
+                            Số lượng đơn mua mới, gia hạn và proxy đang hoạt động theo ngày
                           </Typography>
                           <Box sx={{ width: '100%', height: 300 }}>
                             <ResponsiveContainer>
-                              <LineChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                                <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
+                              <BarChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                                <CartesianGrid strokeDasharray='3 3' opacity={0.4} />
                                 <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
-                                <YAxis style={axisSx} />
+                                <YAxis style={axisSx} allowDecimals={false} />
                                 <RechartsTooltip labelFormatter={fmtLabel} />
                                 <Legend wrapperStyle={legendSx} />
-                                <Line
-                                  name='Đơn mua'
-                                  type='monotone'
-                                  dataKey='total_orders'
-                                  stroke='#ff9800'
-                                  strokeWidth={2}
-                                  dot={{ r: 3 }}
-                                />
-                                <Line
-                                  name='Gia hạn'
-                                  type='monotone'
-                                  dataKey='renewal_orders'
-                                  stroke='#8b5cf6'
-                                  strokeWidth={2}
-                                  dot={{ r: 3 }}
-                                />
-                                <Line
-                                  name='Proxy hoạt động'
-                                  type='monotone'
-                                  dataKey='active_proxies'
-                                  stroke='#6366f1'
-                                  strokeWidth={2}
-                                  dot={{ r: 3 }}
-                                />
-                              </LineChart>
+                                <Bar name='Đơn mua' dataKey='total_orders' fill='#ff9800' radius={[4, 4, 0, 0]} />
+                                <Bar name='Gia hạn' dataKey='renewal_orders' fill='#8b5cf6' radius={[4, 4, 0, 0]} />
+                                <Bar name='Proxy hoạt động' dataKey='active_proxies' fill='#6366f1' radius={[4, 4, 0, 0]} />
+                              </BarChart>
                             </ResponsiveContainer>
                           </Box>
                         </Paper>
 
                         {/* Chart 3: Margin % + Tỷ lệ thành công */}
                         <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
-                          <Typography sx={{ fontSize: 12, fontWeight: 600, mb: 1, color: '#475569' }}>
+                          <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 0.5, color: '#1e293b' }}>
                             Biên lợi nhuận & Tỷ lệ thành công
+                          </Typography>
+                          <Typography sx={{ fontSize: 11, color: '#94a3b8', mb: 1.5 }}>
+                            Phần trăm margin và tỷ lệ đơn thành công theo ngày
                           </Typography>
                           <Box sx={{ width: '100%', height: 280 }}>
                             <ResponsiveContainer>
-                              <LineChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                                <CartesianGrid strokeDasharray='3 3' opacity={0.5} />
+                              <BarChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                                <CartesianGrid strokeDasharray='3 3' opacity={0.4} />
                                 <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
-                                <YAxis unit='%' style={axisSx} />
+                                <YAxis unit='%' style={axisSx} domain={[0, 100]} />
                                 <RechartsTooltip
                                   labelFormatter={fmtLabel}
                                   formatter={(value: any, name: string) => [`${value}%`, name]}
                                 />
                                 <Legend wrapperStyle={legendSx} />
-                                <Line
-                                  name='Margin'
-                                  type='monotone'
-                                  dataKey='margin_percent'
-                                  stroke='#2563eb'
-                                  strokeWidth={2}
-                                  dot={{ r: 3 }}
-                                />
-                                <Line
-                                  name='Tỷ lệ thành công'
-                                  type='monotone'
-                                  dataKey='success_rate'
-                                  stroke='#16a34a'
-                                  strokeWidth={2}
-                                  dot={{ r: 3 }}
-                                />
-                              </LineChart>
+                                <Bar name='Biên lợi nhuận (Margin)' dataKey='margin_percent' fill='#2563eb' radius={[4, 4, 0, 0]} />
+                                <Bar name='Tỷ lệ thành công' dataKey='success_rate' fill='#16a34a' radius={[4, 4, 0, 0]} />
+                              </BarChart>
                             </ResponsiveContainer>
                           </Box>
                         </Paper>
