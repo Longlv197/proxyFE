@@ -407,8 +407,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <div className='perunit-tiers'>
                   {/* Mốc 1 (không CK) */}
                   {(() => {
-                    // Giới hạn hiển thị max 5 tiers để tránh quá tải, ưu tiên các tiers có min thấp hơn 5
-                    const limit5Tiers = discountTiers.filter(t => parseInt(t.min) <= 5)
+                    // Lấy ra 5 tier đầu để hiển thị, nếu nhiều hơn 5 thì user có thể tự nhập ở input bên dưới
+                    const limit5Tiers = discountTiers.slice(0, 5)
                     const unitLabel = timeUnit === 'month' ? 'tháng' : 'ngày'
                     return (
                       <>
