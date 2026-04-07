@@ -17,7 +17,7 @@ export const useProviderSettings = () => {
   return useQuery({
     queryKey: ['supplierSettings'],
     queryFn: async () => {
-      const res = await axiosAuth.get('/admin/provider-settings')
+      const res = await axiosAuth.get('/admin/supplier-settings')
 
       return (res?.data?.data ?? {}) as SupplierSettings
     },
@@ -35,7 +35,7 @@ export const useupdateProviderSettings = () => {
       provider_api_url: string
       provider_api_key: string
     }) => {
-      const res = await axiosAuth.post('/admin/update-provider-settings', data)
+      const res = await axiosAuth.post('/admin/update-supplier-settings', data)
 
       return res?.data
     },
