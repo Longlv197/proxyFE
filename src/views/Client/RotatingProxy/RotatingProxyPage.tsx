@@ -845,16 +845,21 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                 {filterOptions.countries.map((c: any) => (
                   <Chip
                     key={c.code}
-                    icon={<img src={`https://flagcdn.com/w40/${fixCountryCode(c.code)}.png`} alt={c.code} style={{ width: 20, height: 15, objectFit: 'cover', borderRadius: 2, marginLeft: 8 }} />}
-                    label={c.name}
+                    label={
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {c.code.split(',').map((cc: string) => (
+                          <img key={cc} src={`https://flagcdn.com/w40/${fixCountryCode(cc.trim())}.png`} alt={cc.trim()} style={{ width: 20, height: 15, objectFit: 'cover', borderRadius: 2 }} />
+                        ))}
+                        <span>{c.name}</span>
+                      </span>
+                    }
                     variant={selectedCountry === c.code ? 'filled' : 'outlined'}
                     onClick={() => setSelectedCountry(selectedCountry === c.code ? '' : c.code)}
                     sx={{
-                      fontWeight: 600, fontSize: '13px', height: '36px', borderRadius: '20px', pl: 0.5,
+                      fontWeight: 600, fontSize: '13px', height: '36px', borderRadius: '20px',
                       ...(selectedCountry === c.code
                         ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
                         : { borderColor: '#e2e8f0', color: '#334155', bgcolor: '#fff', '&:hover': { bgcolor: '#f8fafc', borderColor: '#94a3b8' } }),
-                      '& .MuiChip-icon': { mr: '-2px' }
                     }}
                   />
                 ))}

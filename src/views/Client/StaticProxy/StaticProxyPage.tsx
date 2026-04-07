@@ -34,9 +34,11 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
     const versions = [...new Set(data.map((p: any) => p.ip_version?.toLowerCase()).filter(Boolean))]
     const proxyTypes = [...new Set(data.map((p: any) => p.proxy_type?.toLowerCase()).filter(Boolean))]
 
-    const countrySet = [...new Set(
-      data.map((p: any) => fixCountryCode((p.country || p.country_code || '').trim()).toUpperCase()).filter(Boolean)
-    )]
+    const countrySet = [
+      ...new Set(
+        data.map((p: any) => fixCountryCode((p.country || p.country_code || '').trim()).toUpperCase()).filter(Boolean)
+      )
+    ]
 
     const countryOptions = countrySet.map(code => {
       const found = countries?.find((c: any) => fixCountryCode(c.code).toUpperCase() === code)
@@ -81,249 +83,358 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
 
   return (
     <div className='flex flex-col'>
-        {/* Filter bar */}
-        <Box
-          sx={{
-            mb: 2.5,
-            borderRadius: '12px',
-            border: '1px solid #e2e8f0',
-            background: 'white',
-            overflow: 'hidden'
+      {/* Filter bar */}
+      <Box
+        sx={{
+          mb: 2.5,
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
+          background: 'white',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            borderBottom: '1px solid #f1f5f9',
+            background: '#f8fafc'
           }}
         >
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <SlidersHorizontal size={16} color='#475569' />
-              <span style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>Bộ lọc</span>
-              <span style={{ fontSize: '13px', color: '#94a3b8' }}>({filteredProviders?.length || 0}/{data?.length || 0})</span>
-            </div>
-            {hasActiveFilter && (
-              <Chip
-                icon={<X size={14} />}
-                label='Xoá bộ lọc'
-                onClick={clearAllFilters}
-                size='small'
-                sx={{
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  height: '28px',
-                  borderRadius: '6px',
-                  bgcolor: '#fef2f2',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca',
-                  '&:hover': { bgcolor: '#fee2e2' },
-                  '& .MuiChip-icon': { color: '#dc2626' }
-                }}
-              />
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <SlidersHorizontal size={16} color='#475569' />
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>Bộ lọc</span>
+            <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+              ({filteredProviders?.length || 0}/{data?.length || 0})
+            </span>
           </div>
+          {hasActiveFilter && (
+            <Chip
+              icon={<X size={14} />}
+              label='Xoá bộ lọc'
+              onClick={clearAllFilters}
+              size='small'
+              sx={{
+                fontWeight: 600,
+                fontSize: '12px',
+                height: '28px',
+                borderRadius: '6px',
+                bgcolor: '#fef2f2',
+                color: '#dc2626',
+                border: '1px solid #fecaca',
+                '&:hover': { bgcolor: '#fee2e2' },
+                '& .MuiChip-icon': { color: '#dc2626' }
+              }}
+            />
+          )}
+        </div>
 
-          {/* Filter groups */}
-          <div style={{ padding: '14px 16px', display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-start' }}>
-            {filterOptions.versions.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                  <Wifi size={14} color='#64748b' />
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Phiên bản IP
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <Chip
-                    label='Tất cả'
-                    variant={!selectedVersion ? 'filled' : 'outlined'}
-                    onClick={() => setSelectedVersion('')}
-                    sx={{
-                      fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
-                      ...(!selectedVersion
-                        ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                        : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
-                    }}
-                  />
-                  {filterOptions.versions.map((v: string) => (
-                    <Chip
-                      key={v}
-                      label={versionLabel(v)}
-                      variant={selectedVersion === v ? 'filled' : 'outlined'}
-                      onClick={() => setSelectedVersion(selectedVersion === v ? '' : v)}
-                      sx={{
-                        fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
-                        ...(selectedVersion === v
-                          ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                          : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {filterOptions.proxyTypes.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                  <Filter size={14} color='#64748b' />
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Loại proxy
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <Chip
-                    label='Tất cả'
-                    variant={!selectedProxyType ? 'filled' : 'outlined'}
-                    onClick={() => setSelectedProxyType('')}
-                    sx={{
-                      fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
-                      ...(!selectedProxyType
-                        ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                        : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
-                    }}
-                  />
-                  {filterOptions.proxyTypes.map((t: string) => (
-                    <Chip
-                      key={t}
-                      label={proxyTypeLabel(t)}
-                      variant={selectedProxyType === t ? 'filled' : 'outlined'}
-                      onClick={() => setSelectedProxyType(selectedProxyType === t ? '' : t)}
-                      sx={{
-                        fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
-                        ...(selectedProxyType === t
-                          ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                          : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Trạng thái */}
+        {/* Filter groups */}
+        <div style={{ padding: '14px 16px', display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-start' }}>
+          {filterOptions.versions.length > 0 && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                <ShoppingCart size={14} color='#64748b' />
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Trạng thái
+                <Wifi size={14} color='#64748b' />
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}
+                >
+                  Phiên bản IP
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 <Chip
                   label='Tất cả'
-                  variant={!showActiveOnly ? 'filled' : 'outlined'}
-                  onClick={() => setShowActiveOnly(false)}
+                  variant={!selectedVersion ? 'filled' : 'outlined'}
+                  onClick={() => setSelectedVersion('')}
                   sx={{
-                    fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
-                    ...(!showActiveOnly
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    ...(!selectedVersion
                       ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                      : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
+                      : {
+                          borderColor: '#cbd5e1',
+                          color: '#334155',
+                          '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                        })
                   }}
                 />
-                <Chip
-                  label='Đang bán'
-                  variant={showActiveOnly ? 'filled' : 'outlined'}
-                  onClick={() => setShowActiveOnly(true)}
-                  sx={{
-                    fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
-                    ...(showActiveOnly
-                      ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                      : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
-                  }}
-                />
-              </div>
-            </div>
-
-            {filterOptions.countries.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                  <Globe size={14} color='#64748b' />
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Quốc gia
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {filterOptions.versions.map((v: string) => (
                   <Chip
-                    label='Tất cả'
-                    variant={!selectedCountry ? 'filled' : 'outlined'}
-                    onClick={() => setSelectedCountry('')}
+                    key={v}
+                    label={versionLabel(v)}
+                    variant={selectedVersion === v ? 'filled' : 'outlined'}
+                    onClick={() => setSelectedVersion(selectedVersion === v ? '' : v)}
                     sx={{
-                      fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
-                      ...(!selectedCountry
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      height: '34px',
+                      borderRadius: '8px',
+                      ...(selectedVersion === v
                         ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                        : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
+                        : {
+                            borderColor: '#cbd5e1',
+                            color: '#334155',
+                            '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                          })
                     }}
                   />
-                  {filterOptions.countries.map((c: any) => (
-                    <Chip
-                      key={c.code}
-                      icon={<img src={`https://flagcdn.com/w40/${fixCountryCode(c.code)}.png`} alt={c.code} style={{ width: 20, height: 15, objectFit: 'cover', borderRadius: 2, marginLeft: 8 }} />}
-                      label={c.name}
-                      variant={selectedCountry === c.code ? 'filled' : 'outlined'}
-                      onClick={() => setSelectedCountry(selectedCountry === c.code ? '' : c.code)}
-                      sx={{
-                        fontWeight: 600, fontSize: '13px', height: '36px', borderRadius: '20px', pl: 0.5,
-                        ...(selectedCountry === c.code
-                          ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                          : { borderColor: '#e2e8f0', color: '#334155', bgcolor: '#fff', '&:hover': { bgcolor: '#f8fafc', borderColor: '#94a3b8' } }),
-                        '& .MuiChip-icon': { mr: '-2px' }
-                      }}
-                    />
-                  ))}
-                </div>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-        </Box>
+          {filterOptions.proxyTypes.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                <Filter size={14} color='#64748b' />
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}
+                >
+                  Loại proxy
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <Chip
+                  label='Tất cả'
+                  variant={!selectedProxyType ? 'filled' : 'outlined'}
+                  onClick={() => setSelectedProxyType('')}
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    ...(!selectedProxyType
+                      ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
+                      : {
+                          borderColor: '#cbd5e1',
+                          color: '#334155',
+                          '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                        })
+                  }}
+                />
+                {filterOptions.proxyTypes.map((t: string) => (
+                  <Chip
+                    key={t}
+                    label={proxyTypeLabel(t)}
+                    variant={selectedProxyType === t ? 'filled' : 'outlined'}
+                    onClick={() => setSelectedProxyType(selectedProxyType === t ? '' : t)}
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      height: '34px',
+                      borderRadius: '8px',
+                      ...(selectedProxyType === t
+                        ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
+                        : {
+                            borderColor: '#cbd5e1',
+                            color: '#334155',
+                            '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                          })
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
-        <Grid2 container columnSpacing={1.5} rowSpacing={2.5} sx={{ mt: 1 }}>
-          {filteredProviders?.length > 0 ? (
-            filteredProviders.map((provider: any, index: any) => (
-              <Grid2 key={index} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                <ProxyCard provider={provider} isFirstCard={index === 0} countries={countries} />
-              </Grid2>
-            ))
-          ) : (
-            <Grid2 size={{ xs: 12 }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: '280px',
-                  p: 4,
-                  borderRadius: '12px',
-                  border: '1px dashed #cbd5e1',
-                  background: '#f8fafc'
+          {/* Trạng thái */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <ShoppingCart size={14} color='#64748b' />
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}
               >
-                <SearchX size={48} color='#94a3b8' strokeWidth={1.5} style={{ marginBottom: '16px' }} />
-                <Typography sx={{ fontSize: '16px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                  Không tìm thấy gói proxy phù hợp
-                </Typography>
-                <Typography sx={{ fontSize: '14px', color: '#94a3b8', mb: 2 }}>
-                  Thử thay đổi bộ lọc hoặc xoá bộ lọc để xem tất cả
-                </Typography>
-                {hasActiveFilter && (
+                Trạng thái
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <Chip
+                label='Tất cả'
+                variant={!showActiveOnly ? 'filled' : 'outlined'}
+                onClick={() => setShowActiveOnly(false)}
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  height: '34px',
+                  borderRadius: '8px',
+                  ...(!showActiveOnly
+                    ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
+                    : {
+                        borderColor: '#cbd5e1',
+                        color: '#334155',
+                        '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                      })
+                }}
+              />
+              <Chip
+                label='Đang bán'
+                variant={showActiveOnly ? 'filled' : 'outlined'}
+                onClick={() => setShowActiveOnly(true)}
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  height: '34px',
+                  borderRadius: '8px',
+                  ...(showActiveOnly
+                    ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
+                    : {
+                        borderColor: '#cbd5e1',
+                        color: '#334155',
+                        '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                      })
+                }}
+              />
+            </div>
+          </div>
+
+          {filterOptions.countries.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                <Globe size={14} color='#64748b' />
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}
+                >
+                  Quốc gia
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <Chip
+                  label='Tất cả'
+                  variant={!selectedCountry ? 'filled' : 'outlined'}
+                  onClick={() => setSelectedCountry('')}
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    ...(!selectedCountry
+                      ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
+                      : {
+                          borderColor: '#cbd5e1',
+                          color: '#334155',
+                          '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                        })
+                  }}
+                />
+                {filterOptions.countries.map((c: any) => (
                   <Chip
-                    icon={<X size={14} />}
-                    label='Xoá tất cả bộ lọc'
-                    onClick={clearAllFilters}
+                    key={c.code}
+                    label={
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {c.code.split(',').map((cc: string) => (
+                          <img
+                            key={cc}
+                            src={`https://flagcdn.com/w40/${fixCountryCode(cc.trim())}.png`}
+                            alt={cc.trim()}
+                            style={{ width: 20, height: 15, objectFit: 'cover', borderRadius: 2 }}
+                          />
+                        ))}
+                        <span>{c.name}</span>
+                      </span>
+                    }
+                    variant={selectedCountry === c.code ? 'filled' : 'outlined'}
+                    onClick={() => setSelectedCountry(selectedCountry === c.code ? '' : c.code)}
                     sx={{
                       fontWeight: 600,
                       fontSize: '13px',
                       height: '36px',
-                      borderRadius: '8px',
-                      bgcolor: '#1e293b',
-                      color: '#fff',
-                      '&:hover': { bgcolor: '#334155' },
-                      '& .MuiChip-icon': { color: '#fff' }
+                      borderRadius: '20px',
+                      ...(selectedCountry === c.code
+                        ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
+                        : {
+                            borderColor: '#e2e8f0',
+                            color: '#334155',
+                            bgcolor: '#fff',
+                            '&:hover': { bgcolor: '#f8fafc', borderColor: '#94a3b8' }
+                          }),
                     }}
                   />
-                )}
-              </Box>
-            </Grid2>
+                ))}
+              </div>
+            </div>
           )}
-        </Grid2>
+        </div>
+      </Box>
+
+      <Grid2 container columnSpacing={1.5} rowSpacing={2.5} sx={{ mt: 1 }}>
+        {filteredProviders?.length > 0 ? (
+          filteredProviders.map((provider: any, index: any) => (
+            <Grid2 key={index} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+              <ProxyCard provider={provider} isFirstCard={index === 0} countries={countries} />
+            </Grid2>
+          ))
+        ) : (
+          <Grid2 size={{ xs: 12 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '280px',
+                p: 4,
+                borderRadius: '12px',
+                border: '1px dashed #cbd5e1',
+                background: '#f8fafc'
+              }}
+            >
+              <SearchX size={48} color='#94a3b8' strokeWidth={1.5} style={{ marginBottom: '16px' }} />
+              <Typography sx={{ fontSize: '16px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
+                Không tìm thấy gói proxy phù hợp
+              </Typography>
+              <Typography sx={{ fontSize: '14px', color: '#94a3b8', mb: 2 }}>
+                Thử thay đổi bộ lọc hoặc xoá bộ lọc để xem tất cả
+              </Typography>
+              {hasActiveFilter && (
+                <Chip
+                  icon={<X size={14} />}
+                  label='Xoá tất cả bộ lọc'
+                  onClick={clearAllFilters}
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    bgcolor: '#1e293b',
+                    color: '#fff',
+                    '&:hover': { bgcolor: '#334155' },
+                    '& .MuiChip-icon': { color: '#fff' }
+                  }}
+                />
+              )}
+            </Box>
+          </Grid2>
+        )}
+      </Grid2>
     </div>
   )
 }
