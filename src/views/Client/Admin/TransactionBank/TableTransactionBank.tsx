@@ -234,7 +234,12 @@ export default function TableTransactionBank() {
 
   // Data
   const { data: apiResponse, isLoading, isFetching } = useTransactionBank(queryFilters)
-  const summaryParams = useMemo(() => getDatePreset(datePreset), [datePreset])
+  const summaryParams = useMemo(() =>
+    datePreset === 'custom' && startDate && endDate
+      ? { start: fmtDate(startDate), end: fmtDate(endDate) }
+      : getDatePreset(datePreset),
+    [datePreset, startDate, endDate]
+  )
   const { data: summary } = useTransactionBankSummary(summaryParams)
 
   const dataList = useMemo(() => apiResponse?.data ?? [], [apiResponse])
