@@ -595,7 +595,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       request_limit: data.request_limit || '',
       concurrent_connections: data.concurrent_connections ? parseInt(data.concurrent_connections) : null,
       min_quantity: data.min_quantity || 1,
-      max_quantity: data.max_quantity || 100
+      max_quantity: data.max_quantity || 100,
+      status: data.status || 'active',
     }
 
     // Luôn gửi metadata — cả tạo mới và cập nhật
@@ -1070,7 +1071,14 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                   {/* Per_unit: giá nhập + giá bán / đơn vị */}
                   {pricingMode === 'per_unit' && (selectedProduct || isEditMode) && (
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, marginBottom: 8 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: 8
+                        }}
+                      >
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
                           Giá theo {timeUnit === 'month' ? 'tháng' : 'ngày'}
                         </div>
@@ -1086,30 +1094,49 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                     setCostPerUnit(String(parseInt(data.price_per_unit) || 0))
                                   }
                                   if (data?.custom_fields) {
-                                    setPurchaseOptions(data.custom_fields.map((f: any) => ({
-                                      key: f.key || '', param_name: f.param_name || f.key || '',
-                                      label: f.label || '', type: f.type || 'select',
-                                      required: f.required || false, default: f.default || '',
-                                      options: f.options || [{ value: '', label: '' }]
-                                    })))
+                                    setPurchaseOptions(
+                                      data.custom_fields.map((f: any) => ({
+                                        key: f.key || '',
+                                        param_name: f.param_name || f.key || '',
+                                        label: f.label || '',
+                                        type: f.type || 'select',
+                                        required: f.required || false,
+                                        default: f.default || '',
+                                        options: f.options || [{ value: '', label: '' }]
+                                      }))
+                                    )
                                   }
-                                  if (data?.allow_custom_auth !== undefined) setAllowCustomAuth(!!data.allow_custom_auth)
+                                  if (data?.allow_custom_auth !== undefined)
+                                    setAllowCustomAuth(!!data.allow_custom_auth)
                                   setSyncStatus('done')
                                   setTimeout(() => setSyncStatus('idle'), 2000)
                                 },
-                                onError: () => { setSyncStatus('error'); setTimeout(() => setSyncStatus('idle'), 2000) },
+                                onError: () => {
+                                  setSyncStatus('error')
+                                  setTimeout(() => setSyncStatus('idle'), 2000)
+                                }
                               })
                             }}
                             disabled={syncStatus === 'loading'}
                             style={{
-                              fontSize: '11.5px', padding: '4px 10px', borderRadius: 6, border: '1px solid',
-                              cursor: syncStatus === 'loading' ? 'wait' : 'pointer', fontWeight: 600,
-                              background: syncStatus === 'done' ? '#f0fdf4' : syncStatus === 'error' ? '#fef2f2' : '#eff6ff',
+                              fontSize: '11.5px',
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              border: '1px solid',
+                              cursor: syncStatus === 'loading' ? 'wait' : 'pointer',
+                              fontWeight: 600,
+                              background:
+                                syncStatus === 'done' ? '#f0fdf4' : syncStatus === 'error' ? '#fef2f2' : '#eff6ff',
                               color: syncStatus === 'done' ? '#16a34a' : syncStatus === 'error' ? '#ef4444' : '#2563eb',
-                              borderColor: syncStatus === 'done' ? '#bbf7d0' : syncStatus === 'error' ? '#fecaca' : '#3b82f6',
+                              borderColor:
+                                syncStatus === 'done' ? '#bbf7d0' : syncStatus === 'error' ? '#fecaca' : '#3b82f6'
                             }}
                           >
-                            {syncStatus === 'loading' ? 'Đang đồng bộ...' : syncStatus === 'done' ? '✓ Đã đồng bộ' : '↻ Đồng bộ giá & cấu hình'}
+                            {syncStatus === 'loading'
+                              ? 'Đang đồng bộ...'
+                              : syncStatus === 'done'
+                                ? '✓ Đã đồng bộ'
+                                : '↻ Đồng bộ giá & cấu hình'}
                           </button>
                         )}
                       </div>
@@ -1572,9 +1599,12 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                         if (product?.custom_fields && Array.isArray(product.custom_fields)) {
                           setPurchaseOptions(
                             product.custom_fields.map((f: any) => ({
-                              key: f.key || '', param_name: f.param_name || f.key || '',
-                              label: f.label || '', type: f.type || 'select',
-                              required: f.required || false, default: f.default || '',
+                              key: f.key || '',
+                              param_name: f.param_name || f.key || '',
+                              label: f.label || '',
+                              type: f.type || 'select',
+                              required: f.required || false,
+                              default: f.default || '',
                               options: f.options || [{ value: '', label: '' }]
                             }))
                           )
@@ -2493,6 +2523,24 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
                   {/* Cho phép mua + Min/Max */}
                   <Grid2 container spacing={1.5} alignItems='center'>
+                    <Grid2 size={{ xs: 4 }}>
+                      <Controller
+                        name='status'
+                        control={control}
+                        render={({ field }) => (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={field.value === 'active'}
+                                onChange={e => field.onChange(e.target.checked ? 'active' : 'inactive')}
+                                color='success'
+                              />
+                            }
+                            label='Trạng thái'
+                          />
+                        )}
+                      />
+                    </Grid2>
                     <Grid2 size={{ xs: 4 }}>
                       <Controller
                         name='is_purchasable'

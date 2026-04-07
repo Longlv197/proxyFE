@@ -5,20 +5,26 @@ import { useState, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 
+import { RefreshCw, Shield, Copy, Check, ExternalLink, Settings2, List, X, Loader2, Download } from 'lucide-react'
 import {
-  RefreshCw,
-  Shield,
-  Copy,
-  Check,
-  ExternalLink,
-  Settings2,
-  List,
-  X,
-  Loader2,
-  Download
-} from 'lucide-react'
-import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type ColumnDef } from '@tanstack/react-table'
-import { Box, Typography, MenuItem, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material'
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef
+} from '@tanstack/react-table'
+import {
+  Box,
+  Typography,
+  MenuItem,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
+} from '@mui/material'
 import Pagination from '@mui/material/Pagination'
 import { toast } from 'react-toastify'
 
@@ -48,12 +54,20 @@ const formatProxy = (item: OrderItemRecord) => {
 
 const EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'key', label: 'Key', accessor: r => r.key || '' },
-  { key: 'type', label: 'Loại', accessor: r => r.type === 'ROTATING' ? 'Xoay' : 'Tĩnh' },
+  { key: 'type', label: 'Loại', accessor: r => (r.type === 'ROTATING' ? 'Xoay' : 'Tĩnh') },
   { key: 'proxy', label: 'Proxy', accessor: r => formatProxy(r) },
-  { key: 'protocol', label: 'Protocol', accessor: r => extractProtocol(r.proxy) || (r.protocol || 'http').toUpperCase() },
+  {
+    key: 'protocol',
+    label: 'Protocol',
+    accessor: r => extractProtocol(r.proxy) || (r.protocol || 'http').toUpperCase()
+  },
   { key: 'ip_whitelist', label: 'IP Whitelist', accessor: r => (r.ip_whitelist || []).join(', ') },
   { key: 'status', label: 'Trạng thái', accessor: r => STATUS_MAP[r.status]?.label || '' },
-  { key: 'expired_at', label: 'Hết hạn', accessor: r => r.expired_at ? new Date(r.expired_at).toLocaleDateString('vi-VN') : '' },
+  {
+    key: 'expired_at',
+    label: 'Hết hạn',
+    accessor: r => (r.expired_at ? new Date(r.expired_at).toLocaleDateString('vi-VN') : '')
+  },
   { key: 'order_code', label: 'Đơn hàng', accessor: r => r.order_code || '' }
 ]
 
@@ -130,7 +144,10 @@ export default function ProxyKeysPage() {
             <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#6366f1' }}>
               {row.original.key.slice(0, 12)}...
             </span>
-            <CopyBtn copied={copied === row.original.key} onClick={() => copyText(row.original.key, row.original.key)} />
+            <CopyBtn
+              copied={copied === row.original.key}
+              onClick={() => copyText(row.original.key, row.original.key)}
+            />
           </Box>
         )
       },
@@ -286,10 +303,10 @@ export default function ProxyKeysPage() {
                 <List size={17} />
               </div>
               <div>
-                <h5 className='mb-0 font-semibold' style={{ whiteSpace: 'nowrap' }}>Danh sách proxy</h5>
-                <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-                  Quản lý tất cả proxy key đang sở hữu
-                </p>
+                <h5 className='mb-0 font-semibold' style={{ whiteSpace: 'nowrap' }}>
+                  Danh sách proxy
+                </h5>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Quản lý tất cả proxy key đang sở hữu</p>
               </div>
             </div>
           </div>
@@ -599,7 +616,14 @@ export default function ProxyKeysPage() {
 function CopyBtn({ copied, onClick }: { copied: boolean; onClick: () => void }) {
   return (
     <Tooltip title={copied ? 'Đã copy!' : 'Copy'}>
-      <IconButton size='small' onClick={e => { e.stopPropagation(); onClick() }} sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1 } }}>
+      <IconButton
+        size='small'
+        onClick={e => {
+          e.stopPropagation()
+          onClick()
+        }}
+        sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1 } }}
+      >
         {copied ? <Check size={11} color='#16a34a' /> : <Copy size={11} color='#94a3b8' />}
       </IconButton>
     </Tooltip>

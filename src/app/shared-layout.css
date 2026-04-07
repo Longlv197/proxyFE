@@ -299,7 +299,7 @@ ul:not([class]) {
   align-items: center;
   justify-content: center;
   color: white;
-  box-shadow: 0 8px 25px rgba(252, 67, 54, 0.3);
+  /* box-shadow: 0 8px 25px rgba(252, 67, 54, 0.3); */
 }
 
 .header-stats {
