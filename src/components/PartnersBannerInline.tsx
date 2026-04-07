@@ -45,12 +45,9 @@ const PartnersBannerInline = () => {
     setCurrentIndex(0)
   }, [partners?.length])
 
-  console.log(activePartners.length)
   if (activePartners.length <= 0) return null
 
   const current = activePartners[currentIndex] || activePartners[0]
-
-  console.log(activePartners)
   return (
     <div
       className='partners-banner-inline'
@@ -62,6 +59,7 @@ const PartnersBannerInline = () => {
         <div
           key={partner.id}
           style={{
+            position: 'absolute',
             inset: 0,
             display: 'flex',
             alignItems: 'center',
@@ -125,7 +123,7 @@ const PartnersBannerInline = () => {
         dangerouslySetInnerHTML={{
           __html: `
         .partners-banner-inline {
-          flex: 1;
+          width: 100%;
           min-width: 0;
           height: calc(var(--header-height, 64px) - 6px);
           border-radius: 10px;
@@ -133,6 +131,7 @@ const PartnersBannerInline = () => {
           position: relative;
           border: 1px solid #e2e8f0;
           background: #f8fafc;
+          display: block;
         }
         .banner-arrow {
           position: absolute;

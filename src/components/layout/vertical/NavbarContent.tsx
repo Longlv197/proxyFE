@@ -61,7 +61,7 @@ const NavbarContent = () => {
       {/* Phần trái: toggle + banner — ẩn banner mobile khi có pending */}
       <div className='flex items-center gap-2' style={{ minWidth: 0, flexShrink: 1, height: '100%', overflow: 'hidden' }}>
         <NavToggle />
-        <Box sx={{ display: hasPending ? { xs: 'none', sm: 'block' } : 'block', overflow: 'hidden', minWidth: 0, flex: 1 }}>
+        <Box sx={{ display: hasPending ? { xs: 'none', sm: 'block' } : 'block', overflow: 'hidden', width: 420 }}>
           <PartnersBannerInline />
         </Box>
       </div>
