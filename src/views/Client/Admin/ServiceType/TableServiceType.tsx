@@ -138,6 +138,8 @@ function SortableRow({ rowId, disabled, showDragHandle, children }: SortableRowP
 
 export default function TableServiceType() {
   const { isChild } = useBranding()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   const [columnFilters, setColumnFilters] = useState<any[]>([])
   const [rowSelection, setRowSelection] = useState({}) // State để lưu các hàng được chọn
   const [sorting, setSorting] = useState<any[]>([])
@@ -817,30 +819,31 @@ return (
             )}
           </div>
 
-          {/* Table */}
-          <div className='table-wrapper' style={{ overflowX: 'auto' }}>
-            <table className='data-table' style={{ ...(isLoading || dataServices.length === 0 ? { height: '100%' } : {}), tableLayout: 'auto', minWidth: '100%', whiteSpace: 'nowrap' }}>
-              <thead className='table-header' style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc' }}>
-                {table.getHeaderGroups().map(headerGroup => (
-                  <tr key={headerGroup.id}>
-                    {/* Drag handle header */}
-                    <th className='table-header th' style={{ width: 40, textAlign: 'center', padding: '0 4px' }}>
-                      {!isFilterActive && <GripVertical size={14} style={{ color: '#94a3b8', margin: '0 auto' }} />}
-                    </th>
-                    {headerGroup.headers.map(header => (
-                      <th style={{ width: header.getSize() }} className='table-header th' key={header.id}>
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                      </th>
+          {/* Table — DndContext chỉ render ở client để tránh hydration mismatch */}
+          {mounted ? (
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={sortableRowIds} strategy={verticalListSortingStrategy}>
+              <div className='table-wrapper' style={{ overflowX: 'auto' }}>
+                <table className='data-table' style={{ ...(isLoading || dataServices.length === 0 ? { height: '100%' } : {}), tableLayout: 'auto', minWidth: '100%', whiteSpace: 'nowrap' }}>
+                  <thead className='table-header' style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc' }}>
+                    {table.getHeaderGroups().map(headerGroup => (
+                      <tr key={headerGroup.id}>
+                        {/* Drag handle header */}
+                        <th className='table-header th' style={{ width: 40, textAlign: 'center', padding: '0 4px' }}>
+                          {!isFilterActive && <GripVertical size={14} style={{ color: '#94a3b8', margin: '0 auto' }} />}
+                        </th>
+                        {headerGroup.headers.map(header => (
+                          <th style={{ width: header.getSize() }} className='table-header th' key={header.id}>
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                          </th>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
-                ))}
-              </thead>
-              <DndContext
-                sensors={dndSensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext items={sortableRowIds} strategy={verticalListSortingStrategy}>
+                  </thead>
                   <tbody>
                     {isLoading ? (
                       <tr>
@@ -881,10 +884,38 @@ return (
                       ))
                     )}
                   </tbody>
-                </SortableContext>
-              </DndContext>
-            </table>
-          </div>
+                </table>
+              </div>
+            </SortableContext>
+          </DndContext>
+          ) : (
+            <div className='table-wrapper' style={{ overflowX: 'auto' }}>
+              <table className='data-table' style={{ ...(isLoading || dataServices.length === 0 ? { height: '100%' } : {}), tableLayout: 'auto', minWidth: '100%', whiteSpace: 'nowrap' }}>
+                <thead className='table-header' style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc' }}>
+                  {table.getHeaderGroups().map(headerGroup => (
+                    <tr key={headerGroup.id}>
+                      <th className='table-header th' style={{ width: 40, textAlign: 'center', padding: '0 4px' }} />
+                      {headerGroup.headers.map(header => (
+                        <th style={{ width: header.getSize() }} className='table-header th' key={header.id}>
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colSpan={columns.length + 1} className='py-10 text-center'>
+                      <div className='loader-wrapper'>
+                        <div className='loader'><span></span><span></span><span></span></div>
+                        <p className='loading-text'>Đang tải...</p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Pagination */}
           <div className='pagination-container'>

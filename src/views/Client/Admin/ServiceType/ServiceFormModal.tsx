@@ -43,6 +43,76 @@ import { useBranding } from '@/app/contexts/BrandingContext'
 
 import '@/views/Client/RotatingProxy/styles.css'
 
+// ─── Hoist constants ngoài component — tránh tạo mới mỗi render ───
+const PROTOCOLS = [
+  { value: 'http', label: 'HTTP' },
+  { value: 'socks5', label: 'SOCKS5' },
+]
+
+const IP_VERSION_OPTIONS = [
+  { value: 'ipv4', label: 'IPV4' },
+  { value: 'ipv6', label: 'IPV6' },
+]
+
+const STATIC_PLACEHOLDER = 'Proxy IPv4 dân cư Việt Nam, tốc độ cao, uptime 99.5%. Hỗ trợ HTTP/SOCKS5. Phù hợp cho SEO, social media marketing, và scraping. Băng thông không giới hạn.'
+const ROTATING_PLACEHOLDER = 'Proxy xoay tự động mỗi 5-30 phút, pool 10,000+ IP Việt Nam. Phù hợp cho crawl data, multi-account, và automation. Hỗ trợ sticky session theo thời gian.'
+
+const DEFAULT_DURATION_OPTIONS_CONST = [
+  { value: '1', label: '1 ngày' }, { value: '3', label: '3 ngày' },
+  { value: '7', label: '7 ngày' }, { value: '14', label: '14 ngày' },
+  { value: '21', label: '21 ngày' }, { value: '30', label: '30 ngày' }
+]
+
+const LABEL_MAP_CONST: Record<string, string> = {
+  '1': '1 ngày', '3': '3 ngày', '7': '7 ngày', '14': '14 ngày',
+  '21': '21 ngày', '30': '30 ngày', '60': '60 ngày', '90': '90 ngày',
+}
+
+const FORM_DEFAULT_VALUES = {
+  name: '',
+  api_provider: '',
+  cost_price: undefined as number | undefined,
+  code: '',
+  status: 'active',
+  provider_id: '',
+  type: '0',
+  ip_version: 'ipv4',
+  protocols: [] as string[],
+  body_api: '',
+  proxy_type: '',
+  country: [] as string[],
+  note: '',
+  tag: '',
+  is_purchasable: true,
+  min_quantity: 1,
+  max_quantity: 100,
+  auth_type: '',
+  bandwidth: '',
+  rotation_type: '',
+  rotation_interval: '',
+  request_limit: '',
+  concurrent_connections: undefined as number | undefined,
+  pool_size: '',
+  metadata_json: '',
+}
+
+// Dialog sx styles — stable references
+const DIALOG_PAPER_SX = { sx: { maxHeight: { xs: '100vh', sm: '92vh' }, m: { xs: 0, sm: '16px' }, borderRadius: { xs: 0, sm: '12px' } } }
+const DIALOG_SX = { '& .MuiDialog-container': { alignItems: { xs: 'stretch', sm: 'center' } } }
+const DIALOG_TITLE_SX = {
+  background: 'var(--primary-gradient, linear-gradient(135deg, #F88A4B 0%, #F6734B 100%))',
+  color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1.5
+}
+const DIALOG_CONTENT_SX = { mt: 1, pb: 1, position: 'relative' as const, display: 'flex', gap: 2, overflow: 'hidden', px: { xs: 1.5, sm: 2 } }
+const FORM_BOX_SX = {
+  flex: 1, minWidth: 0, overflowY: 'auto' as const, pr: 1,
+  '& .MuiInputLabel-root': { fontSize: '0.8rem', mb: '2px' },
+  '& .MuiInputBase-sizeSmall': { fontSize: '0.85rem' },
+  '& .MuiInputBase-inputSizeSmall:not(textarea)': { py: '5px !important', px: '10px !important' },
+  '& .MuiFormHelperText-root': { fontSize: '0.7rem', mt: '2px' },
+}
+const PREVIEW_BOX_SX = { width: 380, flexShrink: 0, overflowY: 'auto' as const, borderLeft: '1px solid #e2e8f0', pl: 2, display: { xs: 'none', md: 'block' } }
+
 const schema = yup.object({
   name: yup
     .string()
@@ -556,6 +626,158 @@ const COUNTRY_NAMES: Record<string, string> = {
   fr: 'Pháp', au: 'Úc', ca: 'Canada', br: 'Brazil', ru: 'Nga',
 }
 
+// ─── NCC Renewal Preview — cô lập re-render ───
+const NccRenewalPreview = memo(function NccRenewalPreview({
+  providerId, providers, renewOverrideEnabled, setRenewOverrideEnabled,
+  renewOverrideParams, setRenewOverrideParams
+}: {
+  providerId: string; providers: any[]; renewOverrideEnabled: boolean
+  setRenewOverrideEnabled: (v: boolean) => void
+  renewOverrideParams: any[]; setRenewOverrideParams: (v: any) => void
+}) {
+  const selectedProvider = providers?.find((p: any) => String(p.id) === String(providerId))
+  const nccRenew = selectedProvider?.api_config?.renew
+  const nccParams = nccRenew?.params || {}
+  const nccInherit = nccRenew?.inherit_params || []
+  const nccDuration = nccRenew?.duration_param
+
+  const hasNccConfig = nccRenew && (Object.keys(nccParams).length > 0 || nccInherit.length > 0 || nccDuration)
+
+  if (!hasNccConfig) return (
+    <Grid2 size={{ xs: 12 }}>
+      <Box sx={{ p: 1.5, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 1.5 }}>
+        <Typography sx={{ fontSize: 12, color: '#991b1b' }}>
+          NCC chưa cấu hình gia hạn. Vào trang NCC → tab Gia hạn để cấu hình trước.
+        </Typography>
+      </Box>
+    </Grid2>
+  )
+
+  return (
+    <>
+      <Grid2 size={{ xs: 12 }}>
+        <Box sx={{ p: 1.5, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 1.5 }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#0c4a6e', mb: 0.5 }}>
+            Params gia hạn từ NCC ({selectedProvider?.provider_code || selectedProvider?.title})
+          </Typography>
+          <Box sx={{ fontSize: 12, fontFamily: 'monospace', color: '#334155', lineHeight: 2 }}>
+            {Object.entries(nccParams).map(([k, v]) => (
+              <div key={k}><strong>{k}</strong> = {String(v)}</div>
+            ))}
+            {nccDuration && <div><strong>{nccDuration}</strong> = số ngày gia hạn</div>}
+            {nccInherit.map((ip: any, i: number) => (
+              <div key={i}><strong>{ip.param}</strong> = {ip.source}.{ip.field}</div>
+            ))}
+          </Box>
+          <Typography sx={{ fontSize: 11, color: '#64748b', mt: 0.5, fontStyle: 'italic' }}>
+            Không thể bỏ — NCC yêu cầu. Sửa tại trang NCC.
+          </Typography>
+        </Box>
+      </Grid2>
+
+      {/* Override toggle */}
+      <Grid2 size={{ xs: 12 }}>
+        <FormControlLabel
+          control={<Checkbox checked={renewOverrideEnabled} onChange={e => setRenewOverrideEnabled(e.target.checked)} size='small' />}
+          label={<Typography variant='body2' sx={{ fontSize: 12 }}>Custom thêm / ghi đè params cho SP này</Typography>}
+        />
+      </Grid2>
+
+      {/* Override params table */}
+      {renewOverrideEnabled && (
+        <Grid2 size={{ xs: 12 }}>
+          <Box sx={{ p: 1.5, background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#7c3aed' }}>
+                Params ghi đè / thêm mới cho SP này
+              </Typography>
+              <Button size='small' startIcon={<Plus size={14} />}
+                onClick={() => setRenewOverrideParams((prev: any[]) => [...prev, { param: '', source: 'default', value: '' }])}>
+                Thêm
+              </Button>
+            </Box>
+            <Typography sx={{ fontSize: 11, color: '#64748b', mb: 1 }}>
+              Trùng tên param với NCC → SP ghi đè. Tên mới → thêm vào request.
+            </Typography>
+
+            {renewOverrideParams.length === 0 && (
+              <Typography sx={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
+                Chưa có. Bấm Thêm để ghi đè hoặc thêm params.
+              </Typography>
+            )}
+
+            {renewOverrideParams.map((row, i) => (
+              <Box key={i} sx={{ mb: 1, p: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
+                  <IconButton size='small' color='error'
+                    onClick={() => setRenewOverrideParams((prev: any[]) => prev.filter((_: any, idx: number) => idx !== i))}>
+                    <Trash2 size={14} />
+                  </IconButton>
+                </Box>
+                <Grid2 container spacing={1}>
+                  <Grid2 size={{ xs: 12, sm: 3 }}>
+                    <CustomTextField size='small' fullWidth label='Param gửi đi' placeholder='VD: loaiproxy'
+                      value={row.param} onChange={(e: any) => {
+                        const next = [...renewOverrideParams]; next[i] = { ...next[i], param: e.target.value }; setRenewOverrideParams(next)
+                      }} />
+                  </Grid2>
+                  <Grid2 size={{ xs: 12, sm: 3 }}>
+                    <CustomTextField size='small' select fullWidth label='Nguồn giá trị'
+                      value={row.source} onChange={(e: any) => {
+                        const next = [...renewOverrideParams]; next[i] = { ...next[i], source: e.target.value }; setRenewOverrideParams(next)
+                      }}>
+                      <MenuItem value='order_items'>order_items</MenuItem>
+                      <MenuItem value='orders'>orders</MenuItem>
+                      <MenuItem value='user_input'>User nhập</MenuItem>
+                      <MenuItem value='default'>Mặc định (cố định)</MenuItem>
+                    </CustomTextField>
+                  </Grid2>
+                  {(row.source === 'orders' || row.source === 'order_items') && (
+                    <Grid2 size={{ xs: 12, sm: 6 }}>
+                      <CustomTextField size='small' fullWidth label='Field trong DB' placeholder='provider_item_id, proxy.protocol'
+                        value={row.field || ''} onChange={(e: any) => {
+                          const next = [...renewOverrideParams]; next[i] = { ...next[i], field: e.target.value }; setRenewOverrideParams(next)
+                        }} />
+                    </Grid2>
+                  )}
+                  {row.source === 'default' && (
+                    <Grid2 size={{ xs: 12, sm: 6 }}>
+                      <CustomTextField size='small' fullWidth label='Giá trị cố định' placeholder='VD: 4Gvinaphone'
+                        value={row.value || ''} onChange={(e: any) => {
+                          const next = [...renewOverrideParams]; next[i] = { ...next[i], value: e.target.value }; setRenewOverrideParams(next)
+                        }} />
+                    </Grid2>
+                  )}
+                  {row.source === 'user_input' && (
+                    <>
+                      <Grid2 size={{ xs: 6, sm: 3 }}>
+                        <CustomTextField size='small' fullWidth label='Label hiện user' placeholder='Số ngày'
+                          value={row.input_label || ''} onChange={(e: any) => {
+                            const next = [...renewOverrideParams]; next[i] = { ...next[i], input_label: e.target.value }; setRenewOverrideParams(next)
+                          }} />
+                      </Grid2>
+                      <Grid2 size={{ xs: 6, sm: 3 }}>
+                        <CustomTextField size='small' select fullWidth label='Loại input'
+                          value={row.input_type || 'string'} onChange={(e: any) => {
+                            const next = [...renewOverrideParams]; next[i] = { ...next[i], input_type: e.target.value }; setRenewOverrideParams(next)
+                          }}>
+                          <MenuItem value='number'>Số</MenuItem>
+                          <MenuItem value='string'>Chữ</MenuItem>
+                          <MenuItem value='select'>Chọn từ danh sách</MenuItem>
+                        </CustomTextField>
+                      </Grid2>
+                    </>
+                  )}
+                </Grid2>
+              </Box>
+            ))}
+          </Box>
+        </Grid2>
+      )}
+    </>
+  )
+})
+
 interface ServiceFormModalProps {
   open: boolean
   onClose: () => void
@@ -571,65 +793,13 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
   const { data: providers = [], isLoading: loadingProviders } = useProviders()
 
   // Fetch chi tiết khi edit để lấy field hidden (api_provider) — dùng initialData làm placeholder
-  const { data: fetchedData, isLoading: loadingService } = useServiceType(serviceId, isEditMode && open)
+  const { data: fetchedData, isLoading: loadingService } = useServiceType(serviceId ?? undefined, isEditMode && open)
   const serviceData = fetchedData ?? initialData
   // Bỏ useServiceTypes() — chỉ dùng để derive protocols/ipVersions, đã hardcode sẵn
 
   // Mutations
   const createMutation = useCreateServiceType()
-  const updateMutation = useUpdateServiceType(serviceId)
-
-  // Duration options cho bảng giá cố định — lấy từ NCC nếu có url_by_duration
-  const DEFAULT_DURATION_OPTIONS = [
-    { value: '1', label: '1 ngày' }, { value: '3', label: '3 ngày' },
-    { value: '7', label: '7 ngày' }, { value: '14', label: '14 ngày' },
-    { value: '21', label: '21 ngày' }, { value: '30', label: '30 ngày' }
-  ]
-
-  const LABEL_MAP: Record<string, string> = {
-    '1': '1 ngày', '3': '3 ngày', '7': '7 ngày', '14': '14 ngày',
-    '21': '21 ngày', '30': '30 ngày', '60': '60 ngày', '90': '90 ngày',
-  }
-
-  const [durationOptions, setDurationOptions] = useState(DEFAULT_DURATION_OPTIONS)
-  const [durationUrlMap, setDurationUrlMap] = useState<Record<string, string>>({})
-
-  const updateDurationOptions = useCallback((pid?: string, typ?: string) => {
-    try {
-      const prov = providers?.find((p: any) => String(p.id) === String(pid))
-
-      if (!prov?.api_config) { setDurationOptions(DEFAULT_DURATION_OPTIONS); setDurationUrlMap({}); return }
-
-      const config = typeof prov.api_config === 'string' ? JSON.parse(prov.api_config) : prov.api_config
-      const buyKey = typ === '0' ? 'buy_static' : 'buy_rotating'
-      const urlByDuration = (config?.[buyKey] ?? config?.buy)?.url_by_duration
-
-      if (!urlByDuration || typeof urlByDuration !== 'object' || Object.keys(urlByDuration).length === 0) {
-        setDurationOptions(DEFAULT_DURATION_OPTIONS); setDurationUrlMap({}); return
-      }
-
-      setDurationUrlMap(urlByDuration)
-      setDurationOptions(
-        Object.keys(urlByDuration)
-          .map(key => ({ value: key, label: LABEL_MAP[key] || `${key} ngày` }))
-          .sort((a, b) => Number(a.value) - Number(b.value))
-      )
-    } catch { setDurationOptions(DEFAULT_DURATION_OPTIONS); setDurationUrlMap({}) }
-  }, [providers])
-
-  // Subscribe thay đổi provider_id + type → cập nhật duration options
-  useEffect(() => {
-    // Chạy 1 lần khi mount/providers load — cho form edit có data sẵn
-    const currentValues = watch()
-    updateDurationOptions(currentValues.provider_id, currentValues.type)
-
-    const subscription = watch((values) => {
-      updateDurationOptions(values.provider_id, values.type)
-    })
-
-    return () => subscription.unsubscribe()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [providers, updateDurationOptions])
+  const updateMutation = useUpdateServiceType(serviceId ?? undefined)
 
   // Out-of-form state
   const [multiInputFields, setMultiInputFields] = useState<Array<{ key: string; value: string }>>([{ key: '', value: '' }])
@@ -667,16 +837,6 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
   const [costDiscountTiers, setCostDiscountTiers] = useState<DiscountTier[]>([])
 
 
-  const protocols = [
-    { value: 'http', label: 'HTTP' },
-    { value: 'socks5', label: 'SOCKS5' },
-  ]
-
-  const ipVersionOptions = [
-    { value: 'ipv4', label: 'IPV4' },
-    { value: 'ipv6', label: 'IPV6' },
-  ]
-
   // Form
   const {
     control,
@@ -685,7 +845,6 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
     reset,
     setError,
     setValue,
-    watch
   } = useForm({
     resolver: async (data, context, options) => {
       try {
@@ -716,34 +875,12 @@ return { values: {}, errors: formattedErrors }
       }
     },
     mode: 'onSubmit',
-    defaultValues: {
-      name: '',
-      api_provider: '',
-      cost_price: undefined,
-      code: '',
-      status: 'active',
-      provider_id: '',
-      type: '0',
-      ip_version: 'ipv4',
-      protocols: [],
-      body_api: '',
-      proxy_type: '',
-      country: [],
-      note: '',
-      tag: '',
-      is_purchasable: true,
-      min_quantity: 1,
-      max_quantity: 100,
-      auth_type: '',
-      bandwidth: '',
-      rotation_type: '',
-      rotation_interval: '',
-      request_limit: '',
-      concurrent_connections: undefined,
-      pool_size: '',
-      metadata_json: '',
-    }
+    defaultValues: FORM_DEFAULT_VALUES
   })
+
+  // Subscribe thay đổi provider_id → cập nhật duration options
+  // Dùng useWatch thay vì watch() subscription để chỉ re-render khi field này đổi
+  const watchedProviderId = useWatch({ control, name: 'provider_id' })
 
   // Load service data when editing
   useEffect(() => {
@@ -868,33 +1005,7 @@ return { values: {}, errors: formattedErrors }
   // Reset form when modal opens for create
   useEffect(() => {
     if (open && !isEditMode) {
-      reset({
-        name: '',
-        api_provider: '',
-        cost_price: undefined,
-        code: '',
-        status: 'active',
-        provider_id: '',
-        type: '0',
-        ip_version: 'ipv4',
-        protocols: [],
-        body_api: '',
-        proxy_type: '',
-        country: [],
-        note: '',
-        tag: '',
-        is_purchasable: true,
-      min_quantity: 1,
-      max_quantity: 100,
-        auth_type: '',
-        bandwidth: '',
-        rotation_type: '',
-        rotation_interval: '',
-        request_limit: '',
-        concurrent_connections: undefined,
-        pool_size: '',
-        metadata_json: '',
-      })
+      reset(FORM_DEFAULT_VALUES)
       setMultiInputFields([{ key: '', value: '' }])
       setPriceFields([{ key: '', value: '', cost: '' }])
       setPurchaseOptions([])
@@ -918,17 +1029,14 @@ return { values: {}, errors: formattedErrors }
     }
   }, [open, isEditMode, reset])
 
-  const ITEM_HEIGHT = 48
-  const ITEM_PADDING_TOP = 8
-
-  const MenuProps = {
+  const MenuProps = useMemo(() => ({
     PaperProps: {
       style: {
-        maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
+        maxHeight: 48 * 4.5 + 8,
         width: 250
       }
     }
-  }
+  }), [])
 
   const onSubmit = (data: any) => {
     setFormErrors([])
@@ -1060,42 +1168,55 @@ return { values: {}, errors: formattedErrors }
 
   const isPending = createMutation.isPending || updateMutation.isPending
 
-  const staticPlaceholder = 'Proxy IPv4 dân cư Việt Nam, tốc độ cao, uptime 99.5%. Hỗ trợ HTTP/SOCKS5. Phù hợp cho SEO, social media marketing, và scraping. Băng thông không giới hạn.'
-  const rotatingPlaceholder = 'Proxy xoay tự động mỗi 5-30 phút, pool 10,000+ IP Việt Nam. Phù hợp cho crawl data, multi-account, và automation. Hỗ trợ sticky session theo thời gian.'
-
-  // useWatch cô lập re-render — chỉ re-render khi các field này thay đổi
   // useWatch cô lập re-render — chỉ re-render khi các field này thay đổi
   const [watchedType, watchedRotationType, watchedTag, watchedStatus, watchedAuthType, watchedRotationInterval] = useWatch({
     control,
     name: ['type', 'rotation_type', 'tag', 'status', 'auth_type', 'rotation_interval'],
   })
 
+  // Duration options — useMemo thay vì useState+useEffect (tránh infinite loop)
+  const { durationOptions, durationUrlMap } = useMemo(() => {
+    try {
+      const prov = providers?.find((p: any) => String(p.id) === String(watchedProviderId))
+
+      if (!prov?.api_config) return { durationOptions: DEFAULT_DURATION_OPTIONS_CONST, durationUrlMap: {} as Record<string, string> }
+
+      const config = typeof prov.api_config === 'string' ? JSON.parse(prov.api_config) : prov.api_config
+      const buyKey = watchedType === '0' ? 'buy_static' : 'buy_rotating'
+      const urlByDuration = (config?.[buyKey] ?? config?.buy)?.url_by_duration
+
+      if (!urlByDuration || typeof urlByDuration !== 'object' || Object.keys(urlByDuration).length === 0) {
+        return { durationOptions: DEFAULT_DURATION_OPTIONS_CONST, durationUrlMap: {} as Record<string, string> }
+      }
+
+      return {
+        durationUrlMap: urlByDuration as Record<string, string>,
+        durationOptions: Object.keys(urlByDuration)
+          .map(key => ({ value: key, label: LABEL_MAP_CONST[key] || `${key} ngày` }))
+          .sort((a, b) => Number(a.value) - Number(b.value))
+      }
+    } catch {
+      return { durationOptions: DEFAULT_DURATION_OPTIONS_CONST, durationUrlMap: {} as Record<string, string> }
+    }
+  }, [providers, watchedProviderId, watchedType])
+
   const { data: countries } = useCountries()
 
-  const toggleTag = (preset: string) => {
+  const toggleTag = useCallback((preset: string) => {
     const current = watchedTag ? watchedTag.split(',').map((t: string) => t.trim()).filter(Boolean) : []
     const updated = current.includes(preset) ? current.filter((t: string) => t !== preset) : [...current, preset]
 
     setValue('tag', updated.join(', '))
-  }
-  const notePlaceholder = watchedType === '1' ? rotatingPlaceholder : staticPlaceholder
+  }, [watchedTag, setValue])
+  const notePlaceholder = watchedType === '1' ? ROTATING_PLACEHOLDER : STATIC_PLACEHOLDER
 
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth='xl' fullWidth
-        PaperProps={{ sx: { maxHeight: { xs: '100vh', sm: '92vh' }, m: { xs: 0, sm: '16px' }, borderRadius: { xs: 0, sm: '12px' } } }}
-        sx={{ '& .MuiDialog-container': { alignItems: { xs: 'stretch', sm: 'center' } } }}
+        PaperProps={DIALOG_PAPER_SX}
+        sx={DIALOG_SX}
         fullScreen={false}>
-        <DialogTitle
-          sx={{
-            background: 'var(--primary-gradient, linear-gradient(135deg, #F88A4B 0%, #F6734B 100%))',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            py: 1.5
-          }}
-        >
+        <DialogTitle sx={DIALOG_TITLE_SX}>
           <span style={{ fontWeight: 700, fontSize: '16px' }}>
             {isEditMode ? 'Chỉnh sửa dịch vụ' : 'Thêm dịch vụ mới'}
           </span>
@@ -1116,7 +1237,7 @@ return { values: {}, errors: formattedErrors }
           </button>
         </DialogTitle>
 
-        <DialogContent sx={{ mt: 1, pb: 1, position: 'relative', display: 'flex', gap: 2, overflow: 'hidden', px: { xs: 1.5, sm: 2 } }}>
+        <DialogContent sx={DIALOG_CONTENT_SX}>
           {/* Loading overlay khi đang xử lý */}
           {isPending && (
             <Box
@@ -1144,13 +1265,7 @@ return { values: {}, errors: formattedErrors }
           )}
 
           {/* Left: Form — compact inputs */}
-          <Box sx={{
-            flex: 1, minWidth: 0, overflowY: 'auto', pr: 1,
-            '& .MuiInputLabel-root': { fontSize: '0.8rem', mb: '2px' },
-            '& .MuiInputBase-sizeSmall': { fontSize: '0.85rem' },
-            '& .MuiInputBase-inputSizeSmall:not(textarea)': { py: '5px !important', px: '10px !important' },
-            '& .MuiFormHelperText-root': { fontSize: '0.7rem', mt: '2px' },
-          }}>
+          <Box sx={FORM_BOX_SX}>
           {loadingService && isEditMode && !initialData ? (
             <Box display='flex' justifyContent='center' alignItems='center' minHeight='300px'>
               <CircularProgress />
@@ -1306,7 +1421,7 @@ return { values: {}, errors: formattedErrors }
                     control={control}
                     render={({ field }) => (
                       <CustomTextField {...field} fullWidth select label='IP Version'>
-                        {ipVersionOptions.map(opt => (
+                        {IP_VERSION_OPTIONS.map(opt => (
                           <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
                         ))}
                       </CustomTextField>
@@ -1387,7 +1502,7 @@ return { values: {}, errors: formattedErrors }
 return (
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                   {values.map(val => {
-                                    const p = protocols.find(p => p.value === val)
+                                    const p = PROTOCOLS.find(p => p.value === val)
 
                                     
 return <Chip key={val} label={p?.label || val} size='small' />
@@ -1398,7 +1513,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                           }
                         }}
                       >
-                        {protocols.map(protocol => (
+                        {PROTOCOLS.map(protocol => (
                           <MenuItem key={protocol.value} value={protocol.value}>
                             {protocol.label}
                           </MenuItem>
@@ -1727,10 +1842,32 @@ return <Chip key={val} label={p?.label || val} size='small' />
                         Gia hạn
                       </Typography>
                       <Typography sx={{ fontSize: 12, color: '#475569', mt: 0.25 }}>
-                        Bật gia hạn cho SP này. Config gia hạn lấy từ NCC — có thể ghi đè / thêm params riêng cho SP.
+                        Cho phép khách hàng gia hạn proxy khi sắp hoặc đã hết hạn.
                       </Typography>
                     </Box>
                     <Box sx={{ p: 2 }}>
+                      {/* Hướng dẫn nhanh */}
+                      <Box sx={{ mb: 2, p: 1.5, background: '#fefce8', border: '1px solid #fde68a', borderRadius: 1.5 }}>
+                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#854d0e', mb: 0.5 }}>Hướng dẫn cấu hình gia hạn</Typography>
+                        <Box component='ol' sx={{ fontSize: 11.5, color: '#713f12', m: 0, pl: 2.5, lineHeight: 2, '& li::marker': { fontWeight: 700 } }}>
+                          <li><strong>Bước 1 — Cấu hình NCC:</strong> Vào trang <em>Nhà cung cấp → tab Gia hạn</em> để cấu hình API gia hạn (URL, params, duration_param). Đây là nền tảng bắt buộc.</li>
+                          <li><strong>Bước 2 — Bật gia hạn:</strong> Chọn <strong>"Cho phép gia hạn = Có"</strong> bên dưới.</li>
+                          <li><strong>Bước 3 — Chọn thời hạn:</strong>
+                            <Box component='ul' sx={{ pl: 2, mt: 0.25, mb: 0.5, '& li': { lineHeight: 1.8 } }}>
+                              <li><strong>Theo NCC</strong> — hệ thống gửi số ngày do NCC quy định (phổ biến nhất)</li>
+                              <li><strong>Khách tự chọn</strong> — khách nhập số ngày muốn gia hạn khi bấm nút</li>
+                              <li><strong>Như lần mua đầu</strong> — tự lấy số ngày từ đơn mua gốc</li>
+                            </Box>
+                          </li>
+                          <li><strong>Bước 4 — Hết hạn:</strong> Chọn có cho phép gia hạn khi proxy đã hết hạn hay chỉ khi còn hạn.</li>
+                        </Box>
+                        {!isChild && (
+                          <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed #fbbf24', fontSize: 11, color: '#92400e', lineHeight: 1.8 }}>
+                            <strong>Nâng cao (tuỳ chọn):</strong> Nếu sản phẩm này cần gửi params khác với cấu hình NCC mặc định, tick <em>"Custom thêm / ghi đè params"</em> để thêm hoặc ghi đè riêng cho SP này.
+                          </Box>
+                        )}
+                      </Box>
+
                       <Grid2 container spacing={2}>
                         <Grid2 size={{ xs: 6, sm: 3 }}>
                           <CustomTextField
@@ -1751,6 +1888,12 @@ return <Chip key={val} label={p?.label || val} size='small' />
                                 label='Thời hạn gia hạn'
                                 value={renewalDuration}
                                 onChange={e => setRenewalDuration(e.target.value)}
+                                slotProps={{ select: { displayEmpty: true } }}
+                                helperText={
+                                  renewalDuration === '' ? 'Số ngày do NCC quy định' :
+                                  renewalDuration === 'custom' ? 'Khách nhập số ngày khi gia hạn' :
+                                  'Lấy từ đơn mua gốc của khách'
+                                }
                               >
                                 <MenuItem value=''>Theo NCC (mặc định)</MenuItem>
                                 <MenuItem value='custom'>Khách tự chọn</MenuItem>
@@ -1763,6 +1906,12 @@ return <Chip key={val} label={p?.label || val} size='small' />
                                 label='Gia hạn khi hết hạn'
                                 value={allowExpiredRenew}
                                 onChange={e => setAllowExpiredRenew(e.target.value)}
+                                slotProps={{ select: { displayEmpty: true } }}
+                                helperText={
+                                  allowExpiredRenew === '' ? 'Tuỳ NCC cho phép hay không' :
+                                  allowExpiredRenew === 'true' ? 'Proxy hết hạn vẫn gia hạn được' :
+                                  'Chỉ gia hạn khi proxy còn hạn'
+                                }
                               >
                                 <MenuItem value=''>Theo NCC (mặc định)</MenuItem>
                                 <MenuItem value='true'>Cho phép</MenuItem>
@@ -1770,151 +1919,31 @@ return <Chip key={val} label={p?.label || val} size='small' />
                               </CustomTextField>
                             </Grid2>
 
+                            {/* Tóm tắt trạng thái cấu hình */}
+                            <Grid2 size={{ xs: 12 }}>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                <Chip size='small' variant='outlined' color='success' label='Gia hạn: BẬT' sx={{ fontSize: 11, fontWeight: 600 }} />
+                                <Chip size='small' variant='outlined'
+                                  label={`Thời hạn: ${renewalDuration === '' ? 'Theo NCC' : renewalDuration === 'custom' ? 'Khách chọn' : 'Theo đơn mua'}`}
+                                  sx={{ fontSize: 11 }} />
+                                <Chip size='small' variant='outlined'
+                                  color={allowExpiredRenew === 'false' ? 'error' : 'default'}
+                                  label={`Hết hạn: ${allowExpiredRenew === '' ? 'Theo NCC' : allowExpiredRenew === 'true' ? 'Cho phép' : 'Không cho phép'}`}
+                                  sx={{ fontSize: 11 }} />
+                              </Box>
+                            </Grid2>
+
                             {/* Preview NCC renew params — chỉ site mẹ */}
-                            {!isChild && (() => {
-                              const watchedProviderId = watch('provider_id')
-                              const selectedProvider = providers?.find((p: any) => String(p.id) === String(watchedProviderId))
-                              const nccRenew = selectedProvider?.api_config?.renew
-                              const nccParams = nccRenew?.params || {}
-                              const nccInherit = nccRenew?.inherit_params || []
-                              const nccDuration = nccRenew?.duration_param
-
-                              const hasNccConfig = nccRenew && (Object.keys(nccParams).length > 0 || nccInherit.length > 0 || nccDuration)
-
-                              if (!hasNccConfig) return (
-                                <Grid2 size={{ xs: 12 }}>
-                                  <Box sx={{ p: 1.5, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 1.5 }}>
-                                    <Typography sx={{ fontSize: 12, color: '#991b1b' }}>
-                                      NCC chưa cấu hình gia hạn. Vào trang NCC → tab Gia hạn để cấu hình trước.
-                                    </Typography>
-                                  </Box>
-                                </Grid2>
-                              )
-
-                              return (
-                                <>
-                                  <Grid2 size={{ xs: 12 }}>
-                                    <Box sx={{ p: 1.5, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 1.5 }}>
-                                      <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#0c4a6e', mb: 0.5 }}>
-                                        Params gia hạn từ NCC ({selectedProvider?.provider_code || selectedProvider?.title})
-                                      </Typography>
-                                      <Box sx={{ fontSize: 12, fontFamily: 'monospace', color: '#334155', lineHeight: 2 }}>
-                                        {Object.entries(nccParams).map(([k, v]) => (
-                                          <div key={k}><strong>{k}</strong> = {String(v)}</div>
-                                        ))}
-                                        {nccDuration && <div><strong>{nccDuration}</strong> = số ngày gia hạn</div>}
-                                        {nccInherit.map((ip: any, i: number) => (
-                                          <div key={i}><strong>{ip.param}</strong> = {ip.source}.{ip.field}</div>
-                                        ))}
-                                      </Box>
-                                      <Typography sx={{ fontSize: 11, color: '#64748b', mt: 0.5, fontStyle: 'italic' }}>
-                                        Không thể bỏ — NCC yêu cầu. Sửa tại trang NCC.
-                                      </Typography>
-                                    </Box>
-                                  </Grid2>
-
-                                  {/* Override toggle */}
-                                  <Grid2 size={{ xs: 12 }}>
-                                    <FormControlLabel
-                                      control={<Checkbox checked={renewOverrideEnabled} onChange={e => setRenewOverrideEnabled(e.target.checked)} size='small' />}
-                                      label={<Typography variant='body2' sx={{ fontSize: 12 }}>Custom thêm / ghi đè params cho SP này</Typography>}
-                                    />
-                                  </Grid2>
-
-                                  {/* Override params table */}
-                                  {renewOverrideEnabled && (
-                                    <Grid2 size={{ xs: 12 }}>
-                                      <Box sx={{ p: 1.5, background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: 1.5 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                                          <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#7c3aed' }}>
-                                            Params ghi đè / thêm mới cho SP này
-                                          </Typography>
-                                          <Button size='small' startIcon={<Plus size={14} />}
-                                            onClick={() => setRenewOverrideParams(prev => [...prev, { param: '', source: 'default', value: '' }])}>
-                                            Thêm
-                                          </Button>
-                                        </Box>
-                                        <Typography sx={{ fontSize: 11, color: '#64748b', mb: 1 }}>
-                                          Trùng tên param với NCC → SP ghi đè. Tên mới → thêm vào request.
-                                        </Typography>
-
-                                        {renewOverrideParams.length === 0 && (
-                                          <Typography sx={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
-                                            Chưa có. Bấm Thêm để ghi đè hoặc thêm params.
-                                          </Typography>
-                                        )}
-
-                                        {renewOverrideParams.map((row, i) => (
-                                          <Box key={i} sx={{ mb: 1, p: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 1 }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
-                                              <IconButton size='small' color='error'
-                                                onClick={() => setRenewOverrideParams(prev => prev.filter((_, idx) => idx !== i))}>
-                                                <Trash2 size={14} />
-                                              </IconButton>
-                                            </Box>
-                                            <Grid2 container spacing={1}>
-                                              <Grid2 size={{ xs: 12, sm: 3 }}>
-                                                <CustomTextField size='small' fullWidth label='Param gửi đi' placeholder='VD: loaiproxy'
-                                                  value={row.param} onChange={e => {
-                                                    const next = [...renewOverrideParams]; next[i] = { ...next[i], param: e.target.value }; setRenewOverrideParams(next)
-                                                  }} />
-                                              </Grid2>
-                                              <Grid2 size={{ xs: 12, sm: 3 }}>
-                                                <CustomTextField size='small' select fullWidth label='Nguồn giá trị'
-                                                  value={row.source} onChange={e => {
-                                                    const next = [...renewOverrideParams]; next[i] = { ...next[i], source: e.target.value }; setRenewOverrideParams(next)
-                                                  }}>
-                                                  <MenuItem value='order_items'>order_items</MenuItem>
-                                                  <MenuItem value='orders'>orders</MenuItem>
-                                                  <MenuItem value='user_input'>User nhập</MenuItem>
-                                                  <MenuItem value='default'>Mặc định (cố định)</MenuItem>
-                                                </CustomTextField>
-                                              </Grid2>
-                                              {(row.source === 'orders' || row.source === 'order_items') && (
-                                                <Grid2 size={{ xs: 12, sm: 6 }}>
-                                                  <CustomTextField size='small' fullWidth label='Field trong DB' placeholder='provider_item_id, proxy.protocol'
-                                                    value={row.field || ''} onChange={e => {
-                                                      const next = [...renewOverrideParams]; next[i] = { ...next[i], field: e.target.value }; setRenewOverrideParams(next)
-                                                    }} />
-                                                </Grid2>
-                                              )}
-                                              {row.source === 'default' && (
-                                                <Grid2 size={{ xs: 12, sm: 6 }}>
-                                                  <CustomTextField size='small' fullWidth label='Giá trị cố định' placeholder='VD: 4Gvinaphone'
-                                                    value={row.value || ''} onChange={e => {
-                                                      const next = [...renewOverrideParams]; next[i] = { ...next[i], value: e.target.value }; setRenewOverrideParams(next)
-                                                    }} />
-                                                </Grid2>
-                                              )}
-                                              {row.source === 'user_input' && (
-                                                <>
-                                                  <Grid2 size={{ xs: 6, sm: 3 }}>
-                                                    <CustomTextField size='small' fullWidth label='Label hiện user' placeholder='Số ngày'
-                                                      value={row.input_label || ''} onChange={e => {
-                                                        const next = [...renewOverrideParams]; next[i] = { ...next[i], input_label: e.target.value }; setRenewOverrideParams(next)
-                                                      }} />
-                                                  </Grid2>
-                                                  <Grid2 size={{ xs: 6, sm: 3 }}>
-                                                    <CustomTextField size='small' select fullWidth label='Loại input'
-                                                      value={row.input_type || 'string'} onChange={e => {
-                                                        const next = [...renewOverrideParams]; next[i] = { ...next[i], input_type: e.target.value }; setRenewOverrideParams(next)
-                                                      }}>
-                                                      <MenuItem value='number'>Số</MenuItem>
-                                                      <MenuItem value='string'>Chữ</MenuItem>
-                                                      <MenuItem value='select'>Chọn từ danh sách</MenuItem>
-                                                    </CustomTextField>
-                                                  </Grid2>
-                                                </>
-                                              )}
-                                            </Grid2>
-                                          </Box>
-                                        ))}
-                                      </Box>
-                                    </Grid2>
-                                  )}
-                                </>
-                              )
-                            })()}
+                            {!isChild && (
+                              <NccRenewalPreview
+                                providerId={watchedProviderId}
+                                providers={providers}
+                                renewOverrideEnabled={renewOverrideEnabled}
+                                setRenewOverrideEnabled={setRenewOverrideEnabled}
+                                renewOverrideParams={renewOverrideParams}
+                                setRenewOverrideParams={setRenewOverrideParams}
+                              />
+                            )}
                           </>
                         )}
                       </Grid2>
@@ -2427,7 +2456,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
           </Box>
 
           {/* Right: Preview — 100% giống card khách hàng */}
-          <Box sx={{ width: 380, flexShrink: 0, overflowY: 'auto', borderLeft: '1px solid #e2e8f0', pl: 2, display: { xs: 'none', md: 'block' } }}>
+          <Box sx={PREVIEW_BOX_SX}>
             <Box sx={{ position: 'sticky', top: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
                 <Eye size={16} color='#16a34a' />

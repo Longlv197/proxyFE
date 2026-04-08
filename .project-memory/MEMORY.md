@@ -77,6 +77,7 @@ Sau mỗi session có sửa code/thêm tính năng, **tự động cập nhật 
 - [Toast under Modal](bug_toast_under_modal.md) — ĐÃ FIX 26/03
 - [Auth Flash Debug](bug_auth_flash_debug.md) — ĐANG DEBUG: user nói "auth flash" = gửi log
 - [Lộ NCC site con](bug_provider_leak_child_site.md) — ĐÃ FIX 02/04: middleware api_admin + model $hidden + BE strip log
+- [Đơn deferred thiếu order_histories](../proxybe-memory/bug_missing_buy_history.md) — ĐÃ FIX 08/04: FetchProviderItems không tạo buy history → report sai
 
 ## Setup Guide
 
