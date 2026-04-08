@@ -115,7 +115,8 @@
       "registerInstructions": "请填写注册信息",
       "forgotPasswordInstructions": "请输入邮箱",
       "resetPasswordInstructions": "请输入新密码"
-    }
+    },
+    "turnstileRequired": "请完成验证码验证"
   },
   "overview": {
     "title": "概览",

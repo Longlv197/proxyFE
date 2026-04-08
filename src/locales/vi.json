@@ -117,7 +117,8 @@
       "registerInstructions": "Vui lòng điền thông tin đăng ký",
       "forgotPasswordInstructions": "Vui lòng điền email",
       "resetPasswordInstructions": "Vui lòng điền mật khẩu mới"
-    }
+    },
+    "turnstileRequired": "Vui lòng hoàn thành xác minh CAPTCHA"
   },
   "overview": {
     "title": "Tổng quan",

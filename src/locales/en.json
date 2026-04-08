@@ -116,7 +116,8 @@
       "registerInstructions": "Please fill in your registration information",
       "forgotPasswordInstructions": "Please enter your email",
       "resetPasswordInstructions": "Please enter your new password"
-    }
+    },
+    "turnstileRequired": "Please complete the CAPTCHA verification"
   },
   "overview": {
     "title": "Overview",
