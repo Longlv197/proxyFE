@@ -958,50 +958,108 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
       ) : isPerUnit && perUnit ? (
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
-            Nhập số {perUnit.time_unit === 'month' ? 'tháng' : 'ngày'} muốn gia hạn
+            {perUnit.time_unit === 'month' ? 'Chọn số tháng' : 'Chọn số ngày'}
           </div>
-          <input
-            type='number'
-            min={1}
-            value={customDuration}
-            onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))}
-            style={{
-              width: '100%', padding: '8px 12px', fontSize: 14, fontWeight: 600,
-              borderRadius: 8, border: '1.5px solid #e2e8f0', outline: 'none',
-              textAlign: 'center',
-            }}
-          />
+
+          {/* Mốc giảm giá — giống checkout */}
           {perUnit.discount_tiers?.length > 0 && (() => {
-            const tier = perUnit.discount_tiers.find(t => {
+            const unitLabel = perUnit.time_unit === 'month' ? 'tháng' : 'ngày'
+            const tiers = perUnit.discount_tiers.slice(0, 5)
+            return (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                {/* Mốc 1 — không giảm giá */}
+                <button
+                  onClick={() => setCustomDuration(1)}
+                  style={{
+                    flex: '1 0 auto', minWidth: 52, padding: '6px 4px', fontSize: 11, fontWeight: 600,
+                    borderRadius: 8, cursor: 'pointer', border: '1.5px solid', transition: 'all 0.15s',
+                    textAlign: 'center', position: 'relative',
+                    background: customDuration === 1 ? '#1e293b' : '#fff',
+                    color: customDuration === 1 ? '#fff' : '#475569',
+                    borderColor: customDuration === 1 ? '#1e293b' : '#e2e8f0',
+                  }}
+                >
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>1</div>
+                  <div style={{ fontSize: 10, opacity: 0.7 }}>{unitLabel}</div>
+                  <div style={{ fontSize: 10, marginTop: 2 }}>{perUnit.price_per_unit.toLocaleString('vi-VN')}đ</div>
+                </button>
+                {/* Mốc theo discount tiers */}
+                {tiers.map((tier, i) => {
+                  const minDays = parseInt(tier.min) || 1
+                  const disc = parseInt(tier.discount) || 0
+                  const tierPrice = Math.round(perUnit.price_per_unit * (1 - disc / 100))
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setCustomDuration(minDays)}
+                      style={{
+                        flex: '1 0 auto', minWidth: 52, padding: '6px 4px', fontSize: 11, fontWeight: 600,
+                        borderRadius: 8, cursor: 'pointer', border: '1.5px solid', transition: 'all 0.15s',
+                        textAlign: 'center', position: 'relative',
+                        background: customDuration === minDays ? '#1e293b' : '#fff',
+                        color: customDuration === minDays ? '#fff' : '#475569',
+                        borderColor: customDuration === minDays ? '#1e293b' : '#e2e8f0',
+                      }}
+                    >
+                      {disc > 0 && (
+                        <div style={{
+                          position: 'absolute', top: -6, right: -4, fontSize: 9, fontWeight: 700,
+                          background: '#16a34a', color: '#fff', padding: '1px 4px', borderRadius: 4,
+                        }}>-{disc}%</div>
+                      )}
+                      <div style={{ fontSize: 15, fontWeight: 700 }}>{minDays}</div>
+                      <div style={{ fontSize: 10, opacity: 0.7 }}>{unitLabel}</div>
+                      <div style={{ fontSize: 10, marginTop: 2 }}>{tierPrice.toLocaleString('vi-VN')}đ</div>
+                    </button>
+                  )
+                })}
+              </div>
+            )
+          })()}
+
+          {/* Input tự nhập */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>Hoặc nhập:</span>
+            <input
+              type='number'
+              min={1}
+              max={365}
+              value={customDuration}
+              onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))}
+              style={{
+                width: 60, padding: '5px 8px', fontSize: 13, fontWeight: 600,
+                borderRadius: 6, border: '1.5px solid #e2e8f0', outline: 'none',
+                textAlign: 'center',
+              }}
+            />
+            <span style={{ fontSize: 11, color: '#64748b' }}>{perUnit.time_unit === 'month' ? 'tháng' : 'ngày'}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginLeft: 'auto' }}>
+              = {unitPrice.toLocaleString('vi-VN')}đ
+            </span>
+          </div>
+
+          {/* Thông tin giảm giá đang áp dụng */}
+          {(() => {
+            const tier = perUnit.discount_tiers?.find(t => {
               const min = parseInt(t.min) || 0
               const max = parseInt(t.max) || Infinity
               return customDuration >= min && customDuration <= max
             })
             const discPct = parseInt(tier?.discount || '0') || 0
             if (discPct <= 0) return null
+            const fullPrice = perUnit.price_per_unit * customDuration
             return (
-              <div style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>
-                Giảm {discPct}% (từ {tier?.min}+ {perUnit.time_unit === 'month' ? 'tháng' : 'ngày'})
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6, marginTop: 6,
+                fontSize: 11, color: '#16a34a', fontWeight: 600,
+                padding: '4px 8px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0',
+              }}>
+                <span style={{ background: '#16a34a', color: '#fff', padding: '1px 5px', borderRadius: 4, fontSize: 10 }}>-{discPct}%</span>
+                <s style={{ color: '#94a3b8', fontWeight: 400 }}>{fullPrice.toLocaleString('vi-VN')}đ</s>
+                <span>tiết kiệm {(fullPrice - unitPrice).toLocaleString('vi-VN')}đ</span>
               </div>
             )
           })()}
-          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-            {[7, 14, 30].map(d => (
-              <button
-                key={d}
-                onClick={() => setCustomDuration(d)}
-                style={{
-                  padding: '3px 10px', fontSize: 11, fontWeight: 500, borderRadius: 4, cursor: 'pointer',
-                  border: '1px solid', transition: 'all 0.15s',
-                  background: customDuration === d ? '#eff6ff' : '#fff',
-                  color: customDuration === d ? '#1d4ed8' : '#94a3b8',
-                  borderColor: customDuration === d ? '#93c5fd' : '#e2e8f0',
-                }}
-              >
-                {d} {perUnit.time_unit === 'month' ? 'th' : 'ngày'}
-              </button>
-            ))}
-          </div>
         </div>
       ) : (
         <div>
