@@ -38,7 +38,9 @@ const Hero = () => {
       const raw = sessionStorage.getItem('landing_preview')
 
       return raw ? JSON.parse(raw) : null
-    } catch { return null }
+    } catch {
+      return null
+    }
   }, [isPreview])
 
   const hero = isPreview && previewData?.landing_hero ? previewData.landing_hero : branding.landing_hero
@@ -82,22 +84,44 @@ const Hero = () => {
           { number: '24/7', label: t('landing.hero.trust.support') }
         ]
 
+  const handleCTAClick = () => {
+    window.location.href = ctaLink.startsWith('/') ? ctaLink : `/${locale}/${ctaLink}`
+  }
   return (
     <section className='hero-main'>
       {/* Preview banner */}
       {isPreview && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
-          padding: '8px 16px', background: '#f59e0b', color: '#fff',
-          fontSize: 13, fontWeight: 700, textAlign: 'center',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            padding: '8px 16px',
+            background: '#f59e0b',
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 700,
+            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8
+          }}
+        >
           Xem trước Landing Page — Chưa lưu. Thay đổi sẽ mất khi đóng tab.
           <button
             onClick={() => window.close()}
             style={{
-              padding: '2px 12px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.5)',
-              background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer'
+              padding: '2px 12px',
+              borderRadius: 4,
+              border: '1px solid rgba(255,255,255,0.5)',
+              background: 'rgba(255,255,255,0.2)',
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer'
             }}
           >
             Đóng
@@ -161,8 +185,8 @@ const Hero = () => {
 
               {/* CTA Buttons */}
               <div className='hero-actions'>
-                <button className='btn-primary'>
-                  <Link href={ctaLink.startsWith('/') ? ctaLink : `/${locale}/${ctaLink}`}>{ctaText}</Link>
+                <button className='btn-primary' onClick={handleCTAClick}>
+                  {t('landing.hero.actions.buyNow')}
                   <ArrowRight size={20} />
                 </button>
               </div>

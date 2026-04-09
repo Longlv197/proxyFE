@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useMemo, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 
 import {
   Dialog,
@@ -54,6 +55,7 @@ import { useBranding } from '@/app/contexts/BrandingContext'
 import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderHistories'
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import { useUnlockRotate } from '@/hooks/apis/useOrderItems'
+import '@/components/checkout-modal/styles.css'
 
 const formatVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
 
@@ -307,7 +309,7 @@ return row.original?.key || row.original?.api_key || ''
         open={open}
         onClose={() => { setDetailTab(0); onClose() }}
         fullWidth
-        maxWidth={(renewOpen || viewItemKey) ? 'lg' : 'md'}
+        maxWidth={viewItemKey ? 'lg' : 'md'}
         PaperProps={{
           sx: {
             borderRadius: '12px',
@@ -330,12 +332,32 @@ return row.original?.key || row.original?.api_key || ''
               #{order?.order_code}
             </Typography>
           </div>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#94a3b8', borderRadius: 8 }}
-          >
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Nút gia hạn — header CTA */}
+            {order && order.order_type !== 1 && ['2', '3'].includes(String(order.status)) && (
+              <button
+                onClick={() => setRenewOpen(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: 'var(--primary-gradient, linear-gradient(135deg, #3b82f6, #2563eb))',
+                  color: 'var(--primary-contrast, #fff)', fontSize: 13, fontWeight: 600,
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+              >
+                <RefreshCw size={14} />
+                {selectedCount > 0 ? `Gia hạn ${selectedCount} proxy` : 'Gia hạn'}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#94a3b8', borderRadius: 8 }}
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <DialogContent sx={{ p: 0 }}>
@@ -366,24 +388,6 @@ return row.original?.key || row.original?.api_key || ''
                   )}
                 </Box>
                 <InfoCard icon={<Clock size={16} />} label='Loại' value={order.order_type === 1 ? 'Gia hạn' : 'Mua mới'} />
-
-                {/* Nút gia hạn — trong grid, cùng hàng với info cards */}
-                {order.order_type !== 1 && ['2', '3'].includes(String(order.status)) && !renewOpen && (
-                  <Box sx={{
-                    p: '10px 12px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: '#eff6ff', border: '1px solid #bfdbfe', cursor: 'pointer',
-                    '&:hover': { background: '#dbeafe' }, transition: 'background 0.15s',
-                  }}
-                    onClick={() => setRenewOpen(true)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <RefreshCw size={15} style={{ color: '#3b82f6' }} />
-                      <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#2563eb' }}>
-                        {selectedCount > 0 ? `Gia hạn ${selectedCount}` : 'Gia hạn'}
-                      </Typography>
-                    </div>
-                  </Box>
-                )}
               </Box>
 
               {/* Tabs */}
@@ -582,15 +586,6 @@ return row.original?.key || row.original?.api_key || ''
               )}
             </div>
 
-            {/* Right: Renewal panel */}
-            {renewOpen && (
-              <RenewalInlinePanel
-                order={order}
-                quantity={selectedCount > 0 ? selectedCount : order.quantity}
-                selectedItemKeys={selectedCount > 0 ? table.getSelectedRowModel().rows.map((r: any) => r.original.key) : undefined}
-                onClose={() => setRenewOpen(false)}
-              />
-            )}
             </div>
           ) : (
             <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -600,7 +595,16 @@ return row.original?.key || row.original?.api_key || ''
         </DialogContent>
       </Dialog>
 
-      {/* Inline renewal panel — no separate modal */}
+      {/* Renewal modal — Portal để đè lên MUI Dialog */}
+      {renewOpen && order && createPortal(
+        <RenewalInlinePanel
+          order={order}
+          quantity={selectedCount > 0 ? selectedCount : order.quantity}
+          selectedItemKeys={selectedCount > 0 ? table.getSelectedRowModel().rows.map((r: any) => r.original.key) : undefined}
+          onClose={() => setRenewOpen(false)}
+        />,
+        document.body
+      )}
     </>
   )
 }
@@ -856,30 +860,17 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
   const { mutate, isPending, isSuccess } = useRenewOrder()
 
   const isOriginal = renewInfo?.renewal_duration_mode === 'original'
-  const isPerUnit = renewInfo?.pricing_mode === 'per_unit'
   const originalDays = renewInfo?.original_duration || (order.time ?? 30)
   const prices = renewInfo?.prices ?? {}
   const perUnit = renewInfo?.per_unit
 
-  // Mốc giá từ API (sorted)
-  const availableDurations = useMemo(() => {
-    const keys = Object.keys(prices).map(Number).filter(n => n > 0).sort((a, b) => a - b)
-    return keys.length > 0 ? keys.map(String) : [String(originalDays)]
-  }, [prices, originalDays])
-
-  const [duration, setDuration] = useState(() => {
-    // Mặc định chọn mốc gần nhất với originalDays
-    if (availableDurations.includes(String(originalDays))) return String(originalDays)
-    return availableDurations[0] || String(originalDays)
-  })
   const [customDuration, setCustomDuration] = useState(originalDays)
 
-  const days = isOriginal ? originalDays : isPerUnit ? customDuration : (parseInt(duration) || 30)
+  const days = isOriginal ? originalDays : customDuration
 
-  // Tính giá
   const unitPrice = useMemo(() => {
-    if (isPerUnit && perUnit) {
-      // Tìm discount tier
+    // Nếu có per_unit info → tính từ per_unit + discount tiers
+    if (perUnit) {
       const tier = perUnit.discount_tiers?.find(t => {
         const min = parseInt(t.min) || 0
         const max = parseInt(t.max) || Infinity
@@ -891,15 +882,15 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
         : perUnit.price_per_unit
       return effective * days
     }
+    // Fallback: lấy giá từ prices map
     return prices[String(days)] ?? (order.price_per_unit || 0)
-  }, [isPerUnit, perUnit, prices, days, order.price_per_unit])
+  }, [perUnit, prices, days, order.price_per_unit])
 
   const total = unitPrice * quantity
 
   const handleRenew = () => {
     if (isPending || isSuccess) return
     if (sodu < total) { toast.error('Số dư không đủ.'); return }
-
     mutate(
       { order_id: order.id, duration: days, item_keys: selectedItemKeys },
       {
@@ -912,214 +903,183 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
     )
   }
 
-  // Loading renew info
-  if (infoLoading) {
-    return (
-      <div style={{ width: 280, borderLeft: '1px solid #e2e8f0', background: '#f8fafc', padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Loader size={20} className='animate-pulse' style={{ color: '#94a3b8' }} />
-      </div>
-    )
-  }
+  // Discount info
+  const discount = useMemo(() => {
+    if (!perUnit?.discount_tiers?.length) return null
+    const tier = perUnit.discount_tiers.find(t => {
+      const min = parseInt(t.min) || 0; const max = parseInt(t.max) || Infinity
+      return customDuration >= min && customDuration <= max
+    })
+    const pct = parseInt(tier?.discount || '0') || 0
+    if (pct <= 0) return null
+    const full = perUnit.price_per_unit * customDuration
+    return { pct, full, saved: full - unitPrice }
+  }, [perUnit, customDuration, unitPrice])
 
-  // Can't renew
-  if (renewInfo && !renewInfo.can_renew) {
-    return (
-      <div style={{ width: 280, borderLeft: '1px solid #e2e8f0', background: '#f8fafc', padding: 16, flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Gia hạn</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18 }}>×</button>
-        </div>
-        <div style={{ fontSize: 12, color: '#dc2626', padding: '10px 12px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
-          {renewInfo.reason || 'Không thể gia hạn.'}
-        </div>
-      </div>
-    )
-  }
+  const unitLabel = perUnit?.time_unit === 'month' ? 'tháng' : 'ngày'
+  const fullPriceTotal = perUnit ? perUnit.price_per_unit * customDuration : 0
 
   return (
-    <div style={{
-      width: 280, borderLeft: '1px solid #e2e8f0', background: '#f8fafc',
-      padding: 16, display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Gia hạn</span>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18 }}>×</button>
-      </div>
-
-      <div style={{ fontSize: 12, color: '#64748b' }}>
-        {selectedItemKeys ? `${quantity} proxy đã chọn` : `Tất cả ${quantity} proxy`}
-      </div>
-
-      {/* Duration */}
-      {isOriginal ? (
-        <div style={{ padding: '8px 12px', background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: 12, color: '#1d4ed8' }}>
-          Gia hạn {originalDays} ngày (theo lần mua đầu)
+    <div className='checkout-overlay' onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className='checkout-modal'>
+        {/* Header */}
+        <div className='checkout-header'>
+          <h2 className='checkout-title'><RefreshCw size={20} /> Gia hạn proxy</h2>
+          <button className='checkout-close' onClick={onClose}><X size={20} /></button>
         </div>
-      ) : isPerUnit && perUnit ? (
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
-            {perUnit.time_unit === 'month' ? 'Chọn số tháng' : 'Chọn số ngày'}
-          </div>
 
-          {/* Mốc giảm giá — giống checkout */}
-          {perUnit.discount_tiers?.length > 0 && (() => {
-            const unitLabel = perUnit.time_unit === 'month' ? 'tháng' : 'ngày'
-            const tiers = perUnit.discount_tiers.slice(0, 5)
-            return (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                {/* Mốc 1 — không giảm giá */}
-                <button
-                  onClick={() => setCustomDuration(1)}
-                  style={{
-                    flex: '1 0 auto', minWidth: 52, padding: '6px 4px', fontSize: 11, fontWeight: 600,
-                    borderRadius: 8, cursor: 'pointer', border: '1.5px solid', transition: 'all 0.15s',
-                    textAlign: 'center', position: 'relative',
-                    background: customDuration === 1 ? '#1e293b' : '#fff',
-                    color: customDuration === 1 ? '#fff' : '#475569',
-                    borderColor: customDuration === 1 ? '#1e293b' : '#e2e8f0',
-                  }}
-                >
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>1</div>
-                  <div style={{ fontSize: 10, opacity: 0.7 }}>{unitLabel}</div>
-                  <div style={{ fontSize: 10, marginTop: 2 }}>{perUnit.price_per_unit.toLocaleString('vi-VN')}đ</div>
-                </button>
-                {/* Mốc theo discount tiers */}
-                {tiers.map((tier, i) => {
-                  const minDays = parseInt(tier.min) || 1
-                  const disc = parseInt(tier.discount) || 0
-                  const tierPrice = Math.round(perUnit.price_per_unit * (1 - disc / 100))
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setCustomDuration(minDays)}
-                      style={{
-                        flex: '1 0 auto', minWidth: 52, padding: '6px 4px', fontSize: 11, fontWeight: 600,
-                        borderRadius: 8, cursor: 'pointer', border: '1.5px solid', transition: 'all 0.15s',
-                        textAlign: 'center', position: 'relative',
-                        background: customDuration === minDays ? '#1e293b' : '#fff',
-                        color: customDuration === minDays ? '#fff' : '#475569',
-                        borderColor: customDuration === minDays ? '#1e293b' : '#e2e8f0',
-                      }}
-                    >
-                      {disc > 0 && (
-                        <div style={{
-                          position: 'absolute', top: -6, right: -4, fontSize: 9, fontWeight: 700,
-                          background: '#16a34a', color: '#fff', padding: '1px 4px', borderRadius: 4,
-                        }}>-{disc}%</div>
-                      )}
-                      <div style={{ fontSize: 15, fontWeight: 700 }}>{minDays}</div>
-                      <div style={{ fontSize: 10, opacity: 0.7 }}>{unitLabel}</div>
-                      <div style={{ fontSize: 10, marginTop: 2 }}>{tierPrice.toLocaleString('vi-VN')}đ</div>
-                    </button>
-                  )
-                })}
+        {/* Body */}
+        <div className='checkout-body'>
+          {/* Loading */}
+          {infoLoading && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+              <CircularProgress size={28} />
+            </div>
+          )}
+
+          {/* Can't renew */}
+          {!infoLoading && renewInfo && !renewInfo.can_renew && (
+            <div className='checkout-warning' style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
+              <AlertTriangle size={16} />
+              {renewInfo.reason || 'Không thể gia hạn.'}
+            </div>
+          )}
+
+          {/* Main */}
+          {!infoLoading && renewInfo?.can_renew && (
+            <>
+              {/* Product info */}
+              <p className='checkout-product-name'>
+                {selectedItemKeys ? `${quantity} proxy đã chọn` : `Tất cả ${quantity} proxy`}
+              </p>
+
+              {/* Duration */}
+              {isOriginal ? (
+                <div className='checkout-section'>
+                  <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: 14, color: '#1d4ed8', fontWeight: 600, textAlign: 'center' }}>
+                    <Clock3 size={15} style={{ verticalAlign: -3, marginRight: 4 }} />
+                    Gia hạn {originalDays} ngày (theo lần mua đầu)
+                  </div>
+                </div>
+              ) : (
+                <div className='checkout-section'>
+                  <label className='checkout-section-label'>
+                    <Clock3 size={16} />
+                    {perUnit?.time_unit === 'month' ? 'CHỌN SỐ THÁNG' : 'CHỌN SỐ NGÀY'}
+                  </label>
+
+                  {/* Mốc giảm giá */}
+                  {perUnit?.discount_tiers && perUnit.discount_tiers.length > 0 && (
+                    <div className='perunit-tiers'>
+                      <button
+                        type='button'
+                        className={`perunit-tier ${customDuration === 1 ? 'active' : ''}`}
+                        onClick={() => setCustomDuration(1)}
+                      >
+                        <span className='perunit-tier-top'>
+                          <span className='perunit-tier-days'>1</span>
+                          <span className='perunit-tier-unit'>{unitLabel}</span>
+                        </span>
+                        <span className='perunit-tier-price'>{perUnit.price_per_unit.toLocaleString('vi-VN')}đ</span>
+                      </button>
+                      {perUnit.discount_tiers.slice(0, 5).map((tier, i) => {
+                        const minDays = parseInt(tier.min) || 1
+                        const disc = parseInt(tier.discount) || 0
+                        const tierPrice = Math.round(perUnit.price_per_unit * (1 - disc / 100))
+                        return (
+                          <button
+                            type='button'
+                            key={i}
+                            className={`perunit-tier ${customDuration === minDays ? 'active' : ''}`}
+                            onClick={() => setCustomDuration(minDays)}
+                          >
+                            {disc > 0 && <span className='perunit-tier-badge'>-{disc}%</span>}
+                            <span className='perunit-tier-top'>
+                              <span className='perunit-tier-days'>{minDays}</span>
+                              <span className='perunit-tier-unit'>{unitLabel}</span>
+                            </span>
+                            <span className='perunit-tier-price'>{tierPrice.toLocaleString('vi-VN')}đ</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Input nhập tự do */}
+                  <div className='perunit-input-row'>
+                    <span className='perunit-input-label'>
+                      {perUnit?.discount_tiers?.length ? 'Hoặc nhập:' : 'Số ngày:'}
+                    </span>
+                    <div className='perunit-input-wrap'>
+                      <input
+                        type='number'
+                        className='perunit-input'
+                        min={1} max={365}
+                        value={customDuration}
+                        onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                      />
+                      <span className='perunit-input-unit'>{unitLabel}</span>
+                    </div>
+                    <span className='perunit-calc'>= <strong>{unitPrice.toLocaleString('vi-VN')}đ</strong></span>
+                  </div>
+
+                  {/* Discount info */}
+                  {discount && (
+                    <div className='perunit-saving'>
+                      <span className='perunit-saving-pct'>-{discount.pct}%</span>
+                      <span className='perunit-saving-detail'>
+                        <s>{fullPriceTotal.toLocaleString('vi-VN')}đ</s> tiết kiệm{' '}
+                        <strong>{discount.saved.toLocaleString('vi-VN')}đ</strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Price table */}
+              <div className='checkout-price-table'>
+                <div className='price-table-header'>
+                  <span>Giá</span>
+                  <span>Số lượng</span>
+                  <span>Thành tiền</span>
+                </div>
+                <div className='price-table-row'>
+                  <span className='price-cell'>{unitPrice.toLocaleString('vi-VN')}đ</span>
+                  <span className='price-cell'>{quantity}</span>
+                  <span className='subtotal-cell'>{total.toLocaleString('vi-VN')}đ</span>
+                </div>
               </div>
-            )
-          })()}
 
-          {/* Input tự nhập */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>Hoặc nhập:</span>
-            <input
-              type='number'
-              min={1}
-              max={365}
-              value={customDuration}
-              onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))}
-              style={{
-                width: 60, padding: '5px 8px', fontSize: 13, fontWeight: 600,
-                borderRadius: 6, border: '1.5px solid #e2e8f0', outline: 'none',
-                textAlign: 'center',
-              }}
-            />
-            <span style={{ fontSize: 11, color: '#64748b' }}>{perUnit.time_unit === 'month' ? 'tháng' : 'ngày'}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginLeft: 'auto' }}>
-              = {unitPrice.toLocaleString('vi-VN')}đ
-            </span>
+              {/* Balance warning */}
+              {sodu < total && (
+                <div className='checkout-warning'>
+                  <AlertTriangle size={16} />
+                  Thiếu {(total - sodu).toLocaleString('vi-VN')}đ — vui lòng nạp thêm
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        {!infoLoading && renewInfo?.can_renew && (
+          <div className='checkout-footer'>
+            <div className='checkout-total'>
+              <span className='total-text'>Tổng Cộng:</span>
+              <span className='total-amount'>{total.toLocaleString('vi-VN')}đ</span>
+            </div>
+            <button
+              className='checkout-pay-btn'
+              onClick={isSuccess ? onClose : handleRenew}
+              disabled={isPending || sodu < total}
+            >
+              {isPending ? <><Loader size={16} className='animate-pulse' /> Đang xử lý...</>
+                : isSuccess ? <><CheckCircle size={16} /> Thành công!</>
+                : <><RefreshCw size={16} /> Gia hạn {days} {unitLabel}</>}
+            </button>
           </div>
-
-          {/* Thông tin giảm giá đang áp dụng */}
-          {(() => {
-            const tier = perUnit.discount_tiers?.find(t => {
-              const min = parseInt(t.min) || 0
-              const max = parseInt(t.max) || Infinity
-              return customDuration >= min && customDuration <= max
-            })
-            const discPct = parseInt(tier?.discount || '0') || 0
-            if (discPct <= 0) return null
-            const fullPrice = perUnit.price_per_unit * customDuration
-            return (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 6, marginTop: 6,
-                fontSize: 11, color: '#16a34a', fontWeight: 600,
-                padding: '4px 8px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0',
-              }}>
-                <span style={{ background: '#16a34a', color: '#fff', padding: '1px 5px', borderRadius: 4, fontSize: 10 }}>-{discPct}%</span>
-                <s style={{ color: '#94a3b8', fontWeight: 400 }}>{fullPrice.toLocaleString('vi-VN')}đ</s>
-                <span>tiết kiệm {(fullPrice - unitPrice).toLocaleString('vi-VN')}đ</span>
-              </div>
-            )
-          })()}
-        </div>
-      ) : (
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Thời hạn</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {availableDurations.map(d => (
-              <button
-                key={d}
-                onClick={() => setDuration(d)}
-                style={{
-                  padding: '5px 12px', fontSize: 12, fontWeight: 600, borderRadius: 6, cursor: 'pointer',
-                  border: '1.5px solid', transition: 'all 0.15s',
-                  background: duration === d ? '#1e293b' : '#fff',
-                  color: duration === d ? '#fff' : '#64748b',
-                  borderColor: duration === d ? '#1e293b' : '#e2e8f0',
-                }}
-              >
-                {d} ngày
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Price */}
-      <div style={{ background: '#fff', borderRadius: 8, padding: 12, border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
-          <span>Đơn giá ({days} ngày)</span>
-          <span>{unitPrice.toLocaleString('vi-VN')}đ</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
-          <span>Số lượng</span>
-          <span>×{quantity}</span>
-        </div>
-        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 6, marginTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
-          <span>Tổng</span>
-          <span style={{ color: 'var(--primary-color, #3b82f6)' }}>{total.toLocaleString('vi-VN')}đ</span>
-        </div>
+        )}
       </div>
-
-      {sodu < total && (
-        <div style={{ fontSize: 11, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <AlertTriangle size={13} /> Thiếu {(total - sodu).toLocaleString('vi-VN')}đ
-        </div>
-      )}
-
-      <button
-        onClick={isSuccess ? onClose : handleRenew}
-        disabled={isPending || sodu < total}
-        style={{
-          width: '100%', padding: '10px', fontSize: 13, fontWeight: 700, borderRadius: 8, border: 'none', cursor: 'pointer',
-          background: isSuccess ? '#16a34a' : '#3b82f6', color: '#fff',
-          opacity: (isPending || sodu < total) ? 0.6 : 1,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}
-      >
-        {isPending ? <><Loader size={14} className='animate-pulse' /> Đang xử lý...</>
-          : isSuccess ? 'Thành công!'
-          : <><RefreshCw size={14} /> Gia hạn {days} ngày</>}
-      </button>
     </div>
   )
 }

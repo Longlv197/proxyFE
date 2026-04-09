@@ -1854,9 +1854,8 @@ return <Chip key={val} label={p?.label || val} size='small' />
                           <li><strong>Bước 2 — Bật gia hạn:</strong> Chọn <strong>"Cho phép gia hạn = Có"</strong> bên dưới.</li>
                           <li><strong>Bước 3 — Chọn thời hạn:</strong>
                             <Box component='ul' sx={{ pl: 2, mt: 0.25, mb: 0.5, '& li': { lineHeight: 1.8 } }}>
-                              <li><strong>Theo NCC</strong> — hệ thống gửi số ngày do NCC quy định (phổ biến nhất)</li>
-                              <li><strong>Khách tự chọn</strong> — khách nhập số ngày muốn gia hạn khi bấm nút</li>
-                              <li><strong>Như lần mua đầu</strong> — tự lấy số ngày từ đơn mua gốc</li>
+                              <li><strong>Theo NCC</strong> — khách nhập số ngày, có mốc giảm giá nếu cấu hình (phổ biến nhất)</li>
+                              <li><strong>Như lần mua đầu</strong> — tự lấy số ngày từ đơn mua gốc, khách không cần chọn</li>
                             </Box>
                           </li>
                           <li><strong>Bước 4 — Hết hạn:</strong> Chọn có cho phép gia hạn khi proxy đã hết hạn hay chỉ khi còn hạn.</li>
@@ -1890,14 +1889,13 @@ return <Chip key={val} label={p?.label || val} size='small' />
                                 onChange={e => setRenewalDuration(e.target.value)}
                                 slotProps={{ select: { displayEmpty: true } }}
                                 helperText={
-                                  renewalDuration === '' ? 'Số ngày do NCC quy định' :
-                                  renewalDuration === 'custom' ? 'Khách nhập số ngày khi gia hạn' :
-                                  'Lấy từ đơn mua gốc của khách'
+                                  renewalDuration === 'original'
+                                    ? 'Lấy từ đơn mua gốc, khách không cần chọn'
+                                    : 'Khách nhập số ngày muốn gia hạn'
                                 }
                               >
-                                <MenuItem value=''>Theo NCC (mặc định)</MenuItem>
-                                <MenuItem value='custom'>Khách tự chọn</MenuItem>
-                                <MenuItem value='original'>Như lần mua đầu</MenuItem>
+                                <MenuItem value=''>Theo NCC — khách nhập số ngày</MenuItem>
+                                <MenuItem value='original'>Như lần mua đầu — tự động</MenuItem>
                               </CustomTextField>
                             </Grid2>
                             <Grid2 size={{ xs: 6, sm: 3 }}>
@@ -1924,7 +1922,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                                 <Chip size='small' variant='outlined' color='success' label='Gia hạn: BẬT' sx={{ fontSize: 11, fontWeight: 600 }} />
                                 <Chip size='small' variant='outlined'
-                                  label={`Thời hạn: ${renewalDuration === '' ? 'Theo NCC' : renewalDuration === 'custom' ? 'Khách chọn' : 'Theo đơn mua'}`}
+                                  label={`Thời hạn: ${renewalDuration === 'original' ? 'Theo đơn mua' : 'Khách nhập'}`}
                                   sx={{ fontSize: 11 }} />
                                 <Chip size='small' variant='outlined'
                                   color={allowExpiredRenew === 'false' ? 'error' : 'default'}
