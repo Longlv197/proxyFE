@@ -116,10 +116,11 @@ const NavbarContent = () => {
           variant='outlined'
           onClick={handleNavigateRecharge}
           sx={{
-            padding: { xs: '4px 10px', sm: '6px 12px' },
-            fontSize: '0.75rem',
+            padding: { xs: '6px 14px', sm: '8px 18px' },
+            fontSize: { xs: '0.8rem', sm: '0.875rem' },
+            fontWeight: 600,
             minWidth: 0,
-            height: 32,
+            height: { xs: 36, sm: 40 },
             borderRadius: '50px',
             display: isUnauthenticated ? 'none' : 'flex',
             alignItems: 'center',
@@ -133,8 +134,8 @@ const NavbarContent = () => {
             }
           }}
         >
-          <Wallet size={14} />
-          <span>Nạp</span>
+          <Wallet size={16} />
+          <span>Nạp Tiền</span>
         </Button>
 
         <LanguageDropdown />

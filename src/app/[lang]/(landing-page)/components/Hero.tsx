@@ -2,7 +2,7 @@
 
 import React from 'react'
 
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 
 import { Shield, Zap, Globe, Users, ArrowRight, Clock, Star } from 'lucide-react'
 
@@ -27,10 +27,21 @@ const Hero = () => {
   const lang = (locale as string) || 'vi'
   const { t } = useTranslation()
   const branding = useBranding()
+  const searchParams = useSearchParams()
 
-  const hero = branding.landing_hero
+  // Preview mode: đọc data từ sessionStorage khi có ?preview=1
+  const isPreview = searchParams.get('preview') === '1'
+  const previewData = React.useMemo(() => {
+    if (!isPreview || typeof window === 'undefined') return null
 
-  console.log(hero)
+    try {
+      const raw = sessionStorage.getItem('landing_preview')
+
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  }, [isPreview])
+
+  const hero = isPreview && previewData?.landing_hero ? previewData.landing_hero : branding.landing_hero
   /** Lấy text theo locale, fallback vi → en → '' */
   const txt = (obj: Record<string, string> | undefined | null, fallback: string) => {
     if (!obj) return fallback
@@ -73,6 +84,27 @@ const Hero = () => {
 
   return (
     <section className='hero-main'>
+      {/* Preview banner */}
+      {isPreview && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          padding: '8px 16px', background: '#f59e0b', color: '#fff',
+          fontSize: 13, fontWeight: 700, textAlign: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+        }}>
+          Xem trước Landing Page — Chưa lưu. Thay đổi sẽ mất khi đóng tab.
+          <button
+            onClick={() => window.close()}
+            style={{
+              padding: '2px 12px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.5)',
+              background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer'
+            }}
+          >
+            Đóng
+          </button>
+        </div>
+      )}
+
       {/* Animated Background */}
       <div className='hero-background'>
         <div className='network-animation'>

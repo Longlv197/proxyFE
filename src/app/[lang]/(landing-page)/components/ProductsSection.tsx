@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Shield, Star, CheckCircle, ArrowRight } from 'lucide-react'
 
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'next/navigation'
 
 import Link from '@components/Link'
 
@@ -28,8 +29,20 @@ function getPeriod(item: LandingPricingItem | undefined, locale: string): string
 
 export default function ProductsSection({ local, landingPricing }: { local: string; landingPricing?: LandingPricing | null }) {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
 
-  const p = landingPricing || {}
+  // Preview mode: đọc pricing từ sessionStorage khi có ?preview=1
+  const previewPricing = React.useMemo(() => {
+    if (searchParams.get('preview') !== '1' || typeof window === 'undefined') return null
+
+    try {
+      const raw = sessionStorage.getItem('landing_preview')
+
+      return raw ? JSON.parse(raw)?.landing_pricing : null
+    } catch { return null }
+  }, [searchParams])
+
+  const p = previewPricing || landingPricing || {}
 
   const products = [
     {

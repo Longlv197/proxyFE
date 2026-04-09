@@ -8,7 +8,13 @@ interface RenewInfo {
   renewal_duration_mode?: 'custom' | 'original'
   original_duration?: number
   item_count?: number
+  pricing_mode?: 'fixed' | 'per_unit'
   prices?: Record<string, number> // { "1": 100, "7": 650, "30": 2500 } — giá per unit per duration
+  per_unit?: {
+    price_per_unit: number
+    time_unit: 'day' | 'month'
+    discount_tiers: Array<{ min: string; max: string; discount: string }>
+  }
 }
 
 export const useRenewInfo = (orderId: number | null) => {

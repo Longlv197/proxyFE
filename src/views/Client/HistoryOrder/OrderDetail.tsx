@@ -856,12 +856,44 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
   const { mutate, isPending, isSuccess } = useRenewOrder()
 
   const isOriginal = renewInfo?.renewal_duration_mode === 'original'
+  const isPerUnit = renewInfo?.pricing_mode === 'per_unit'
   const originalDays = renewInfo?.original_duration || (order.time ?? 30)
-  const [duration, setDuration] = useState(String(originalDays))
-
-  const days = isOriginal ? originalDays : (parseInt(duration) || 30)
   const prices = renewInfo?.prices ?? {}
-  const unitPrice = prices[String(days)] ?? (order.price_per_unit || 0)
+  const perUnit = renewInfo?.per_unit
+
+  // Mốc giá từ API (sorted)
+  const availableDurations = useMemo(() => {
+    const keys = Object.keys(prices).map(Number).filter(n => n > 0).sort((a, b) => a - b)
+    return keys.length > 0 ? keys.map(String) : [String(originalDays)]
+  }, [prices, originalDays])
+
+  const [duration, setDuration] = useState(() => {
+    // Mặc định chọn mốc gần nhất với originalDays
+    if (availableDurations.includes(String(originalDays))) return String(originalDays)
+    return availableDurations[0] || String(originalDays)
+  })
+  const [customDuration, setCustomDuration] = useState(originalDays)
+
+  const days = isOriginal ? originalDays : isPerUnit ? customDuration : (parseInt(duration) || 30)
+
+  // Tính giá
+  const unitPrice = useMemo(() => {
+    if (isPerUnit && perUnit) {
+      // Tìm discount tier
+      const tier = perUnit.discount_tiers?.find(t => {
+        const min = parseInt(t.min) || 0
+        const max = parseInt(t.max) || Infinity
+        return days >= min && days <= max
+      })
+      const discPct = parseInt(tier?.discount || '0') || 0
+      const effective = discPct > 0
+        ? Math.round(perUnit.price_per_unit * (1 - discPct / 100))
+        : perUnit.price_per_unit
+      return effective * days
+    }
+    return prices[String(days)] ?? (order.price_per_unit || 0)
+  }, [isPerUnit, perUnit, prices, days, order.price_per_unit])
+
   const total = unitPrice * quantity
 
   const handleRenew = () => {
@@ -923,11 +955,59 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
         <div style={{ padding: '8px 12px', background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: 12, color: '#1d4ed8' }}>
           Gia hạn {originalDays} ngày (theo lần mua đầu)
         </div>
+      ) : isPerUnit && perUnit ? (
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+            Nhập số {perUnit.time_unit === 'month' ? 'tháng' : 'ngày'} muốn gia hạn
+          </div>
+          <input
+            type='number'
+            min={1}
+            value={customDuration}
+            onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))}
+            style={{
+              width: '100%', padding: '8px 12px', fontSize: 14, fontWeight: 600,
+              borderRadius: 8, border: '1.5px solid #e2e8f0', outline: 'none',
+              textAlign: 'center',
+            }}
+          />
+          {perUnit.discount_tiers?.length > 0 && (() => {
+            const tier = perUnit.discount_tiers.find(t => {
+              const min = parseInt(t.min) || 0
+              const max = parseInt(t.max) || Infinity
+              return customDuration >= min && customDuration <= max
+            })
+            const discPct = parseInt(tier?.discount || '0') || 0
+            if (discPct <= 0) return null
+            return (
+              <div style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>
+                Giảm {discPct}% (từ {tier?.min}+ {perUnit.time_unit === 'month' ? 'tháng' : 'ngày'})
+              </div>
+            )
+          })()}
+          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+            {[7, 14, 30].map(d => (
+              <button
+                key={d}
+                onClick={() => setCustomDuration(d)}
+                style={{
+                  padding: '3px 10px', fontSize: 11, fontWeight: 500, borderRadius: 4, cursor: 'pointer',
+                  border: '1px solid', transition: 'all 0.15s',
+                  background: customDuration === d ? '#eff6ff' : '#fff',
+                  color: customDuration === d ? '#1d4ed8' : '#94a3b8',
+                  borderColor: customDuration === d ? '#93c5fd' : '#e2e8f0',
+                }}
+              >
+                {d} {perUnit.time_unit === 'month' ? 'th' : 'ngày'}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : (
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Thời hạn</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {['1', '7', '30'].map(d => (
+            {availableDurations.map(d => (
               <button
                 key={d}
                 onClick={() => setDuration(d)}

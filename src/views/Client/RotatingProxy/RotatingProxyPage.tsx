@@ -7,7 +7,23 @@ import { useTranslation } from 'react-i18next'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import * as yup from 'yup'
 import { yupResolver } from '@hookform/resolvers/yup'
-import { CheckCircle, ShoppingCart, User, Users, Shield, Clock, Filter, Globe, Wifi, X, SearchX, SlidersHorizontal, RefreshCw, Zap, MapPin } from 'lucide-react'
+import {
+  CheckCircle,
+  ShoppingCart,
+  User,
+  Users,
+  Shield,
+  Clock,
+  Filter,
+  Globe,
+  Wifi,
+  X,
+  SearchX,
+  SlidersHorizontal,
+  RefreshCw,
+  Zap,
+  MapPin
+} from 'lucide-react'
 import Switch from '@mui/material/Switch'
 import MenuItem from '@mui/material/MenuItem'
 import { useSession } from 'next-auth/react'
@@ -18,9 +34,9 @@ import { Box, Grid2, Typography } from '@mui/material'
 import Chip from '@mui/material/Chip'
 
 import { getTagStyle, shouldHideByTag, getCountryName, fixCountryCode } from '@/configs/tagConfig'
+import { getVisibleFields, renderFeatureRow } from '@/app/[lang]/(private)/(client)/components/proxy-card/productFieldsHelper'
 
 import { useModalContext } from '@/app/contexts/ModalContext'
-
 
 import CustomTextField from '@core/components/mui/TextField'
 import CheckoutModal from '@/components/checkout-modal/CheckoutModal'
@@ -99,7 +115,7 @@ const InputFeatureRow = ({ feature, control, errors, planId, isDisabled = false,
       <div>
         <div className='feature-row'>
           <div className='feature-icons'>
-            <CheckCircle size={16} color={errors[feature.field] ? '#ef4444' : (feature.iconColor || '#22c55e')} />
+            <CheckCircle size={16} color={errors[feature.field] ? '#ef4444' : feature.iconColor || '#22c55e'} />
           </div>
           <div className='feature-content'>
             <label
@@ -161,7 +177,7 @@ const RadioFeatureRow = ({ feature, control, planId, plan }) => {
     if (days === 7) return 'Tuần'
     if (days === 30) return 'Tháng'
 
-return `${days} ngày`
+    return `${days} ngày`
   }
 
   // Hàm tính phần trăm giảm giá theo công thức: (1 - giá_thực_tế / giá_gốc) * 100
@@ -187,9 +203,7 @@ return `${days} ngày`
     const options = feature.options
 
     // Tìm giá của đơn vị thời gian ngắn nhất (duration nhỏ nhất)
-    const sortedOptions = [...options].sort(
-      (a: any, b: any) => parseInt(a.key, 10) - parseInt(b.key, 10)
-    )
+    const sortedOptions = [...options].sort((a: any, b: any) => parseInt(a.key, 10) - parseInt(b.key, 10))
 
     if (sortedOptions.length === 0) {
       return null
@@ -247,14 +261,10 @@ return `${days} ngày`
               >
                 {feature.options?.map((item: any, index: number) => {
                   // Tính discount theo công thức mới nếu là feature time, nếu không thì dùng discount cũ
-                  const calculatedDiscount = feature.field === 'time'
-                    ? calculateDiscount(item.key, item.value)
-                    : null
+                  const calculatedDiscount = feature.field === 'time' ? calculateDiscount(item.key, item.value) : null
 
-                  const discount = calculatedDiscount !== null
-                    ? calculatedDiscount
-                    : (item.discount ? parseInt(item.discount) : 0)
-
+                  const discount =
+                    calculatedDiscount !== null ? calculatedDiscount : item.discount ? parseInt(item.discount) : 0
 
                   // Hiển thị label: nếu là time thì dùng getDurationLabel, nếu là protocol thì dùng item.label
                   const displayLabel = feature.field === 'time' ? getDurationLabel(item.key) : item.label
@@ -322,14 +332,12 @@ const PlanCard = ({ plan }) => {
 
   const { openAuthModal } = useModalContext()
   const session = useSession()
-  const { show_product_code } = useBranding()
+  const { show_product_code, product_fields } = useBranding()
 
   const isAvailable = plan?.is_purchasable !== false
 
   // Protocols
-  const protocolList: string[] = plan.protocols && plan.protocols.length > 0
-    ? plan.protocols
-    : ['http']
+  const protocolList: string[] = plan.protocols && plan.protocols.length > 0 ? plan.protocols : ['http']
 
   // Build priceOptions từ time feature
   const timeFeature = plan.features.find((f: any) => f.field === 'time')
@@ -339,8 +347,7 @@ const PlanCard = ({ plan }) => {
       return [{ key: '1', label: 'Ngày', price: plan.price || 0 }]
     }
 
-
-return timeFeature.options.map((opt: any) => ({
+    return timeFeature.options.map((opt: any) => ({
       key: opt.key,
       label: (() => {
         const days = parseInt(opt.key)
@@ -350,10 +357,10 @@ return timeFeature.options.map((opt: any) => ({
         if (days === 30) return 'Tháng'
         if (days === 365) return 'Năm'
 
-return `${opt.key} ngày`
+        return `${opt.key} ngày`
       })(),
       price: parseInt(opt.value, 10) || 0,
-      quantity_tiers: opt.quantity_tiers || [],
+      quantity_tiers: opt.quantity_tiers || []
     }))
   }, [timeFeature, plan.price])
 
@@ -385,11 +392,10 @@ return `${opt.key} ngày`
   const visibleTags = useMemo(() => {
     if (!plan?.tag) return []
 
-return plan.tag.split(',').filter((t: string) => {
+    return plan.tag.split(',').filter((t: string) => {
       const tagDef = getTagStyle(t)
 
-
-return !(tagDef && 'hidden' in tagDef && tagDef.hidden)
+      return !(tagDef && 'hidden' in tagDef && tagDef.hidden)
     })
   }, [plan?.tag])
 
@@ -433,14 +439,17 @@ return !(tagDef && 'hidden' in tagDef && tagDef.hidden)
     if (session.status !== 'authenticated') {
       openAuthModal('login')
 
-return
+      return
     }
 
-
     // Nếu có dynamic fields cần validate, dùng handleSubmit
-    const hasDynamicFields = plan.features.some((f: any) =>
-      f.field && f.field !== 'time' && f.field !== 'protocol' && f.field !== 'quantity' &&
-      ['input', 'checkbox', 'select'].includes(f.status)
+    const hasDynamicFields = plan.features.some(
+      (f: any) =>
+        f.field &&
+        f.field !== 'time' &&
+        f.field !== 'protocol' &&
+        f.field !== 'quantity' &&
+        ['input', 'checkbox', 'select'].includes(f.status)
     )
 
     if (hasDynamicFields) {
@@ -457,25 +466,96 @@ return
         className={`proxy-plan-card ${plan.color}${checkoutOpen ? ' active' : ''}`}
         style={{
           position: 'relative',
-          ...((!isAvailable) ? { opacity: 0.7 } : {})
+          ...(!isAvailable ? { opacity: 0.7 } : {})
         }}
       >
-        {/* Header: title + tags */}
+        {/* Header: title + tags (max 3, còn lại +N) */}
         <div className='plan-header'>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-            <div style={{ flex: 1 }}>
-              <h3 className='plan-title' style={{ textAlign: 'left', marginBottom: 1 }}>{plan.title}</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h3 className='plan-title' style={{ textAlign: 'left', marginBottom: 1 }}>
+                {plan.title}
+              </h3>
               {show_product_code !== '0' && (
-                <span style={{ fontFamily: 'monospace', fontSize: '10.5px', fontWeight: 500, color: '#b0b8c4', lineHeight: 1, display: 'block' }}>#{plan.code || plan.id}</span>
+                <span
+                  style={{
+                    fontFamily: 'monospace',
+                    fontSize: '10.5px',
+                    fontWeight: 500,
+                    color: '#b0b8c4',
+                    lineHeight: 1,
+                    display: 'block'
+                  }}
+                >
+                  #{plan.code || plan.id}
+                </span>
               )}
             </div>
             {visibleTags.length > 0 && (
-              <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                {visibleTags.map((tag: string, i: number) => {
+              <div style={{ display: 'flex', gap: '4px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '60%' }}>
+                {visibleTags.slice(0, 3).map((tag: string, i: number) => {
                   const tagDef = getTagStyle(tag)
 
-                  return <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 10px', fontSize: '10.5px', fontWeight: 700, borderRadius: '6px', background: `linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 50%), ${tagDef.gradient || tagDef.bgColor}`, color: tagDef.textColor, boxShadow: `0 2px 10px ${tagDef.borderColor}55, inset 0 1px 0 rgba(255,255,255,0.2)`, border: '1px solid rgba(255,255,255,0.25)', letterSpacing: '0.3px', lineHeight: 1.2 }}>{tagDef.icon && <span style={{ fontSize: '10px' }}>{tagDef.icon}</span>}{tag.trim()}</span>
+                  return (
+                    <span
+                      key={i}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        padding: '3px 10px',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        borderRadius: '6px',
+                        background: `linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 50%), ${tagDef.gradient || tagDef.bgColor}`,
+                        color: tagDef.textColor,
+                        boxShadow: `0 2px 10px ${tagDef.borderColor}55, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                        border: '1px solid rgba(255,255,255,0.25)',
+                        letterSpacing: '0.3px',
+                        lineHeight: 1.3,
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {tagDef.icon && <span style={{ fontSize: '10px' }}>{tagDef.icon}</span>}
+                      {tag.trim()}
+                    </span>
+                  )
                 })}
+                {visibleTags.length > 3 && (
+                  <span className='tag-more-wrapper'>
+                    <span className='tag-more-badge'>
+                      +{visibleTags.length - 3}
+                    </span>
+                    <span className='tag-more-tooltip'>
+                      {visibleTags.slice(3).map((tag: string, i: number) => {
+                        const tagDef = getTagStyle(tag)
+
+                        return (
+                          <span
+                            key={i}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              padding: '3px 10px',
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              borderRadius: '6px',
+                              background: `linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 50%), ${tagDef.gradient || tagDef.bgColor}`,
+                              color: tagDef.textColor,
+                              letterSpacing: '0.3px',
+                              lineHeight: 1.3,
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {tagDef.icon && <span style={{ fontSize: '10px' }}>{tagDef.icon}</span>}
+                            {tag.trim()}
+                          </span>
+                        )
+                      })}
+                    </span>
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -483,48 +563,32 @@ return
 
         {/* Note — hiện full HTML */}
         {hasNote && (
-          <div className='proxy-note-content' style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px', lineHeight: 1.5, padding: '0 2px' }} dangerouslySetInnerHTML={{ __html: plan.note }} />
+          <div
+            className='proxy-note-content'
+            style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px', lineHeight: 1.5, padding: '0 2px' }}
+            dangerouslySetInnerHTML={{ __html: plan.note }}
+          />
         )}
 
         <div className='plan-features'>
-          {/* IP type + country */}
-          {(plan?.ip_version || plan?.country || plan?.country_code) && (
-            <div className='feature-row' style={{ padding: '4px 0' }}>
-              <div className='feature-icons'><MapPin size={16} color='#6366f1' /></div>
-              <div className='feature-content'>
-                <span className='feature-label'>Loại IP:</span>
-                <span className='feature-value' style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Rotating {plan.ip_version?.toUpperCase() === 'IPV4' ? 'V4' : plan.ip_version?.toUpperCase() === 'IPV6' ? 'V6' : plan.ip_version || ''} — {(plan?.country || plan?.country_code) && <img src={`https://flagcdn.com/w40/${fixCountryCode(plan.country || plan.country_code)}.png`} alt='' style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 2 }} />}{getCountryName(plan.country || plan.country_code || '')}</span>
-              </div>
-            </div>
-          )}
-          {/* Protocol as static feature row */}
-          <StaticFeatureRow feature={{ label: 'Hỗ trợ', value: protocolList.map((p: string) => p.toUpperCase()).join('/'), icon: Shield, iconColor: 'var(--primary-hover, #f97316)' }} />
+          {/* Feature rows — rendered by product_fields config */}
+          {getVisibleFields(product_fields).map(f => {
+            const row = renderFeatureRow(
+              f.key,
+              plan,
+              protocolList,
+              (v: string) => v?.toUpperCase() === 'IPV4' ? 'V4' : v?.toUpperCase() === 'IPV6' ? 'V6' : v || '',
+              (t: string) => t === 'userpass' ? 'User:Pass' : t === 'ip_whitelist' ? 'IP Whitelist' : t === 'both' ? 'User:Pass + IP' : t,
+              () => getCountryName(plan.country || plan.country_code || '')
+            )
 
-          {/* Spec attributes as feature rows */}
-          {plan?.auth_type && (
-            <StaticFeatureRow feature={{ label: 'Xác thực', value: plan.auth_type === 'userpass' ? 'User:Pass' : plan.auth_type === 'ip_whitelist' ? 'IP Whitelist' : plan.auth_type === 'both' ? 'User:Pass + IP' : plan.auth_type, icon: Shield, iconColor: '#e67e22' }} />
-          )}
-          {plan?.bandwidth && (
-            <StaticFeatureRow feature={{ label: 'Băng thông', value: plan.bandwidth === 'unlimited' ? 'Không giới hạn' : plan.bandwidth, icon: Wifi, iconColor: '#3b82f6' }} />
-          )}
-          {plan?.rotation_type && (
-            <StaticFeatureRow feature={{ label: 'Kiểu xoay', value: plan.rotation_type === 'per_request' ? 'Per request' : plan.rotation_type === 'sticky' ? 'Sticky session' : plan.rotation_type === 'time_based' ? 'Time-based' : plan.rotation_type, icon: RefreshCw, iconColor: '#8b5cf6' }} />
-          )}
-          {plan?.rotation_interval && (
-            <StaticFeatureRow feature={{ label: 'Chu kỳ xoay', value: Number(plan.rotation_interval) >= 60 ? Math.floor(Number(plan.rotation_interval) / 60) + ' phút' : plan.rotation_interval + ' giây', icon: Clock, iconColor: '#f59e0b' }} />
-          )}
-          {plan?.pool_size && (
-            <StaticFeatureRow feature={{ label: 'Pool size', value: plan.pool_size, icon: Globe, iconColor: '#06b6d4' }} />
-          )}
-          {plan?.request_limit && (
-            <StaticFeatureRow feature={{ label: 'Giới hạn request', value: plan.request_limit, icon: Zap, iconColor: '#22c55e' }} />
-          )}
-          {plan?.concurrent_connections && (
-            <StaticFeatureRow feature={{ label: 'Kết nối đồng thời', value: plan.concurrent_connections, icon: Users, iconColor: '#ef4444' }} />
-          )}
+            return row ? <React.Fragment key={f.key}>{row}</React.Fragment> : null
+          })}
           {/* Dynamic features: bỏ time + protocol, giữ success/input/checkbox/select */}
           {plan.features
-            .filter((feature: any) => feature.field !== 'protocol' && feature.field !== 'quantity' && feature.field !== 'time')
+            .filter(
+              (feature: any) => feature.field !== 'protocol' && feature.field !== 'quantity' && feature.field !== 'time'
+            )
             .map((feature: any, index: number) => {
               switch (feature.status) {
                 case 'success':
@@ -554,11 +618,29 @@ return
             })}
         </div>
 
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginTop: 'auto',
+            paddingTop: 12,
+            borderTop: '1px solid #f1f5f9'
+          }}
+        >
           <div>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--primary-hover, #e53e3e)', whiteSpace: 'nowrap' }}>
-              {priceOptions.length > 1 && <span style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8', marginRight: '2px' }}>từ </span>}
+            <div
+              style={{
+                fontSize: '16px',
+                fontWeight: 700,
+                color: 'var(--primary-hover, #e53e3e)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {priceOptions.length > 1 && (
+                <span style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8', marginRight: '2px' }}>từ </span>
+              )}
               {headerPrice.toLocaleString('vi-VN')}đ
             </div>
             {maxDiscount > 0 && (
@@ -573,7 +655,17 @@ return
               Mua ngay
             </button>
           ) : (
-            <div style={{ padding: '8px 14px', borderRadius: '8px', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '13px', fontWeight: 600 }}>
+            <div
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                backgroundColor: '#f1f5f9',
+                border: '1px solid #e2e8f0',
+                color: '#64748b',
+                fontSize: '13px',
+                fontWeight: 600
+              }}
+            >
               Tạm ngừng
             </div>
           )}
@@ -610,6 +702,7 @@ interface RotatingProxyPageProps {
 }
 
 export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
+  console.log(data)
   const [selectedVersion, setSelectedVersion] = useState('')
   const [selectedProxyType, setSelectedProxyType] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('')
@@ -624,9 +717,11 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
     const versions = [...new Set(data.map((p: any) => p.ip_version?.toLowerCase()).filter(Boolean))]
     const proxyTypes = [...new Set(data.map((p: any) => p.proxy_type?.toLowerCase()).filter(Boolean))]
 
-    const countrySet = [...new Set(
-      data.map((p: any) => fixCountryCode((p.country || p.country_code || '').trim()).toUpperCase()).filter(Boolean)
-    )]
+    const countrySet = [
+      ...new Set(
+        data.map((p: any) => fixCountryCode((p.country || p.country_code || '').trim()).toUpperCase()).filter(Boolean)
+      )
+    ]
 
     // Map country codes to names from countries API
     const countryOptions = countrySet.map(code => {
@@ -683,11 +778,22 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
         }}
       >
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            borderBottom: '1px solid #f1f5f9',
+            background: '#f8fafc'
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <SlidersHorizontal size={16} color='#475569' />
             <span style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>Bộ lọc</span>
-            <span style={{ fontSize: '13px', color: '#94a3b8' }}>({filteredProviders?.length || 0}/{data?.length || 0} gói)</span>
+            <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+              ({filteredProviders?.length || 0}/{data?.length || 0} gói)
+            </span>
           </div>
           {hasActiveFilter && (
             <Chip
@@ -716,7 +822,15 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <Wifi size={14} color='#64748b' />
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}
+                >
                   Phiên bản IP
                 </span>
               </div>
@@ -726,10 +840,17 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                   variant={!selectedVersion ? 'filled' : 'outlined'}
                   onClick={() => setSelectedVersion('')}
                   sx={{
-                    fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    height: '34px',
+                    borderRadius: '8px',
                     ...(!selectedVersion
                       ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                      : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
+                      : {
+                          borderColor: '#cbd5e1',
+                          color: '#334155',
+                          '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                        })
                   }}
                 />
                 {filterOptions.versions.map((v: string) => (
@@ -739,10 +860,17 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                     variant={selectedVersion === v ? 'filled' : 'outlined'}
                     onClick={() => setSelectedVersion(selectedVersion === v ? '' : v)}
                     sx={{
-                      fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      height: '34px',
+                      borderRadius: '8px',
                       ...(selectedVersion === v
                         ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                        : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
+                        : {
+                            borderColor: '#cbd5e1',
+                            color: '#334155',
+                            '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                          })
                     }}
                   />
                 ))}
@@ -754,7 +882,15 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <Filter size={14} color='#64748b' />
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}
+                >
                   Loại proxy
                 </span>
               </div>
@@ -764,10 +900,17 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                   variant={!selectedProxyType ? 'filled' : 'outlined'}
                   onClick={() => setSelectedProxyType('')}
                   sx={{
-                    fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    height: '34px',
+                    borderRadius: '8px',
                     ...(!selectedProxyType
                       ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                      : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
+                      : {
+                          borderColor: '#cbd5e1',
+                          color: '#334155',
+                          '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                        })
                   }}
                 />
                 {filterOptions.proxyTypes.map((t: string) => (
@@ -777,10 +920,17 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                     variant={selectedProxyType === t ? 'filled' : 'outlined'}
                     onClick={() => setSelectedProxyType(selectedProxyType === t ? '' : t)}
                     sx={{
-                      fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      height: '34px',
+                      borderRadius: '8px',
                       ...(selectedProxyType === t
                         ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                        : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
+                        : {
+                            borderColor: '#cbd5e1',
+                            color: '#334155',
+                            '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                          })
                     }}
                   />
                 ))}
@@ -792,7 +942,15 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
               <ShoppingCart size={14} color='#64748b' />
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}
+              >
                 Trạng thái
               </span>
             </div>
@@ -802,10 +960,17 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                 variant={showActiveOnly ? 'filled' : 'outlined'}
                 onClick={() => setShowActiveOnly(true)}
                 sx={{
-                  fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  height: '34px',
+                  borderRadius: '8px',
                   ...(showActiveOnly
                     ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                    : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
+                    : {
+                        borderColor: '#cbd5e1',
+                        color: '#334155',
+                        '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                      })
                 }}
               />
               <Chip
@@ -813,10 +978,17 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                 variant={!showActiveOnly ? 'filled' : 'outlined'}
                 onClick={() => setShowActiveOnly(false)}
                 sx={{
-                  fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  height: '34px',
+                  borderRadius: '8px',
                   ...(!showActiveOnly
                     ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                    : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
+                    : {
+                        borderColor: '#cbd5e1',
+                        color: '#334155',
+                        '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                      })
                 }}
               />
             </div>
@@ -826,7 +998,15 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <Globe size={14} color='#64748b' />
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}
+                >
                   Quốc gia
                 </span>
               </div>
@@ -836,10 +1016,17 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                   variant={!selectedCountry ? 'filled' : 'outlined'}
                   onClick={() => setSelectedCountry('')}
                   sx={{
-                    fontWeight: 600, fontSize: '13px', height: '34px', borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    height: '34px',
+                    borderRadius: '8px',
                     ...(!selectedCountry
                       ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                      : { borderColor: '#cbd5e1', color: '#334155', '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } })
+                      : {
+                          borderColor: '#cbd5e1',
+                          color: '#334155',
+                          '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' }
+                        })
                   }}
                 />
                 {filterOptions.countries.map((c: any) => (
@@ -848,7 +1035,12 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                     label={
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         {c.code.split(',').map((cc: string) => (
-                          <img key={cc} src={`https://flagcdn.com/w40/${fixCountryCode(cc.trim())}.png`} alt={cc.trim()} style={{ width: 20, height: 15, objectFit: 'cover', borderRadius: 2 }} />
+                          <img
+                            key={cc}
+                            src={`https://flagcdn.com/w40/${fixCountryCode(cc.trim())}.png`}
+                            alt={cc.trim()}
+                            style={{ width: 20, height: 15, objectFit: 'cover', borderRadius: 2 }}
+                          />
                         ))}
                         <span>{c.name}</span>
                       </span>
@@ -856,10 +1048,18 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                     variant={selectedCountry === c.code ? 'filled' : 'outlined'}
                     onClick={() => setSelectedCountry(selectedCountry === c.code ? '' : c.code)}
                     sx={{
-                      fontWeight: 600, fontSize: '13px', height: '36px', borderRadius: '20px',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      height: '36px',
+                      borderRadius: '20px',
                       ...(selectedCountry === c.code
                         ? { bgcolor: '#1e293b', color: '#fff', '&:hover': { bgcolor: '#334155' } }
-                        : { borderColor: '#e2e8f0', color: '#334155', bgcolor: '#fff', '&:hover': { bgcolor: '#f8fafc', borderColor: '#94a3b8' } }),
+                        : {
+                            borderColor: '#e2e8f0',
+                            color: '#334155',
+                            bgcolor: '#fff',
+                            '&:hover': { bgcolor: '#f8fafc', borderColor: '#94a3b8' }
+                          })
                     }}
                   />
                 ))}
@@ -867,7 +1067,6 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
             </div>
           )}
         </div>
-
       </Box>
 
       <Grid2 container columnSpacing={1.5} rowSpacing={2.5} sx={{ mt: 1 }}>

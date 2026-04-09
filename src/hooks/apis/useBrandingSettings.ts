@@ -67,6 +67,7 @@ export interface BrandingSettings {
 
   // Display settings
   show_product_code: string | null
+  product_fields: { key: string; label: string; visible: boolean }[] | null
 
   // Deposit settings
   deposit_min_amount: string | null

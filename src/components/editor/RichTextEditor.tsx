@@ -32,8 +32,12 @@ import {
 } from 'lucide-react'
 
 import useAxiosAuth from '@/hocs/useAxiosAuth'
+import { PUBLIC_API_URL } from '@/config/api'
 
 import './RichTextEditor.css'
+
+// API_URL dạng "http://domain.com/api" → lấy base domain
+const API_BASE = PUBLIC_API_URL.replace(/\/api\/?$/, '')
 
 interface Props {
   value: string
@@ -93,7 +97,9 @@ export default function RichTextEditor({ value, onChange, hideImage, minHeight }
       })
 
       if (res?.data?.url) {
-        editor.chain().focus().setImage({ src: res.data.url }).run()
+        const imgUrl = res.data.url.startsWith('http') ? res.data.url : `${API_BASE}${res.data.url}`
+
+        editor.chain().focus().setImage({ src: imgUrl }).run()
       }
     } catch {
       console.error('Failed to upload image')

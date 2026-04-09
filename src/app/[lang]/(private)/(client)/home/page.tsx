@@ -506,16 +506,6 @@ function EmptyFeed() {
         })}
       </div>
 
-      {/* Info note */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '12px 16px', borderRadius: 10,
-        background: '#f0f9ff', border: '1px solid #bae6fd',
-        fontSize: 13, color: '#0369a1',
-      }}>
-        <Megaphone size={16} style={{ flexShrink: 0 }} />
-        <span>Thông báo từ hệ thống sẽ hiển thị tại đây khi có cập nhật mới.</span>
-      </div>
     </div>
   )
 }
@@ -537,13 +527,10 @@ export default function HomePage() {
 
       <div className='home-layout'>
         <div className='announcement-feed'>
-          {homeList.length > 0 ? (
-            homeList.map(announcement => (
-              <AnnouncementPost key={announcement.id} announcement={announcement} />
-            ))
-          ) : (
-            <EmptyFeed />
-          )}
+          <EmptyFeed />
+          {homeList.length > 0 && homeList.map(announcement => (
+            <AnnouncementPost key={announcement.id} announcement={announcement} />
+          ))}
         </div>
 
         <HomeSidebar />

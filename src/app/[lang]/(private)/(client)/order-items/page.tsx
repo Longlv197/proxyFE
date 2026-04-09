@@ -5,7 +5,7 @@ import { useState, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 
-import { RefreshCw, Shield, Copy, Check, ExternalLink, Settings2, List, X, Loader2, Download } from 'lucide-react'
+import { RefreshCw, Shield, Copy, Check, ExternalLink, Settings2, List, X, Loader2, Download, ClipboardCopy } from 'lucide-react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -23,7 +23,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button
+  Button,
+  Checkbox
 } from '@mui/material'
 import Pagination from '@mui/material/Pagination'
 import { toast } from 'react-toastify'
@@ -85,6 +86,7 @@ export default function ProxyKeysPage() {
 
   // Table state
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 50 })
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [copied, setCopied] = useState<string | null>(null)
   const [editItem, setEditItem] = useState<OrderItemRecord | null>(null)
   const [editIp, setEditIp] = useState('')
@@ -135,6 +137,28 @@ export default function ProxyKeysPage() {
   // Columns
   const columns: ColumnDef<OrderItemRecord, any>[] = useMemo(
     () => [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            size='small'
+            checked={table.getIsAllPageRowsSelected()}
+            indeterminate={table.getIsSomePageRowsSelected()}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+            sx={{ p: 0 }}
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            size='small'
+            checked={row.getIsSelected()}
+            disabled={!row.getCanSelect()}
+            onChange={row.getToggleSelectedHandler()}
+            sx={{ p: 0 }}
+          />
+        ),
+        size: 40
+      },
       {
         accessorKey: 'key',
         header: 'Key',
@@ -279,12 +303,54 @@ export default function ProxyKeysPage() {
   const table = useReactTable({
     data: items,
     columns,
-    state: { pagination },
+    state: { pagination, rowSelection },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getRowId: (row: OrderItemRecord) => row._id
   })
+
+  const selectedRows = table.getSelectedRowModel().rows
+  const selectedCount = selectedRows.length
+
+  const handleCopySelected = useCallback(() => {
+    const rows = table.getSelectedRowModel().rows
+
+    if (rows.length === 0) {
+      toast.warn('Chưa chọn proxy nào')
+
+      return
+    }
+
+    const proxyTexts = rows
+      .map(row => formatProxy(row.original))
+      .filter(v => v && v !== '—')
+
+    if (proxyTexts.length > 0) {
+      const text = proxyTexts.join('\n')
+
+      navigator.clipboard.writeText(text).then(
+        () => toast.success(`Đã copy ${proxyTexts.length} proxy`),
+        () => {
+          // Fallback for non-HTTPS
+          const ta = document.createElement('textarea')
+
+          ta.value = text
+          ta.style.position = 'fixed'
+          ta.style.opacity = '0'
+          document.body.appendChild(ta)
+          ta.select()
+          document.execCommand('copy')
+          document.body.removeChild(ta)
+          toast.success(`Đã copy ${proxyTexts.length} proxy`)
+        }
+      )
+    } else {
+      toast.warn('Proxy đã chọn chưa có giá trị')
+    }
+  }, [table])
 
   const { pageIndex, pageSize } = table.getState().pagination
   const totalRows = items.length
@@ -409,6 +475,26 @@ export default function ProxyKeysPage() {
               }}
             >
               Tìm kiếm
+            </Button>
+
+            <Button
+              variant='outlined'
+              size='small'
+              disabled={selectedCount === 0}
+              onClick={handleCopySelected}
+              sx={{
+                height: '36px',
+                fontSize: '13px',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                gap: '6px',
+                px: 2,
+                flexShrink: 0
+              }}
+            >
+              <ClipboardCopy size={15} />
+              Copy {selectedCount > 0 ? `(${selectedCount})` : ''}
             </Button>
 
             <Button
