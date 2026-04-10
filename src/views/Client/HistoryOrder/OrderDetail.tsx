@@ -1015,13 +1015,13 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
                       <input
                         type='number'
                         className='perunit-input'
-                        min={1} max={365}
+                        min={1} max={9999}
                         value={customDuration || ''}
                         onChange={e => {
                           const val = e.target.value
                           if (val === '') { setCustomDuration(0); return }
                           const num = parseInt(val)
-                          if (!isNaN(num)) setCustomDuration(Math.min(Math.max(num, 1), 365))
+                          if (!isNaN(num)) setCustomDuration(Math.max(num, 1))
                         }}
                         onBlur={() => { if (!customDuration || customDuration < 1) setCustomDuration(1) }}
                       />

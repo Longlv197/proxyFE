@@ -202,7 +202,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   const [costPerUnit, setCostPerUnit] = useState('')
   const [allowCustomAuth, setAllowCustomAuth] = useState(false)
   const [renewable, setRenewable] = useState(false)
-  const [renewalDuration, setRenewalDuration] = useState<string>('original')
+  const [renewalDuration, setRenewalDuration] = useState<string>('ncc')
   const [allowExpiredRenew, setAllowExpiredRenew] = useState(false)
   const [parentRenewable, setParentRenewable] = useState<boolean | null>(null)
   const [discountTiers, setDiscountTiers] = useState<DiscountTier[]>([])
@@ -319,8 +319,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setCostPerUnit(serviceData.cost_per_unit?.toString() || '')
       setAllowCustomAuth(!!meta.allow_custom_auth)
       setRenewable(!!meta.renewable)
-      setRenewalDuration(meta.renewal_duration || 'original')
+      setRenewalDuration(meta.renewal_duration || 'ncc')
       setAllowExpiredRenew(!!meta.allow_expired_renew)
+      setParentRenewable(meta.provider_renewable != null ? !!meta.provider_renewable : null)
       setDiscountTiers(meta.discount_tiers || [])
 
       // Load purchase options (custom fields)
@@ -452,7 +453,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setPriceFields([])
       setAllowCustomAuth(false)
       setRenewable(false)
-      setRenewalDuration('original')
+      setRenewalDuration('ncc')
       setAllowExpiredRenew(false)
       setParentRenewable(null)
       setPurchaseOptions([])
@@ -630,6 +631,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         renewable: renewable,
         renewal_duration: renewalDuration,
         allow_expired_renew: allowExpiredRenew,
+        provider_renewable: selectedProduct?.provider_renewable ?? existingMeta?.provider_renewable ?? null,
         discount_tiers: pricingMode === 'per_unit' ? discountTiers.filter(t => t.min && t.discount) : undefined,
         // Lưu mốc giá nhập từ site mẹ → dùng tính giá vốn khi tạo đơn
         cost_discount_tiers: (() => {
@@ -1629,15 +1631,13 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
                         // Sync renewal settings từ site mẹ vào state + selectedProduct
                         if (product) {
-                          if (product.renewable !== undefined) {
-                            setRenewable(!!product.renewable)
-                            setParentRenewable(!!product.renewable)
-                          }
-
+                          setParentRenewable(product.renewable != null ? !!product.renewable : null)
+                          if (product.renewable !== undefined) setRenewable(!!product.renewable)
                           if (product.renewal_duration) setRenewalDuration(product.renewal_duration)
                           if (product.allow_expired_renew !== undefined) setAllowExpiredRenew(!!product.allow_expired_renew)
                           setCheckedProduct((prev: any) => ({
                             ...prev,
+                            provider_renewable: product.renewable,
                             renewable: product.renewable,
                             renewal_duration: product.renewal_duration,
                             allow_expired_renew: product.allow_expired_renew,
