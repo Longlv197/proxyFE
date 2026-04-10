@@ -178,23 +178,52 @@ export function renderFeatureRow(
 
       return (
         <>
-          {provider.metadata.custom_fields.map((field: any) => (
-            <div className='feature-row' key={field.key || field.param}>
-              <div className='feature-icons'><Zap size={14} color='#8b5cf6' /></div>
-              <div className='feature-content'>
-                <span className='feature-label'>{field.label}:</span>
-                <span className='feature-value'>
-                  {field.type === 'text' || field.type === 'number'
-                    ? (field.default || 'Tự nhập')
-                    : field.options?.map((o: any) => o.label).join(', ')}
-                </span>
+          {provider.metadata.custom_fields.map((field: any) => {
+            // Country flag display
+            if (field.display_type === 'country_flag' && field.options?.length) {
+              return (
+                <div className='feature-row' key={field.key || field.param}>
+                  <div className='feature-icons'><Globe size={14} color='#059669' /></div>
+                  <div className='feature-content'>
+                    <span className='feature-label'>{field.label}:</span>
+                    <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                      {field.options.map((o: any) => (
+                        <img
+                          key={o.value}
+                          src={`https://flagcdn.com/w20/${fixCountryCode(o.value)}.png`}
+                          alt={o.label}
+                          title={o.label}
+                          style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
+                        />
+                      ))}
+                    </span>
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <div className='feature-row' key={field.key || field.param}>
+                <div className='feature-icons'><Zap size={14} color='#8b5cf6' /></div>
+                <div className='feature-content'>
+                  <span className='feature-label'>{field.label}:</span>
+                  <span className='feature-value'>
+                    {field.type === 'text' || field.type === 'number'
+                      ? (field.default || 'Tự nhập')
+                      : field.options?.map((o: any) => o.label).join(', ')}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </>
       )
 
     case 'country': {
+      // Ẩn nếu đã có custom_field country_flag (tránh trùng)
+      const hasCountryFlag = provider?.metadata?.custom_fields?.some((f: any) => f.display_type === 'country_flag')
+      if (hasCountryFlag) return null
+
       const raw = provider?.country || provider?.country_code || ''
       const codes = raw.split(',').map((c: string) => c.trim().toLowerCase()).filter((c: string) => c.length >= 2)
       if (!codes.length) return null

@@ -334,6 +334,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
             type: f.type || 'select',
             required: f.required || false,
             default: f.default || '',
+            display_type: f.display_type || '',
             options: f.options || [{ value: '', label: '' }]
           }))
         )
@@ -1135,6 +1136,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                         type: f.type || 'select',
                                         required: f.required || false,
                                         default: f.default || '',
+                                        display_type: f.display_type || '',
                                         options: f.options || [{ value: '', label: '' }]
                                       }))
                                     )
@@ -1648,6 +1650,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               type: f.type || 'select',
                               required: f.required || false,
                               default: f.default || '',
+                              display_type: f.display_type || '',
                               options: f.options || [{ value: '', label: '' }]
                             }))
                           )

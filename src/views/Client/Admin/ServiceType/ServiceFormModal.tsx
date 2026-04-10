@@ -475,6 +475,7 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
 interface PurchaseOption {
   key: string; param_name: string; label: string
   type: 'select' | 'text' | 'number'; required: boolean; default: string
+  display_type?: 'country_flag' | ''
   options: Array<{ value: string; label: string }>
 }
 
@@ -538,7 +539,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
             Khách chọn khi mua — hiện trên form checkout
           </div>
           <Button size='small' variant='outlined'
-            onClick={() => onChange([...options, { key: '', param_name: '', label: '', type: 'select', required: true, default: '', options: [{ value: '', label: '' }] }])}>
+            onClick={() => onChange([...options, { key: '', param_name: '', label: '', type: 'select', required: true, default: '', display_type: '', options: [{ value: '', label: '' }] }])}>
             + Thêm tuỳ chọn
           </Button>
         </div>
@@ -583,6 +584,17 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 </CustomTextField>
               </Grid2>
             </Grid2>
+            {(opt.type || 'select') === 'select' && (
+              <Grid2 container spacing={1.5} sx={{ mb: 1 }}>
+                <Grid2 size={{ xs: 3 }}>
+                  <CustomTextField fullWidth size='small' select label='Hiển thị ngoài card' value={opt.display_type || ''}
+                    onChange={(e: any) => update(optIdx, { display_type: e.target.value || '' })}>
+                    <MenuItem value=''>Mặc định (text)</MenuItem>
+                    <MenuItem value='country_flag'>Cờ quốc gia</MenuItem>
+                  </CustomTextField>
+                </Grid2>
+              </Grid2>
+            )}
 
             {(opt.type || 'select') === 'select' && (
               <>
@@ -1007,6 +1019,7 @@ return { values: {}, errors: formattedErrors }
           type: f.type || 'select',
           required: f.required || false,
           default: f.default || '',
+          display_type: f.display_type || '',
           options: f.options || [{ value: '', label: '' }],
         })))
       } else {
@@ -1087,6 +1100,7 @@ return { values: {}, errors: formattedErrors }
         required: o.required,
         default: o.default || (o.type === 'select' ? o.options[0]?.value || '' : ''),
         ...(o.type === 'select' ? { options: o.options.filter(opt => opt.value) } : {}),
+        ...(o.display_type ? { display_type: o.display_type } : {}),
       }))
     } : null
 

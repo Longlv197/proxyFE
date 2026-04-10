@@ -534,15 +534,18 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
           {/* Custom fields (tuỳ chọn mua hàng từ ServiceType) */}
           {customFields?.map(field => {
             const fieldKey = field.key || field.param || ''
+            const isCountryFlag = (field as any).display_type === 'country_flag'
+
             return (
               <div className='checkout-section' key={fieldKey}>
                 <label className='checkout-section-label'>{field.label.toUpperCase()}</label>
                 {(field.type || 'select') === 'select' && field.options ? (
-                  <div className='checkout-duration-options'>
+                  <div className='checkout-duration-options' style={isCountryFlag ? { display: 'flex', flexWrap: 'wrap', gap: 6 } : undefined}>
                     {field.options.map(opt => (
                       <label
                         key={opt.value}
                         className={`checkout-duration-option ${(customFieldValues[fieldKey] || field.default) === opt.value ? 'active' : ''}`}
+                        style={isCountryFlag ? { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 10px' } : undefined}
                       >
                         <input
                           type='radio'
@@ -550,6 +553,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           checked={(customFieldValues[fieldKey] || field.default) === opt.value}
                           onChange={() => setCustomFieldValues(prev => ({ ...prev, [fieldKey]: opt.value }))}
                         />
+                        {isCountryFlag && (
+                          <img
+                            src={`https://flagcdn.com/w20/${opt.value.toLowerCase()}.png`}
+                            alt=''
+                            style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 2 }}
+                          />
+                        )}
                         <span>{opt.label}</span>
                       </label>
                     ))}
