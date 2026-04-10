@@ -201,6 +201,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   const [pricePerUnit, setPricePerUnit] = useState('')
   const [costPerUnit, setCostPerUnit] = useState('')
   const [allowCustomAuth, setAllowCustomAuth] = useState(false)
+  const [renewable, setRenewable] = useState(false)
+  const [renewalDuration, setRenewalDuration] = useState<string>('original')
   const [discountTiers, setDiscountTiers] = useState<DiscountTier[]>([])
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [purchaseOptions, setPurchaseOptions] = useState<
@@ -314,6 +316,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setPricePerUnit(serviceData.price_per_unit?.toString() || '')
       setCostPerUnit(serviceData.cost_per_unit?.toString() || '')
       setAllowCustomAuth(!!meta.allow_custom_auth)
+      setRenewable(!!meta.renewable)
+      setRenewalDuration(meta.renewal_duration || 'original')
       setDiscountTiers(meta.discount_tiers || [])
 
       // Load purchase options (custom fields)
@@ -444,6 +448,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setCheckedProduct(null)
       setPriceFields([])
       setAllowCustomAuth(false)
+      setRenewable(false)
+      setRenewalDuration('original')
       setPurchaseOptions([])
       setPricingMode('fixed')
       setTimeUnit('day')
@@ -616,6 +622,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         parent_pricing_mode: parentPricingMode,
         allow_custom_auth: allowCustomAuth,
         max_ips: selectedProduct?.max_ips || existingMeta?.max_ips || null,
+        renewable: renewable,
+        renewal_duration: renewalDuration,
+        allow_expired_renew: selectedProduct?.allow_expired_renew ?? existingMeta?.allow_expired_renew ?? null,
         discount_tiers: pricingMode === 'per_unit' ? discountTiers.filter(t => t.min && t.discount) : undefined,
         // Lưu mốc giá nhập từ site mẹ → dùng tính giá vốn khi tạo đơn
         cost_discount_tiers: (() => {
@@ -1612,6 +1621,18 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                         if (product?.allow_custom_auth !== undefined) {
                           setAllowCustomAuth(!!product.allow_custom_auth)
                         }
+
+                        // Sync renewal settings từ site mẹ vào state + selectedProduct
+                        if (product) {
+                          if (product.renewable !== undefined) setRenewable(!!product.renewable)
+                          if (product.renewal_duration) setRenewalDuration(product.renewal_duration)
+                          setCheckedProduct((prev: any) => ({
+                            ...prev,
+                            renewable: product.renewable,
+                            renewal_duration: product.renewal_duration,
+                            allow_expired_renew: product.allow_expired_renew,
+                          }))
+                        }
                         if (parentIsPerUnit && product?.price_per_unit) {
                           const newCostPerDay = parseInt(product.price_per_unit) || 0
 
@@ -2479,6 +2500,96 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                     ))}
                   </CollapsibleSection>
 
+                  {/* Gia hạn */}
+                  <div
+                    style={{
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 10,
+                      padding: '12px 14px',
+                      background: '#fafafa'
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 7,
+                            background: renewable ? '#ecfdf5' : '#f1f5f9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <RefreshCw size={14} color={renewable ? '#10b981' : '#94a3b8'} />
+                        </div>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>Cho phép gia hạn</span>
+                      </div>
+                      <Switch
+                        size='small'
+                        checked={renewable}
+                        onChange={e => setRenewable(e.target.checked)}
+                      />
+                    </div>
+                    {renewable && (
+                      <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                        {[
+                          { value: 'original', label: 'Theo chu kỳ gốc' },
+                          { value: 'ncc', label: 'Tuỳ chọn thời hạn' }
+                        ].map(opt => (
+                          <button
+                            key={opt.value}
+                            type='button'
+                            onClick={() => setRenewalDuration(opt.value)}
+                            style={{
+                              padding: '5px 14px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              borderRadius: 7,
+                              border: '1.5px solid',
+                              cursor: 'pointer',
+                              background: renewalDuration === opt.value ? '#1e293b' : '#fff',
+                              color: renewalDuration === opt.value ? '#fff' : '#64748b',
+                              borderColor: renewalDuration === opt.value ? '#1e293b' : '#e2e8f0'
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {renewable && (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          fontSize: '11.5px',
+                          background: '#f0fdf4',
+                          border: '1px solid #bbf7d0'
+                        }}
+                      >
+                        {renewalDuration === 'original' ? (
+                          <>
+                            <strong style={{ color: '#166534' }}>Chu kỳ gốc:</strong> User gia hạn sẽ tự động dùng
+                            thời hạn lúc mua ban đầu
+                          </>
+                        ) : (
+                          <>
+                            <strong style={{ color: '#166534' }}>Tuỳ chọn:</strong> User được chọn số ngày gia hạn
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Tag — chọn từ preset có màu */}
                   <div>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: 6 }}>
@@ -2838,6 +2949,18 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                     {watchAll.type === '1' && watchAll.pool_size && (
                       <FeatureRow icon={Globe} iconColor='#0ea5e9' label='Pool size' value={watchAll.pool_size} />
                     )}
+                    <FeatureRow
+                      icon={RefreshCw}
+                      iconColor={renewable ? '#10b981' : '#94a3b8'}
+                      label='Gia hạn'
+                      value={
+                        renewable
+                          ? renewalDuration === 'original'
+                            ? 'Hỗ trợ (theo chu kỳ gốc)'
+                            : 'Hỗ trợ (tuỳ chọn thời hạn)'
+                          : 'Không hỗ trợ'
+                      }
+                    />
                   </div>
 
                   {/* Divider */}
