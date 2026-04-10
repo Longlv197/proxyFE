@@ -2546,115 +2546,76 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                       <Switch
                         size='small'
                         checked={renewable}
+                        disabled={!parentRenewable && parentRenewable !== null}
                         onChange={e => setRenewable(e.target.checked)}
                       />
                     </div>
 
-                    {/* Trạng thái NCC */}
+                    {/* Chi tiết cấu hình từ NCC (readonly) */}
                     {parentRenewable !== null && (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          background: '#fff',
+                          border: '1px solid #e2e8f0'
+                        }}
+                      >
+                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+                          Cấu hình từ NCC
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px' }}>
+                            <span style={{ color: '#64748b' }}>Trạng thái</span>
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                color: parentRenewable ? '#059669' : '#dc2626'
+                              }}
+                            >
+                              {parentRenewable ? 'Hỗ trợ' : 'Không hỗ trợ'}
+                            </span>
+                          </div>
+                          {parentRenewable && (
+                            <>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px' }}>
+                                <span style={{ color: '#64748b' }}>Thời hạn</span>
+                                <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                                  {renewalDuration === 'original' ? 'Theo chu kỳ gốc' : 'Tuỳ chọn số ngày'}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px' }}>
+                                <span style={{ color: '#64748b' }}>Gia hạn khi hết hạn</span>
+                                <span style={{ fontWeight: 600, color: allowExpiredRenew ? '#059669' : '#94a3b8' }}>
+                                  {allowExpiredRenew ? 'Cho phép' : 'Không'}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px' }}>
+                                <span style={{ color: '#64748b' }}>Giá gia hạn</span>
+                                <span style={{ fontWeight: 600, color: '#1e293b' }}>Theo giá bán sản phẩm</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Chưa sync */}
+                    {parentRenewable === null && (
                       <div
                         style={{
                           marginTop: 8,
                           padding: '5px 10px',
                           borderRadius: 7,
                           fontSize: '11px',
-                          background: parentRenewable ? '#eff6ff' : '#fef2f2',
-                          border: `1px solid ${parentRenewable ? '#bfdbfe' : '#fecaca'}`,
-                          color: parentRenewable ? '#1e40af' : '#991b1b'
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          color: '#94a3b8'
                         }}
                       >
-                        NCC: {parentRenewable ? 'Hỗ trợ gia hạn' : 'Không hỗ trợ gia hạn'}
+                        {'Nhấn "Đồng bộ giá & cấu hình" để lấy thông tin gia hạn từ NCC'}
                       </div>
-                    )}
-
-                    {/* Cảnh báo nếu bật mà NCC không hỗ trợ */}
-                    {renewable && parentRenewable === false && (
-                      <div
-                        style={{
-                          marginTop: 6,
-                          padding: '5px 10px',
-                          borderRadius: 7,
-                          fontSize: '11px',
-                          background: '#fffbeb',
-                          border: '1px solid #fde68a',
-                          color: '#92400e'
-                        }}
-                      >
-                        NCC chưa bật gia hạn — user gia hạn sẽ bị lỗi
-                      </div>
-                    )}
-
-                    {renewable && (
-                      <>
-                        {/* Mode gia hạn */}
-                        <div style={{ marginTop: 10 }}>
-                          <div style={{ fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: 6 }}>
-                            Thời hạn gia hạn
-                          </div>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            {[
-                              { value: 'original', label: 'Theo chu kỳ gốc', desc: 'Tự động dùng thời hạn lúc mua' },
-                              { value: 'ncc', label: 'Tuỳ chọn', desc: 'User được nhập số ngày' }
-                            ].map(opt => (
-                              <button
-                                key={opt.value}
-                                type='button'
-                                onClick={() => setRenewalDuration(opt.value)}
-                                style={{
-                                  flex: 1,
-                                  padding: '8px 10px',
-                                  fontSize: '12px',
-                                  fontWeight: 600,
-                                  borderRadius: 8,
-                                  border: '1.5px solid',
-                                  cursor: 'pointer',
-                                  textAlign: 'left',
-                                  background: renewalDuration === opt.value ? '#f0f9ff' : '#fff',
-                                  color: renewalDuration === opt.value ? '#0c4a6e' : '#64748b',
-                                  borderColor: renewalDuration === opt.value ? '#7dd3fc' : '#e2e8f0'
-                                }}
-                              >
-                                <div>{opt.label}</div>
-                                <div style={{ fontSize: '10.5px', fontWeight: 400, marginTop: 2, opacity: 0.8 }}>
-                                  {opt.desc}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Gia hạn khi hết hạn */}
-                        <div
-                          style={{
-                            marginTop: 10,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <span style={{ fontSize: '12px', color: '#475569' }}>Cho phép gia hạn khi đã hết hạn</span>
-                          <Switch
-                            size='small'
-                            checked={allowExpiredRenew}
-                            onChange={e => setAllowExpiredRenew(e.target.checked)}
-                          />
-                        </div>
-
-                        {/* Giá gia hạn */}
-                        <div
-                          style={{
-                            marginTop: 8,
-                            padding: '6px 10px',
-                            borderRadius: 8,
-                            fontSize: '11px',
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            color: '#64748b'
-                          }}
-                        >
-                          Giá gia hạn = giá bán sản phẩm (theo mốc thời gian đã cấu hình ở trên)
-                        </div>
-                      </>
                     )}
                   </div>
 
