@@ -310,6 +310,7 @@ return row.original?.key || row.original?.api_key || ''
         onClose={() => { setDetailTab(0); onClose() }}
         fullWidth
         maxWidth={viewItemKey ? 'lg' : 'md'}
+        disableEnforceFocus={renewOpen}
         PaperProps={{
           sx: {
             borderRadius: '12px',
@@ -1015,8 +1016,14 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
                         type='number'
                         className='perunit-input'
                         min={1} max={365}
-                        value={customDuration}
-                        onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                        value={customDuration || ''}
+                        onChange={e => {
+                          const val = e.target.value
+                          if (val === '') { setCustomDuration(0); return }
+                          const num = parseInt(val)
+                          if (!isNaN(num)) setCustomDuration(Math.min(Math.max(num, 1), 365))
+                        }}
+                        onBlur={() => { if (!customDuration || customDuration < 1) setCustomDuration(1) }}
                       />
                       <span className='perunit-input-unit'>{unitLabel}</span>
                     </div>
