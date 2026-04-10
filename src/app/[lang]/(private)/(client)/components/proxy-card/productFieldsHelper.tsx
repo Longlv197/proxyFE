@@ -200,20 +200,19 @@ export function renderFeatureRow(
       if (!codes.length) return null
 
       return (
-        <div className='feature-row' style={{ alignItems: 'flex-start' }}>
-          <div className='feature-icons' style={{ paddingTop: 2 }}><Globe size={14} color='#059669' /></div>
+        <div className='feature-row'>
+          <div className='feature-icons'><Globe size={14} color='#059669' /></div>
           <div className='feature-content'>
             <span className='feature-label'>Quốc gia:</span>
-            <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 6px' }}>
+            <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
               {codes.map((c: string) => (
-                <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                  <img
-                    src={`https://flagcdn.com/w20/${fixCountryCode(c)}.png`}
-                    alt=''
-                    style={{ width: 16, height: 11, objectFit: 'cover', borderRadius: 1 }}
-                  />
-                  <span style={{ fontSize: '11.5px' }}>{getCountryNameFromCode(c)}</span>
-                </span>
+                <img
+                  key={c}
+                  src={`https://flagcdn.com/w20/${fixCountryCode(c)}.png`}
+                  alt={getCountryNameFromCode(c)}
+                  title={getCountryNameFromCode(c)}
+                  style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
+                />
               ))}
             </span>
           </div>

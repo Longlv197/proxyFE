@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 
 import './styles.css'
 
-import { Filter, Globe, Wifi, X, SearchX, SlidersHorizontal, ShoppingCart } from 'lucide-react'
+import { Filter, Globe, Wifi, X, SearchX, SlidersHorizontal, ShoppingCart, Search } from 'lucide-react'
 
 import { Box, Grid2, Typography } from '@mui/material'
 
@@ -24,6 +24,7 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
   const [selectedProxyType, setSelectedProxyType] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('')
   const [showActiveOnly, setShowActiveOnly] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const { data: countries } = useCountries()
 
@@ -34,24 +35,28 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
     const versions = [...new Set(data.map((p: any) => p.ip_version?.toLowerCase()).filter(Boolean))]
     const proxyTypes = [...new Set(data.map((p: any) => p.proxy_type?.toLowerCase()).filter(Boolean))]
 
-    const countrySet = [
-      ...new Set(
-        data.map((p: any) => fixCountryCode((p.country || p.country_code || '').trim()).toUpperCase()).filter(Boolean)
-      )
-    ]
+    const countrySet = new Set<string>()
 
-    const countryOptions = countrySet.map(code => {
-      const found = countries?.find((c: any) => fixCountryCode(c.code).toUpperCase() === code)
-
-      return { code, name: found?.name || getCountryName(code as string) }
+    data.forEach((p: any) => {
+      const raw = (p.country || p.country_code || '').trim()
+      if (!raw) return
+      raw.split(',').forEach((c: string) => {
+        const code = fixCountryCode(c.trim()).toUpperCase()
+        if (code) countrySet.add(code)
+      })
     })
 
+    const countryOptions = [...countrySet].map(code => ({
+      code,
+      name: getCountryName(code)
+    }))
+
     return { versions, proxyTypes, countries: countryOptions }
-  }, [data, countries])
+  }, [data])
 
   const hasActiveFilter = selectedVersion || selectedProxyType || selectedCountry || !showActiveOnly
 
-  // Lọc danh sách provider theo các filter
+  // Lọc danh sách provider theo các filter + search
   const filteredProviders = useMemo(
     () =>
       data?.filter((provider: any) => {
@@ -61,14 +66,23 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
         if (selectedProxyType && provider.proxy_type?.toLowerCase() !== selectedProxyType.toLowerCase()) return false
 
         if (selectedCountry) {
-          const pc = fixCountryCode((provider.country || provider.country_code || '').trim()).toUpperCase()
+          const raw = (provider.country || provider.country_code || '').trim()
+          const codes = raw.split(',').map((c: string) => fixCountryCode(c.trim()).toUpperCase())
 
-          if (pc !== selectedCountry) return false
+          if (!codes.includes(selectedCountry)) return false
+        }
+
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase()
+          const name = (provider.name || provider.title || '').toLowerCase()
+          const code = (provider.code || '').toLowerCase()
+
+          if (!name.includes(q) && !code.includes(q)) return false
         }
 
         return true
       }),
-    [data, selectedVersion, selectedProxyType, selectedCountry, showActiveOnly]
+    [data, selectedVersion, selectedProxyType, selectedCountry, showActiveOnly, searchQuery]
   )
 
   const clearAllFilters = () => {
@@ -76,6 +90,7 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
     setSelectedProxyType('')
     setSelectedCountry('')
     setShowActiveOnly(true)
+    setSearchQuery('')
   }
 
   const versionLabel = (v: string) => (v === 'ipv4' ? 'IPv4' : v === 'ipv6' ? 'IPv6' : v.toUpperCase())
@@ -93,7 +108,7 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
           overflow: 'hidden'
         }}
       >
-        {/* Header */}
+        {/* Header + Search */}
         <div
           style={{
             display: 'flex',
@@ -101,7 +116,8 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
             justifyContent: 'space-between',
             padding: '12px 16px',
             borderBottom: '1px solid #f1f5f9',
-            background: '#f8fafc'
+            background: '#f8fafc',
+            gap: 12
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -110,6 +126,28 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
             <span style={{ fontSize: '13px', color: '#94a3b8' }}>
               ({filteredProviders?.length || 0}/{data?.length || 0})
             </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              border: '1px solid #e2e8f0', borderRadius: 8, padding: '4px 10px',
+              background: '#fff', minWidth: 180
+            }}>
+              <Search size={14} color='#94a3b8' />
+              <input
+                type='text'
+                placeholder='Tìm sản phẩm...'
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  border: 'none', outline: 'none', fontSize: '13px',
+                  background: 'transparent', width: '100%', color: '#1e293b'
+                }}
+              />
+              {searchQuery && (
+                <X size={14} color='#94a3b8' style={{ cursor: 'pointer' }} onClick={() => setSearchQuery('')} />
+              )}
+            </div>
           </div>
           {hasActiveFilter && (
             <Chip

@@ -35,13 +35,15 @@
 .qty-btn {
   background: #f9fafb;
   border: none;
-  padding-block: 7px;
-  padding-inline: 13px;
+  padding: 10px 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 40px;
 }
 
 .qty-btn:hover:not(:disabled) {
@@ -54,13 +56,28 @@
 }
 
 .qty-display {
-  min-inline-size: 50px;
+  min-width: 60px;
   text-align: center;
   border: none;
   outline: none;
-  font-size: 14px;
-  padding: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 8px 4px;
   flex: 1;
+  color: #1e293b;
+}
+
+@media (max-width: 480px) {
+  .qty-display {
+    min-width: 50px;
+    font-size: 15px;
+    padding: 8px 2px;
+  }
+
+  .qty-btn {
+    padding: 10px 12px;
+    min-width: 36px;
+  }
 }
 
 /* Ẩn spinner mặc định của input number */

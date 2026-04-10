@@ -251,11 +251,11 @@
 }
 
 .perunit-input {
-  width: 60px;
-  padding: 6px 2px 6px 8px;
+  width: 70px;
+  padding: 8px 4px 8px 8px;
   border: none;
   outline: none;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   text-align: center;
   color: #1e293b;
@@ -539,4 +539,31 @@
 .checkout-pay-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .checkout-modal {
+    margin: 8px;
+    max-height: 95vh;
+  }
+
+  .perunit-input-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .perunit-input {
+    width: 60px;
+    font-size: 15px;
+  }
+
+  .perunit-tiers {
+    gap: 6px;
+  }
+
+  .perunit-tier {
+    min-width: 56px;
+    padding: 6px 4px;
+  }
 }

@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import "./styles.css";
 
 interface QuantityControlProps {
@@ -19,13 +21,19 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
   icon,
   className = ''
 }) => {
-  // Đảm bảo value luôn nằm trong khoảng min-max
+  const [inputValue, setInputValue] = useState<string>(String(value))
   const safeValue = Math.max(min, Math.min(max, value || min))
+
+  // Sync khi value prop thay đổi từ bên ngoài
+  if (String(safeValue) !== inputValue && inputValue !== '') {
+    // Chỉ sync nếu input không đang rỗng (user đang gõ)
+  }
 
   const handleIncrease = () => {
     if (safeValue < max) {
       const newValue = safeValue + 1
 
+      setInputValue(String(newValue))
       onChange?.(newValue)
     }
   }
@@ -34,15 +42,31 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
     if (safeValue > min) {
       const newValue = safeValue - 1
 
+      setInputValue(String(newValue))
       onChange?.(newValue)
     }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseInt(e.target.value) || min
+    const raw = e.target.value
 
-    if (newValue >= min && newValue <= max) {
-      onChange?.(newValue)
+    if (raw === '') {
+      setInputValue('')
+      return
+    }
+
+    const num = parseInt(raw)
+
+    if (!isNaN(num) && num <= max) {
+      setInputValue(raw)
+      if (num >= min) onChange?.(num)
+    }
+  }
+
+  const handleBlur = () => {
+    if (!inputValue || parseInt(inputValue) < min) {
+      setInputValue(String(min))
+      onChange?.(min)
     }
   }
 
@@ -66,8 +90,9 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
         <input
           type="number"
           className="qty-display"
-          value={safeValue}
+          value={inputValue === '' ? '' : safeValue}
           onChange={handleInputChange}
+          onBlur={handleBlur}
           min={min}
           max={max}
         />
@@ -85,4 +110,3 @@ const QuantityControl: React.FC<QuantityControlProps> = ({
 }
 
 export default QuantityControl
-

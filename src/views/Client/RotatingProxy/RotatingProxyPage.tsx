@@ -22,7 +22,8 @@ import {
   SlidersHorizontal,
   RefreshCw,
   Zap,
-  MapPin
+  MapPin,
+  Search
 } from 'lucide-react'
 import Switch from '@mui/material/Switch'
 import MenuItem from '@mui/material/MenuItem'
@@ -707,6 +708,7 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
   const [selectedProxyType, setSelectedProxyType] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('')
   const [showActiveOnly, setShowActiveOnly] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const { data: countries } = useCountries()
 
@@ -717,25 +719,28 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
     const versions = [...new Set(data.map((p: any) => p.ip_version?.toLowerCase()).filter(Boolean))]
     const proxyTypes = [...new Set(data.map((p: any) => p.proxy_type?.toLowerCase()).filter(Boolean))]
 
-    const countrySet = [
-      ...new Set(
-        data.map((p: any) => fixCountryCode((p.country || p.country_code || '').trim()).toUpperCase()).filter(Boolean)
-      )
-    ]
+    const countrySet = new Set<string>()
 
-    // Map country codes to names from countries API
-    const countryOptions = countrySet.map(code => {
-      const found = countries?.find((c: any) => fixCountryCode(c.code).toUpperCase() === code)
-
-      return { code, name: found?.name || getCountryName(code) }
+    data.forEach((p: any) => {
+      const raw = (p.country || p.country_code || '').trim()
+      if (!raw) return
+      raw.split(',').forEach((c: string) => {
+        const code = fixCountryCode(c.trim()).toUpperCase()
+        if (code) countrySet.add(code)
+      })
     })
 
+    const countryOptions = [...countrySet].map(code => ({
+      code,
+      name: getCountryName(code)
+    }))
+
     return { versions, proxyTypes, countries: countryOptions }
-  }, [data, countries])
+  }, [data])
 
   const hasActiveFilter = selectedVersion || selectedProxyType || selectedCountry || !showActiveOnly
 
-  // Lọc danh sách plan theo các filter
+  // Lọc danh sách plan theo các filter + search
   const filteredProviders = useMemo(
     () =>
       data?.filter((plan: any) => {
@@ -745,14 +750,23 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
         if (selectedProxyType && plan.proxy_type?.toLowerCase() !== selectedProxyType.toLowerCase()) return false
 
         if (selectedCountry) {
-          const pc = fixCountryCode((plan.country || plan.country_code || '').trim()).toUpperCase()
+          const raw = (plan.country || plan.country_code || '').trim()
+          const codes = raw.split(',').map((c: string) => fixCountryCode(c.trim()).toUpperCase())
 
-          if (pc !== selectedCountry) return false
+          if (!codes.includes(selectedCountry)) return false
+        }
+
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase()
+          const name = (plan.name || plan.title || '').toLowerCase()
+          const code = (plan.code || '').toLowerCase()
+
+          if (!name.includes(q) && !code.includes(q)) return false
         }
 
         return true
       }),
-    [data, selectedVersion, selectedProxyType, selectedCountry, showActiveOnly]
+    [data, selectedVersion, selectedProxyType, selectedCountry, showActiveOnly, searchQuery]
   )
 
   const clearAllFilters = () => {
@@ -760,6 +774,7 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
     setSelectedProxyType('')
     setSelectedCountry('')
     setShowActiveOnly(true)
+    setSearchQuery('')
   }
 
   const versionLabel = (v: string) => (v === 'ipv4' ? 'IPv4' : v === 'ipv6' ? 'IPv6' : v.toUpperCase())
@@ -794,6 +809,28 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
             <span style={{ fontSize: '13px', color: '#94a3b8' }}>
               ({filteredProviders?.length || 0}/{data?.length || 0} gói)
             </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              border: '1px solid #e2e8f0', borderRadius: 8, padding: '4px 10px',
+              background: '#fff', minWidth: 180
+            }}>
+              <Search size={14} color='#94a3b8' />
+              <input
+                type='text'
+                placeholder='Tìm sản phẩm...'
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  border: 'none', outline: 'none', fontSize: '13px',
+                  background: 'transparent', width: '100%', color: '#1e293b'
+                }}
+              />
+              {searchQuery && (
+                <X size={14} color='#94a3b8' style={{ cursor: 'pointer' }} onClick={() => setSearchQuery('')} />
+              )}
+            </div>
           </div>
           {hasActiveFilter && (
             <Chip
