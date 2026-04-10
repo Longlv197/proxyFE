@@ -1109,6 +1109,23 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                   if (data?.price_per_unit) {
                                     setCostPerUnit(String(parseInt(data.price_per_unit) || 0))
                                   }
+
+                                  if (data?.pricing_mode) {
+                                    setParentPricingMode(data.pricing_mode)
+
+                                    if (data.pricing_mode !== pricingMode) {
+                                      setPricingMode(data.pricing_mode)
+                                    }
+                                  }
+
+                                  if (data?.provider_discount_tiers?.length) {
+                                    setDiscountTiers(data.provider_discount_tiers.map((t: any) => ({
+                                      min: t.min || '',
+                                      max: t.max || '',
+                                      discount: t.discount || '0',
+                                    })))
+                                  }
+
                                   if (data?.custom_fields) {
                                     setPurchaseOptions(
                                       data.custom_fields.map((f: any) => ({
@@ -1122,8 +1139,18 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                       }))
                                     )
                                   }
+
                                   if (data?.allow_custom_auth !== undefined)
                                     setAllowCustomAuth(!!data.allow_custom_auth)
+
+                                  // Sync renewal
+                                  if (data?.renewable != null) {
+                                    setParentRenewable(!!data.renewable)
+                                    setRenewable(!!data.renewable)
+                                  }
+
+                                  if (data?.renewal_duration) setRenewalDuration(data.renewal_duration)
+                                  if (data?.allow_expired_renew !== undefined) setAllowExpiredRenew(!!data.allow_expired_renew)
                                   setSyncStatus('done')
                                   setTimeout(() => setSyncStatus('idle'), 2000)
                                 },
@@ -1627,6 +1654,23 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                         }
                         if (product?.allow_custom_auth !== undefined) {
                           setAllowCustomAuth(!!product.allow_custom_auth)
+                        }
+
+                        // Sync pricing_mode + discount_tiers từ site mẹ
+                        if (product?.pricing_mode) {
+                          setParentPricingMode(product.pricing_mode)
+
+                          if (product.pricing_mode !== pricingMode) {
+                            setPricingMode(product.pricing_mode)
+                          }
+                        }
+
+                        if (product?.provider_discount_tiers?.length) {
+                          setDiscountTiers(product.provider_discount_tiers.map((t: any) => ({
+                            min: t.min || '',
+                            max: t.max || '',
+                            discount: t.discount || '0',
+                          })))
                         }
 
                         // Sync renewal settings từ site mẹ vào state + selectedProduct
@@ -2551,53 +2595,44 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                       />
                     </div>
 
-                    {/* Chi tiết cấu hình từ NCC (readonly) */}
+                    {/* Diễn giải cấu hình gia hạn */}
                     {parentRenewable !== null && (
                       <div
                         style={{
                           marginTop: 10,
-                          padding: '8px 10px',
+                          padding: '10px 12px',
                           borderRadius: 8,
-                          background: '#fff',
-                          border: '1px solid #e2e8f0'
+                          background: parentRenewable ? '#f0fdf4' : '#fef2f2',
+                          border: `1px solid ${parentRenewable ? '#bbf7d0' : '#fecaca'}`,
+                          fontSize: '12px',
+                          lineHeight: 1.6,
+                          color: '#334155'
                         }}
                       >
-                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginBottom: 6 }}>
-                          Cấu hình từ NCC
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px' }}>
-                            <span style={{ color: '#64748b' }}>Trạng thái</span>
-                            <span
-                              style={{
-                                fontWeight: 600,
-                                color: parentRenewable ? '#059669' : '#dc2626'
-                              }}
-                            >
-                              {parentRenewable ? 'Hỗ trợ' : 'Không hỗ trợ'}
-                            </span>
-                          </div>
-                          {parentRenewable && (
-                            <>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px' }}>
-                                <span style={{ color: '#64748b' }}>Thời hạn</span>
-                                <span style={{ fontWeight: 600, color: '#1e293b' }}>
-                                  {renewalDuration === 'original' ? 'Theo chu kỳ gốc' : 'Tuỳ chọn số ngày'}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px' }}>
-                                <span style={{ color: '#64748b' }}>Gia hạn khi hết hạn</span>
-                                <span style={{ fontWeight: 600, color: allowExpiredRenew ? '#059669' : '#94a3b8' }}>
-                                  {allowExpiredRenew ? 'Cho phép' : 'Không'}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px' }}>
-                                <span style={{ color: '#64748b' }}>Giá gia hạn</span>
-                                <span style={{ fontWeight: 600, color: '#1e293b' }}>Theo giá bán sản phẩm</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                        {!parentRenewable ? (
+                          <span style={{ color: '#991b1b' }}>
+                            Nhà cung cấp <strong>không hỗ trợ</strong> gia hạn cho sản phẩm này.
+                          </span>
+                        ) : (
+                          <>
+                            <div style={{ marginBottom: 4 }}>
+                              Nhà cung cấp <strong style={{ color: '#059669' }}>cho phép gia hạn</strong> sản phẩm này.
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingLeft: 8, borderLeft: '2px solid #86efac' }}>
+                              <span>
+                                {renewalDuration === 'original'
+                                  ? 'Khi gia hạn, thời hạn sẽ tự động theo lần mua đầu (khách không cần chọn).'
+                                  : 'Khi gia hạn, khách hàng được nhập số ngày mong muốn.'}
+                              </span>
+                              <span>
+                                {allowExpiredRenew
+                                  ? 'Proxy hết hạn vẫn được gia hạn.'
+                                  : 'Chỉ gia hạn được khi proxy còn hạn sử dụng.'}
+                              </span>
+                              <span>Giá gia hạn tính theo giá bán sản phẩm đã cấu hình ở trên.</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -2606,15 +2641,15 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                       <div
                         style={{
                           marginTop: 8,
-                          padding: '5px 10px',
+                          padding: '8px 12px',
                           borderRadius: 7,
-                          fontSize: '11px',
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          color: '#94a3b8'
+                          fontSize: '12px',
+                          background: '#fffbeb',
+                          border: '1px solid #fde68a',
+                          color: '#92400e'
                         }}
                       >
-                        {'Nhấn "Đồng bộ giá & cấu hình" để lấy thông tin gia hạn từ NCC'}
+                        {'Nhấn "Đồng bộ giá & cấu hình" để cập nhật thông tin gia hạn từ nhà cung cấp.'}
                       </div>
                     )}
                   </div>
