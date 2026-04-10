@@ -207,6 +207,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   const [parentRenewable, setParentRenewable] = useState<boolean | null>(null)
   const [discountTiers, setDiscountTiers] = useState<DiscountTier[]>([])
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [previewColumns, setPreviewColumns] = useState(3)
   const [purchaseOptions, setPurchaseOptions] = useState<
     Array<{
       key: string
@@ -215,7 +216,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       type: 'select' | 'text' | 'number'
       required: boolean
       default: string
-      options: Array<{ value: string; label: string }>
+      display_type?: 'country_flag' | ''
+      options: Array<{ value: string; label: string; flag?: string }>
     }>
   >([])
 
@@ -657,7 +659,14 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
             type: o.type || 'select',
             required: o.required,
             default: o.default || (o.type === 'select' ? o.options[0]?.value || '' : ''),
-            ...(o.type === 'select' ? { options: o.options.filter(opt => opt.value) } : {})
+            ...(o.type === 'select' ? { options: o.options.filter(opt => opt.value).map(opt => {
+              const entry: any = { value: opt.value, label: opt.label }
+
+              if (opt.flag) entry.flag = opt.flag
+
+              return entry
+            }) } : {}),
+            ...(o.display_type ? { display_type: o.display_type } : {}),
           })),
         provider_prices:
           pricingMode === 'per_unit'
@@ -2438,101 +2447,262 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                           </Grid2>
                         </Grid2>
 
-                        {/* Options — chỉ cho type=select */}
+                        {/* Display type — chỉ cho type=select */}
                         {(opt.type || 'select') === 'select' && (
-                          <>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
-                              Giá trị:
-                            </div>
-                            {opt.options.map((option, valIdx) => (
-                              <div
-                                key={valIdx}
-                                style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}
-                              >
-                                <TextField
-                                  size='small'
-                                  placeholder='Value'
-                                  value={option.value}
-                                  sx={{ flex: 1 }}
-                                  onChange={e => {
-                                    const newOpts = [...opt.options]
-                                    newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
-                                    if (!newOpts[valIdx].label) newOpts[valIdx].label = e.target.value
-                                    setPurchaseOptions(prev =>
-                                      prev.map((o, i) => (i === optIdx ? { ...o, options: newOpts } : o))
-                                    )
-                                  }}
-                                />
-                                <TextField
-                                  size='small'
-                                  placeholder='Label'
-                                  value={option.label}
-                                  sx={{ flex: 1 }}
-                                  onChange={e => {
-                                    const newOpts = [...opt.options]
-                                    newOpts[valIdx] = { ...newOpts[valIdx], label: e.target.value }
-                                    setPurchaseOptions(prev =>
-                                      prev.map((o, i) => (i === optIdx ? { ...o, options: newOpts } : o))
-                                    )
-                                  }}
-                                />
-                                <button
-                                  type='button'
-                                  onClick={() => {
-                                    if (opt.options.length <= 1) return
-                                    setPurchaseOptions(prev =>
-                                      prev.map((o, i) =>
-                                        i === optIdx ? { ...o, options: o.options.filter((_, j) => j !== valIdx) } : o
-                                      )
-                                    )
-                                  }}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444',
-                                    cursor: opt.options.length <= 1 ? 'default' : 'pointer',
-                                    fontSize: 13
-                                  }}
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ))}
-                            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                              <Button
-                                size='small'
-                                variant='text'
-                                sx={{ fontSize: 11 }}
-                                onClick={() => {
-                                  const newOpts = [...opt.options, { value: '', label: '' }]
-                                  setPurchaseOptions(prev =>
-                                    prev.map((o, i) => (i === optIdx ? { ...o, options: newOpts } : o))
-                                  )
-                                }}
-                              >
-                                + Thêm giá trị
-                              </Button>
+                          <Grid2 container spacing={1} sx={{ mb: 1 }}>
+                            <Grid2 size={{ xs: 4 }}>
                               <TextField
                                 size='small'
+                                fullWidth
                                 select
-                                label='Mặc định'
-                                sx={{ minWidth: 100 }}
-                                value={opt.default || opt.options[0]?.value || ''}
+                                label='Hiển thị ngoài card'
+                                value={opt.display_type || ''}
                                 onChange={e =>
                                   setPurchaseOptions(prev =>
-                                    prev.map((o, i) => (i === optIdx ? { ...o, default: e.target.value } : o))
+                                    prev.map((o, i) => (i === optIdx ? { ...o, display_type: (e.target.value || '') as any } : o))
                                   )
                                 }
                               >
-                                {opt.options
-                                  .filter(o => o.value)
-                                  .map(o => (
-                                    <MenuItem key={o.value} value={o.value}>
-                                      {o.label || o.value}
-                                    </MenuItem>
-                                  ))}
+                                <MenuItem value=''>Mặc định (text)</MenuItem>
+                                <MenuItem value='country_flag'>Cờ quốc gia</MenuItem>
                               </TextField>
-                            </div>
+                            </Grid2>
+                          </Grid2>
+                        )}
+
+                        {/* Options — chỉ cho type=select */}
+                        {(opt.type || 'select') === 'select' && (
+                          <>
+                            {opt.display_type === 'country_flag' ? (
+                              <>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
+                                  Quốc gia — Value gửi API:
+                                </div>
+                                {opt.options.map((option, valIdx) => (
+                                  <div
+                                    key={valIdx}
+                                    style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 140 }}>
+                                      {option.flag && (
+                                        <img
+                                          src={`https://flagcdn.com/w20/${option.flag}.png`}
+                                          alt=''
+                                          style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
+                                        />
+                                      )}
+                                      <span style={{ fontSize: 12, fontWeight: 500, color: '#1e293b' }}>
+                                        {option.label || '—'}
+                                      </span>
+                                    </div>
+                                    <TextField
+                                      size='small'
+                                      placeholder='Value (ID gửi API)'
+                                      value={option.value}
+                                      sx={{ width: 140 }}
+                                      onChange={e => {
+                                        const newOpts = [...opt.options]
+
+                                        newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
+                                        setPurchaseOptions(prev =>
+                                          prev.map((o, i) => (i === optIdx ? { ...o, options: newOpts } : o))
+                                        )
+                                      }}
+                                    />
+                                    <button
+                                      type='button'
+                                      onClick={() => {
+                                        if (opt.options.length <= 1) return
+
+                                        setPurchaseOptions(prev =>
+                                          prev.map((o, i) =>
+                                            i === optIdx
+                                              ? { ...o, options: o.options.filter((_, j) => j !== valIdx) }
+                                              : o
+                                          )
+                                        )
+                                      }}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444',
+                                        cursor: opt.options.length <= 1 ? 'default' : 'pointer',
+                                        fontSize: 13,
+                                        padding: 0,
+                                        lineHeight: 1
+                                      }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ))}
+                                <TextField
+                                  size='small'
+                                  select
+                                  label='+ Thêm quốc gia'
+                                  value=''
+                                  sx={{ minWidth: 200, mt: 0.5 }}
+                                  onChange={e => {
+                                    const code = e.target.value
+
+                                    if (!code) return
+
+                                    const country = (countries || []).find(
+                                      (c: any) => c.code.toLowerCase() === code
+                                    )
+
+                                    const exists = opt.options.some(o => o.flag === code)
+
+                                    if (exists) return
+
+                                    const newOpt = {
+                                      value: '',
+                                      label: country?.name || code.toUpperCase(),
+                                      flag: code
+                                    }
+
+                                    setPurchaseOptions(prev =>
+                                      prev.map((o, i) =>
+                                        i === optIdx ? { ...o, options: [...o.options, newOpt] } : o
+                                      )
+                                    )
+                                  }}
+                                  slotProps={{
+                                    select: {
+                                      MenuProps: { PaperProps: { style: { maxHeight: 250 } } }
+                                    }
+                                  }}
+                                >
+                                  {(countries || []).map((c: any) => {
+                                    const exists = opt.options.some(o => o.flag === c.code.toLowerCase())
+
+                                    return (
+                                      <MenuItem
+                                        key={c.code}
+                                        value={c.code.toLowerCase()}
+                                        disabled={exists}
+                                      >
+                                        <img
+                                          src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
+                                          alt=''
+                                          style={{
+                                            width: 18,
+                                            height: 13,
+                                            marginRight: 8,
+                                            objectFit: 'cover',
+                                            borderRadius: 1
+                                          }}
+                                        />
+                                        {c.name} {exists ? '(đã thêm)' : ''}
+                                      </MenuItem>
+                                    )
+                                  })}
+                                </TextField>
+                              </>
+                            ) : (
+                              <>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
+                                  Giá trị:
+                                </div>
+                                {opt.options.map((option, valIdx) => (
+                                  <div
+                                    key={valIdx}
+                                    style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}
+                                  >
+                                    <TextField
+                                      size='small'
+                                      placeholder='Value'
+                                      value={option.value}
+                                      sx={{ flex: 1 }}
+                                      onChange={e => {
+                                        const newOpts = [...opt.options]
+
+                                        newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
+
+                                        if (!newOpts[valIdx].label) newOpts[valIdx].label = e.target.value
+
+                                        setPurchaseOptions(prev =>
+                                          prev.map((o, i) => (i === optIdx ? { ...o, options: newOpts } : o))
+                                        )
+                                      }}
+                                    />
+                                    <TextField
+                                      size='small'
+                                      placeholder='Label'
+                                      value={option.label}
+                                      sx={{ flex: 1 }}
+                                      onChange={e => {
+                                        const newOpts = [...opt.options]
+
+                                        newOpts[valIdx] = { ...newOpts[valIdx], label: e.target.value }
+                                        setPurchaseOptions(prev =>
+                                          prev.map((o, i) => (i === optIdx ? { ...o, options: newOpts } : o))
+                                        )
+                                      }}
+                                    />
+                                    <button
+                                      type='button'
+                                      onClick={() => {
+                                        if (opt.options.length <= 1) return
+
+                                        setPurchaseOptions(prev =>
+                                          prev.map((o, i) =>
+                                            i === optIdx
+                                              ? { ...o, options: o.options.filter((_, j) => j !== valIdx) }
+                                              : o
+                                          )
+                                        )
+                                      }}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444',
+                                        cursor: opt.options.length <= 1 ? 'default' : 'pointer',
+                                        fontSize: 13
+                                      }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ))}
+                                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                                  <Button
+                                    size='small'
+                                    variant='text'
+                                    sx={{ fontSize: 11 }}
+                                    onClick={() => {
+                                      const newOpts = [...opt.options, { value: '', label: '' }]
+
+                                      setPurchaseOptions(prev =>
+                                        prev.map((o, i) => (i === optIdx ? { ...o, options: newOpts } : o))
+                                      )
+                                    }}
+                                  >
+                                    + Thêm giá trị
+                                  </Button>
+                                  <TextField
+                                    size='small'
+                                    select
+                                    label='Mặc định'
+                                    sx={{ minWidth: 100 }}
+                                    value={opt.default || opt.options[0]?.value || ''}
+                                    onChange={e =>
+                                      setPurchaseOptions(prev =>
+                                        prev.map((o, i) => (i === optIdx ? { ...o, default: e.target.value } : o))
+                                      )
+                                    }
+                                  >
+                                    {opt.options
+                                      .filter(o => o.value)
+                                      .map(o => (
+                                        <MenuItem key={o.value} value={o.value}>
+                                          {o.label || o.value}
+                                        </MenuItem>
+                                      ))}
+                                  </TextField>
+                                </div>
+                              </>
+                            )}
                           </>
                         )}
 
@@ -2821,8 +2991,29 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
               {/* Right: Preview */}
               <div style={{ flex: 2, position: 'sticky', top: 0, alignSelf: 'flex-start' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: 8 }}>
-                  Xem trước sản phẩm
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                    Xem trước sản phẩm
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f5f9', borderRadius: 6, padding: 2 }}>
+                    <span style={{ fontSize: 10, color: '#64748b', paddingLeft: 4 }}>Cột:</span>
+                    {[3, 4, 5].map(n => (
+                      <button
+                        key={n}
+                        type='button'
+                        onClick={() => setPreviewColumns(n)}
+                        style={{
+                          width: 24, height: 22, border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                          cursor: 'pointer',
+                          background: previewColumns === n ? '#fff' : 'transparent',
+                          color: previewColumns === n ? '#1e293b' : '#94a3b8',
+                          boxShadow: previewColumns === n ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                        }}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div
                   style={{
@@ -2831,7 +3022,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                     padding: 16,
                     border: '1px solid #e2e8f0',
                     position: 'relative',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    maxWidth: previewColumns === 3 ? 380 : previewColumns === 4 ? 300 : 240
                   }}
                 >
                   {/* top gradient bar */}
@@ -3030,6 +3222,31 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                     {watchAll.type === '1' && watchAll.pool_size && (
                       <FeatureRow icon={Globe} iconColor='#0ea5e9' label='Pool size' value={watchAll.pool_size} />
                     )}
+                    {/* Country flag custom fields */}
+                    {purchaseOptions
+                      .filter(opt => opt.display_type === 'country_flag' && opt.options?.some(o => o.flag))
+                      .map(opt => (
+                        <div
+                          key={opt.key}
+                          style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '6px 4px', borderBottom: '1px solid #f8fafc' }}
+                        >
+                          <Globe size={16} color='#059669' style={{ flexShrink: 0, marginTop: 1 }} />
+                          <div style={{ flex: 1 }}>
+                            <span style={{ fontSize: '13px', color: '#4a5568', fontWeight: 500 }}>{opt.label}: </span>
+                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '3px' }}>
+                              {opt.options.filter(o => o.flag).map(o => (
+                                <img
+                                  key={o.value || o.flag}
+                                  src={`https://flagcdn.com/w20/${o.flag}.png`}
+                                  alt={o.label}
+                                  title={o.label}
+                                  style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
+                                />
+                              ))}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     <FeatureRow
                       icon={RefreshCw}
                       iconColor={renewable ? '#10b981' : '#94a3b8'}
@@ -3075,6 +3292,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                       {watchAll.is_purchasable ? 'Mua ngay' : 'Tạm ngừng'}
                     </span>
                   </div>
+                </div>
+                <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '11px', color: '#94a3b8' }}>
+                  Khách hàng sẽ thấy card này ({previewColumns} cột/hàng)
                 </div>
               </div>
             </div>

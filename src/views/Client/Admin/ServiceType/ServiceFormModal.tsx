@@ -282,11 +282,12 @@ const PREVIEW_FIELDS = ['name', 'type', 'tag', 'status', 'rotation_type', 'proto
   'rotation_interval', 'pool_size', 'request_limit', 'concurrent_connections', 'note', 'code',
   'country', 'ip_version', 'proxy_type', 'is_purchasable'] as const
 
-const ServicePreview = memo(function ServicePreview({ control, serviceId, priceFields, multiInputFields, allowCustomAuth }: {
+const ServicePreview = memo(function ServicePreview({ control, serviceId, priceFields, multiInputFields, allowCustomAuth, purchaseOptions }: {
   control: any; serviceId?: number | null
   priceFields: Array<{ key: string; value: string; cost?: string }>
   multiInputFields: Array<{ key: string; value: string }>
   allowCustomAuth: boolean
+  purchaseOptions?: PurchaseOption[]
 }) {
   const previewData = useWatch({ control, name: PREVIEW_FIELDS as any })
   const previewObj = useMemo(() => {
@@ -364,6 +365,38 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
     </div>
   ))
 
+  const renderCountryFlagFields = () => {
+    if (!purchaseOptions?.length) return null
+
+    return purchaseOptions
+      .filter(opt => opt.display_type === 'country_flag' && opt.options?.length)
+      .map(opt => {
+        const flagOptions = opt.options.filter((o: any) => o.flag)
+
+        if (!flagOptions.length) return null
+
+        return (
+          <div key={opt.key} className='feature-row'>
+            <div className='feature-icons'><Globe size={16} color='#059669' /></div>
+            <div className='feature-content'>
+              <span className='feature-label'>{opt.label}:</span>
+              <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                {flagOptions.map((o: any) => (
+                  <img
+                    key={o.value || o.flag}
+                    src={`https://flagcdn.com/w20/${fixCountryCode(o.flag)}.png`}
+                    alt={o.label}
+                    title={o.label}
+                    style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
+                  />
+                ))}
+              </span>
+            </div>
+          </div>
+        )
+      })
+  }
+
   const renderIpRow = (prefix: string) => {
     if (!previewObj.ip_version && !previewObj.country) return null
     const countries = Array.isArray(previewObj.country) ? previewObj.country : (previewObj.country ? [previewObj.country] : [])
@@ -432,6 +465,7 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
               {renderIpRow('Rotating')}
               {renderProtocolRow()}
               {renderSpecRows()}
+              {renderCountryFlagFields()}
               {multiInputFields.filter((field: any) => field.key && field.value).map((input: any, i: number) => {
                 const featureColors = ['var(--primary-hover, #f97316)', '#3b82f6', '#22c55e', '#8b5cf6', '#06b6d4', '#f59e0b', '#ef4444']
                 return (
@@ -461,6 +495,7 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
                 {renderIpRow('Static')}
                 {renderProtocolRow()}
                 {renderSpecRows()}
+                {renderCountryFlagFields()}
               </div>
             </div>
             {renderFooter()}
@@ -600,74 +635,52 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
               <>
                 {opt.display_type === 'country_flag' ? (
                   <>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Quốc gia:</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
-                      {opt.options.map((option, valIdx) => (
-                        <div
-                          key={valIdx}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '4px 8px 4px 6px', borderRadius: 6,
-                            border: '1px solid #e2e8f0', background: '#f8fafc',
-                            fontSize: 12
-                          }}
-                        >
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Quốc gia — Value gửi API:</div>
+                    {opt.options.map((option, valIdx) => (
+                      <div key={valIdx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 140 }}>
                           {(option as any).flag && (
-                            <img src={`https://flagcdn.com/w20/${(option as any).flag}.png`} alt='' style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 1 }} />
+                            <img src={`https://flagcdn.com/w20/${(option as any).flag}.png`} alt='' style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }} />
                           )}
-                          <span style={{ fontWeight: 500, color: '#1e293b' }}>{option.label || '—'}</span>
-                          <span style={{ color: '#94a3b8', fontSize: 10 }}>({option.value})</span>
-                          <button type='button'
-                            onClick={() => { if (opt.options.length <= 1) return; update(optIdx, { options: opt.options.filter((_, i) => i !== valIdx) }) }}
-                            style={{ background: 'none', border: 'none', color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444', cursor: opt.options.length <= 1 ? 'default' : 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}>✕</button>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: '#1e293b' }}>{option.label || '—'}</span>
                         </div>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <CustomTextField size='small' select label='Thêm quốc gia' value='' sx={{ minWidth: 200 }}
-                        onChange={(e: any) => {
-                          const code = e.target.value
-                          if (!code) return
-                          const country = countries?.find((c: any) => c.code.toLowerCase() === code)
-                          const exists = opt.options.some((o: any) => o.flag === code)
-                          if (exists) return
-                          update(optIdx, { options: [...opt.options, { value: '', label: country?.name || code.toUpperCase(), flag: code } as any] })
-                        }}
-                        slotProps={{ select: { MenuProps: { PaperProps: { style: { maxHeight: 250 } } } } }}
-                      >
-                        {(countries || []).map((c: any) => {
-                          const exists = opt.options.some((o: any) => (o as any).flag === c.code.toLowerCase())
-                          return (
-                            <MenuItem key={c.code} value={c.code.toLowerCase()} disabled={exists}>
-                              <img src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`} alt='' style={{ width: 18, height: 13, marginRight: 8, objectFit: 'cover', borderRadius: 1 }} />
-                              {c.name} {exists ? '(đã thêm)' : ''}
-                            </MenuItem>
-                          )
-                        })}
-                      </CustomTextField>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>Chọn xong → nhập Value (ID gửi API) cho từng nước</span>
-                    </div>
-                    {opt.options.some((o: any) => !o.value) && (
-                      <div style={{ marginTop: 8 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>Nhập Value gửi API:</div>
-                        {opt.options.filter((o: any) => !o.value).map((option, i) => {
-                          const realIdx = opt.options.indexOf(option)
-                          return (
-                            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 3 }}>
-                              {(option as any).flag && (
-                                <img src={`https://flagcdn.com/w20/${(option as any).flag}.png`} alt='' style={{ width: 16, height: 11 }} />
-                              )}
-                              <span style={{ fontSize: 12, minWidth: 80 }}>{option.label}</span>
-                              <CustomTextField size='small' placeholder='Value gửi API' value={option.value} sx={{ width: 120 }}
-                                onChange={(e: any) => {
-                                  const newOpts = [...opt.options]; newOpts[realIdx] = { ...newOpts[realIdx], value: e.target.value }
-                                  update(optIdx, { options: newOpts })
-                                }} />
-                            </div>
-                          )
-                        })}
+                        <CustomTextField size='small' placeholder='Value (ID gửi API)' value={option.value} sx={{ width: 140 }}
+                          onChange={(e: any) => {
+                            const newOpts = [...opt.options]
+
+                            newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
+                            update(optIdx, { options: newOpts })
+                          }} />
+                        <button type='button'
+                          onClick={() => { if (opt.options.length <= 1) return; update(optIdx, { options: opt.options.filter((_, i) => i !== valIdx) }) }}
+                          style={{ background: 'none', border: 'none', color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444', cursor: opt.options.length <= 1 ? 'default' : 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}>✕</button>
                       </div>
-                    )}
+                    ))}
+                    <CustomTextField size='small' select label='+ Thêm quốc gia' value='' sx={{ minWidth: 200, mt: 0.5 }}
+                      onChange={(e: any) => {
+                        const code = e.target.value
+
+                        if (!code) return
+
+                        const country = countries?.find((c: any) => c.code.toLowerCase() === code)
+                        const exists = opt.options.some((o: any) => o.flag === code)
+
+                        if (exists) return
+                        update(optIdx, { options: [...opt.options, { value: '', label: country?.name || code.toUpperCase(), flag: code } as any] })
+                      }}
+                      slotProps={{ select: { MenuProps: { PaperProps: { style: { maxHeight: 250 } } } } }}
+                    >
+                      {(countries || []).map((c: any) => {
+                        const exists = opt.options.some((o: any) => (o as any).flag === c.code.toLowerCase())
+
+                        return (
+                          <MenuItem key={c.code} value={c.code.toLowerCase()} disabled={exists}>
+                            <img src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`} alt='' style={{ width: 18, height: 13, marginRight: 8, objectFit: 'cover', borderRadius: 1 }} />
+                            {c.name} {exists ? '(đã thêm)' : ''}
+                          </MenuItem>
+                        )
+                      })}
+                    </CustomTextField>
                   </>
                 ) : (
                   <>
@@ -919,6 +932,7 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
 
   const [responseMappingRows, setResponseMappingRows] = useState<{ from: string; to: string; store: string }[]>([])
   const [purchaseOptions, setPurchaseOptions] = useState<PurchaseOption[]>([])
+  const [previewColumns, setPreviewColumns] = useState(3)
   const [allowCustomAuth, setAllowCustomAuth] = useState(false)
   const [requireIp, setRequireIp] = useState(false)
   const [maxIps, setMaxIps] = useState(1)
@@ -2565,21 +2579,45 @@ return <Chip key={val} label={p?.label || val} size='small' />
           {/* Right: Preview — 100% giống card khách hàng */}
           <Box sx={PREVIEW_BOX_SX}>
             <Box sx={{ position: 'sticky', top: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                <Eye size={16} color='#16a34a' />
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#15803d' }}>Xem trước</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Eye size={16} color='#16a34a' />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#15803d' }}>Xem trước</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f5f9', borderRadius: 6, padding: 2 }}>
+                  <span style={{ fontSize: 10, color: '#64748b', paddingLeft: 4 }}>Cột:</span>
+                  {[3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      type='button'
+                      onClick={() => setPreviewColumns(n)}
+                      style={{
+                        width: 24, height: 22, border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                        cursor: 'pointer',
+                        background: previewColumns === n ? '#fff' : 'transparent',
+                        color: previewColumns === n ? '#1e293b' : '#94a3b8',
+                        boxShadow: previewColumns === n ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                      }}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <ServicePreview
-                control={control}
-                serviceId={serviceId}
-                priceFields={priceFields}
-                multiInputFields={multiInputFields}
-                allowCustomAuth={allowCustomAuth}
-              />
+              <div style={{ maxWidth: previewColumns === 3 ? 380 : previewColumns === 4 ? 300 : 240 }}>
+                <ServicePreview
+                  control={control}
+                  serviceId={serviceId}
+                  priceFields={priceFields}
+                  multiInputFields={multiInputFields}
+                  allowCustomAuth={allowCustomAuth}
+                  purchaseOptions={purchaseOptions}
+                />
+              </div>
 
               <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '11px', color: '#94a3b8' }}>
-                Cập nhật theo thời gian thực
+                Khách hàng sẽ thấy card này trên trang sản phẩm ({previewColumns} cột/hàng)
               </div>
             </Box>
           </Box>
