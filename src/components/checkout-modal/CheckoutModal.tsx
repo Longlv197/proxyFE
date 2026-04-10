@@ -457,9 +457,15 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <input
                     type='number'
                     min={1}
-                    max={365}
-                    value={customDuration}
-                    onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                    max={9999}
+                    value={customDuration || ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      if (val === '') { setCustomDuration(0); return }
+                      const num = parseInt(val)
+                      if (!isNaN(num)) setCustomDuration(Math.max(num, 1))
+                    }}
+                    onBlur={() => { if (!customDuration || customDuration < 1) setCustomDuration(1) }}
                     className='perunit-input'
                   />
                   <span className='perunit-input-unit'>{timeUnit === 'month' ? 'tháng' : 'ngày'}</span>
