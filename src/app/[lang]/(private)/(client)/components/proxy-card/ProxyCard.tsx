@@ -37,7 +37,9 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
   const visibleTags = useMemo(() => {
     if (!provider?.tag) return []
 
-    return provider.tag.split(',').filter((t: string) => {
+    const tagStr = Array.isArray(provider.tag) ? provider.tag.join(',') : (provider.tag || '')
+
+    return tagStr.split(',').filter((t: string) => {
       const tagDef = getTagStyle(t)
 
       return !(tagDef && 'hidden' in tagDef && tagDef.hidden)

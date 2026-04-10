@@ -44,7 +44,8 @@ export function renderFeatureRow(
 ): React.ReactNode {
   switch (key) {
     case 'ip_type': {
-      const rawCountry = provider?.country || provider?.country_code || ''
+      const rawCountryVal = provider?.country || provider?.country_code || ''
+      const rawCountry = Array.isArray(rawCountryVal) ? rawCountryVal.join(',') : String(rawCountryVal)
       const countryCodes = rawCountry.split(',').map((c: string) => c.trim().toLowerCase()).filter(Boolean)
 
       return (
@@ -228,7 +229,8 @@ export function renderFeatureRow(
       const hasCountryFlag = provider?.metadata?.custom_fields?.some((f: any) => f.display_type === 'country_flag')
       if (hasCountryFlag) return null
 
-      const raw = provider?.country || provider?.country_code || ''
+      const rawVal = provider?.country || provider?.country_code || ''
+      const raw = Array.isArray(rawVal) ? rawVal.join(',') : String(rawVal)
       const codes = raw.split(',').map((c: string) => c.trim().toLowerCase()).filter((c: string) => c.length >= 2)
       if (!codes.length) return null
 
