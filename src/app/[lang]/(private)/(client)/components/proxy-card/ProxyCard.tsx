@@ -22,9 +22,10 @@ interface ProxyCardProps {
   isFirstCard?: boolean
   onPurchaseSuccess?: () => void
   countries?: any[]
+  previewMode?: boolean
 }
 
-const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, countries = [] }) => {
+const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, countries = [], previewMode = false }) => {
   const session = useSession()
   const { openAuthModal } = useModalContext()
   const { show_product_code, product_fields } = useBranding()
@@ -181,6 +182,8 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
   }, [priceOptions, isPerUnit, provider.metadata])
 
   const handleBuy = () => {
+    if (previewMode) return
+
     if (session.status !== 'authenticated') {
       openAuthModal('login')
 
@@ -193,7 +196,7 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
   return (
     <>
       <div
-        className={`proxy-card-column${checkoutOpen ? ' active' : ''}`}
+        className={`proxy-card-column${checkoutOpen ? ' active' : ''}${previewMode ? ' preview-mode' : ''}`}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -358,27 +361,29 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
         </div>
       </div>
 
-      <CheckoutModal
-        open={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-        productName={provider?.name ?? provider?.code}
-        productType='static'
-        serviceTypeId={provider.id}
-        priceOptions={priceOptions}
-        protocols={protocolList}
-        ipVersion={provider.ip_version}
-        proxyType={provider.proxy_type}
-        country={provider.country || provider.country_name || provider.country_code}
-        authType={provider.auth_type || null}
-        pricingMode={provider.pricing_mode || 'fixed'}
-        timeUnit={provider.time_unit || 'day'}
-        pricePerUnit={provider.price_per_unit || 0}
-        allowCustomAuth={!!provider.metadata?.allow_custom_auth}
-        discountTiers={provider.metadata?.discount_tiers || []}
-        quantityTiers={provider.metadata?.quantity_tiers || []}
-        customFields={provider.metadata?.custom_fields || undefined}
-        maxIps={provider.metadata?.max_ips || 1}
-      />
+      {!previewMode && (
+        <CheckoutModal
+          open={checkoutOpen}
+          onClose={() => setCheckoutOpen(false)}
+          productName={provider?.name ?? provider?.code}
+          productType='static'
+          serviceTypeId={provider.id}
+          priceOptions={priceOptions}
+          protocols={protocolList}
+          ipVersion={provider.ip_version}
+          proxyType={provider.proxy_type}
+          country={provider.country || provider.country_name || provider.country_code}
+          authType={provider.auth_type || null}
+          pricingMode={provider.pricing_mode || 'fixed'}
+          timeUnit={provider.time_unit || 'day'}
+          pricePerUnit={provider.price_per_unit || 0}
+          allowCustomAuth={!!provider.metadata?.allow_custom_auth}
+          discountTiers={provider.metadata?.discount_tiers || []}
+          quantityTiers={provider.metadata?.quantity_tiers || []}
+          customFields={provider.metadata?.custom_fields || undefined}
+          maxIps={provider.metadata?.max_ips || 1}
+        />
+      )}
     </>
   )
 }

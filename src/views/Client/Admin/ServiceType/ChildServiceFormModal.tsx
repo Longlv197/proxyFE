@@ -31,14 +31,7 @@ import {
   Loader2,
   Package,
   Info,
-  MapPin,
-  Shield,
-  Wifi,
-  Zap,
-  Users,
   RefreshCw,
-  Clock,
-  Globe,
   ShoppingCart
 } from 'lucide-react'
 import { useFormNotification } from '@/hooks/useFormNotification'
@@ -52,6 +45,8 @@ import { useCheckSupplierProduct, type SupplierProduct } from '@/hooks/apis/useS
 import { useCountries } from '@/hooks/apis/useCountries'
 
 import { PREDEFINED_TAGS, getTagStyle } from '@/configs/tagConfig'
+import '@/app/[lang]/(private)/(client)/components/proxy-card/styles.css'
+import ProxyCard from '@/app/[lang]/(private)/(client)/components/proxy-card/ProxyCard'
 
 interface Props {
   open: boolean
@@ -492,39 +487,6 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     setValue('tag', updated.join(', '))
   }
 
-  const getCountryNameFromCode = (code: string) => {
-    if (!code || !countries) return ''
-    const found = (countries as any[]).find((c: any) => c.code.toLowerCase() === code.toLowerCase())
-
-    return found ? found.name : code.toUpperCase()
-  }
-
-  const getAuthTypeLabel = (val: string) => {
-    switch (val) {
-      case 'userpass':
-        return 'User:Pass'
-      case 'ip_whitelist':
-        return 'IP Whitelist'
-      case 'both':
-        return 'User:Pass + IP'
-      default:
-        return val
-    }
-  }
-
-  const getRotationTypeLabel = (val: string) => {
-    switch (val) {
-      case 'per_request':
-        return 'Per request'
-      case 'sticky':
-        return 'Sticky'
-      case 'time_based':
-        return 'Time-based'
-      default:
-        return val
-    }
-  }
-
   const onSubmit = (data: any) => {
     if (pricingMode === 'per_unit') {
       // Per_unit: validate giá bán/đơn vị
@@ -717,52 +679,41 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   const isPending = createMutation.isPending || updateMutation.isPending
   const isLoading = loadingService
 
-  // Preview helpers
-  const previewName = watchAll.name || 'Tên sản phẩm'
-  const previewTags = watchAll.tag
-    ? watchAll.tag
-        .split(',')
-        .map((t: string) => t.trim())
-        .filter(Boolean)
-    : []
-  const previewType = watchAll.type === '1' ? 'Rotating' : 'Static'
-  const previewIpVersion = watchAll.ip_version === 'ipv6' ? 'V6' : 'V4'
-  const previewCountryCode = watchAll.country || ''
-  const previewCountryName = getCountryNameFromCode(previewCountryCode)
+  // Preview: build provider object cho ProxyCard
+  const validPreviewPrices = priceFields.filter((p: any) => p.key && p.value && parseInt(p.value, 10) > 0)
 
-  const previewProtocols =
-    Array.isArray(watchAll.protocols) && watchAll.protocols.length > 0
-      ? watchAll.protocols.map((p: string) => p.toUpperCase()).join('/')
-      : '—'
-
-  const previewPrice =
-    pricingMode === 'per_unit' && pricePerUnit
-      ? `${parseInt(pricePerUnit).toLocaleString('vi-VN')}đ/${timeUnit === 'month' ? 'tháng' : 'ngày'}`
-      : priceFields.length > 0 && priceFields[0].value
-        ? `${parseInt(priceFields[0].value).toLocaleString('vi-VN')}đ`
-        : '—'
-
-  const FeatureRow = ({
-    icon: Icon,
-    iconColor,
-    label,
-    value
-  }: {
-    icon: any
-    iconColor: string
-    label: string
-    value: string
-  }) => (
-    <div
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 4px', borderBottom: '1px solid #f8fafc' }}
-    >
-      <Icon size={16} color={iconColor} />
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '14px', color: '#4a5568', fontWeight: 500 }}>{label}:</span>
-        <span style={{ fontSize: '14px', color: '#1e293b', fontWeight: 700 }}>{value}</span>
-      </div>
-    </div>
-  )
+  const previewProvider = useMemo(() => ({
+    id: serviceId,
+    code: watchAll.code,
+    name: watchAll.name || 'Tên sản phẩm',
+    tag: watchAll.tag || '',
+    status: watchAll.status,
+    type: watchAll.type,
+    is_purchasable: watchAll.is_purchasable !== false,
+    ip_version: watchAll.ip_version,
+    proxy_type: watchAll.proxy_type,
+    country: watchAll.country,
+    protocols: watchAll.protocols,
+    auth_type: watchAll.auth_type,
+    bandwidth: watchAll.bandwidth,
+    rotation_type: watchAll.rotation_type,
+    rotation_interval: watchAll.rotation_interval,
+    pool_size: watchAll.pool_size,
+    request_limit: watchAll.request_limit,
+    concurrent_connections: watchAll.concurrent_connections,
+    note: watchAll.note,
+    pricing_mode: pricingMode,
+    price_per_unit: parseInt(pricePerUnit) || 0,
+    time_unit: timeUnit,
+    price: validPreviewPrices[0] ? parseInt(validPreviewPrices[0].value, 10) : 0,
+    price_by_duration: validPreviewPrices.map(p => ({ key: p.key, value: p.value })),
+    metadata: {
+      allow_custom_auth: allowCustomAuth,
+      custom_fields: purchaseOptions
+        .filter(o => o.key && o.label)
+        .map(o => ({ ...o, options: o.options?.filter(opt => opt.value) })),
+    },
+  }), [watchAll, serviceId, validPreviewPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit])
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth='lg' fullWidth closeAfterTransition={false}>
@@ -3015,283 +2966,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                     ))}
                   </div>
                 </div>
-                <div
-                  style={{
-                    background: 'white',
-                    borderRadius: 12,
-                    padding: 16,
-                    border: '1px solid #e2e8f0',
-                    position: 'relative',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                    maxWidth: previewColumns === 3 ? 380 : previewColumns === 4 ? 300 : 240
-                  }}
-                >
-                  {/* top gradient bar */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 3,
-                      background: 'var(--primary-gradient, linear-gradient(90deg, #e53e3e, #ff6b6b))',
-                      borderRadius: '12px 12px 0 0'
-                    }}
-                  />
-
-                  {/* Header: name + tags */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      justifyContent: 'space-between',
-                      gap: 8,
-                      marginBottom: 8,
-                      paddingTop: 4
-                    }}
-                  >
-                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#1e293b', lineHeight: 1.3 }}>
-                      {previewName}
-                      {(serviceId || watchAll.code) && (
-                        <div
-                          style={{
-                            fontFamily: 'monospace',
-                            fontSize: '11px',
-                            color: '#94a3b8',
-                            fontWeight: 400,
-                            marginTop: 2
-                          }}
-                        >
-                          {serviceId ? `${serviceId}#` : ''}
-                          {watchAll.code || serviceData?.code || ''}
-                        </div>
-                      )}
-                    </div>
-                    {previewTags.length > 0 && (
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', flexShrink: 0 }}>
-                        {previewTags.map((tag: string) => {
-                          const style = getTagStyle(tag)
-
-                          return (
-                            <span
-                              key={tag}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 2,
-                                padding: '2px 8px',
-                                borderRadius: 4,
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                background: style.gradient || style.bgColor,
-                                color: style.textColor,
-                                border: `1px solid ${style.borderColor}`,
-                                lineHeight: 1.4
-                              }}
-                            >
-                              {style.icon && <span style={{ fontSize: '9px' }}>{style.icon}</span>}
-                              {tag}
-                            </span>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Description */}
-                  {watchAll.note && (
-                    <div
-                      style={{
-                        fontSize: '12px',
-                        color: '#64748b',
-                        marginBottom: 12,
-                        lineHeight: 1.4,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical' as any
-                      }}
-                    >
-                      {watchAll.note}
-                    </div>
-                  )}
-
-                  {/* Divider */}
-                  <div style={{ borderTop: '1px solid #e2e8f0', margin: '8px 0' }} />
-
-                  {/* Feature rows */}
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <FeatureRow
-                      icon={MapPin}
-                      iconColor='#e53e3e'
-                      label='Loại IP'
-                      value={`${previewType} ${previewIpVersion}`}
-                    />
-                    {previewCountryCode && (() => {
-                      const codes = previewCountryCode.split(',').map((c: string) => c.trim().toLowerCase()).filter(Boolean)
-
-                      if (!codes.length) return null
-
-                      return (
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: 10,
-                            padding: '6px 4px',
-                            borderBottom: '1px solid #f8fafc'
-                          }}
-                        >
-                          <Globe size={16} color='#059669' style={{ flexShrink: 0, marginTop: 1 }} />
-                          <div style={{ flex: 1 }}>
-                            <span style={{ fontSize: '13px', color: '#4a5568', fontWeight: 500 }}>Quốc gia: </span>
-                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '3px 6px' }}>
-                              {codes.map((c: string) => (
-                                <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                  <img
-                                    src={`https://flagcdn.com/w20/${c}.png`}
-                                    alt=''
-                                    style={{ width: 16, height: 11, objectFit: 'cover', borderRadius: 1 }}
-                                  />
-                                  <span style={{ fontSize: '12px', color: '#64748b' }}>{getCountryNameFromCode(c)}</span>
-                                </span>
-                              ))}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })()}
-                    <FeatureRow icon={Shield} iconColor='#6366f1' label='Hỗ trợ' value={previewProtocols} />
-                    {watchAll.auth_type && (
-                      <FeatureRow
-                        icon={Shield}
-                        iconColor='#8b5cf6'
-                        label='Xác thực'
-                        value={
-                          getAuthTypeLabel(watchAll.auth_type) +
-                          (watchAll.auth_type === 'userpass' || watchAll.auth_type === 'both'
-                            ? allowCustomAuth
-                              ? ' (Tự nhập)'
-                              : ' (Random)'
-                            : '')
-                        }
-                      />
-                    )}
-                    {watchAll.bandwidth && (
-                      <FeatureRow icon={Wifi} iconColor='#0ea5e9' label='Băng thông' value={watchAll.bandwidth} />
-                    )}
-                    {watchAll.request_limit && (
-                      <FeatureRow
-                        icon={Zap}
-                        iconColor='#f59e0b'
-                        label='Giới hạn request'
-                        value={watchAll.request_limit}
-                      />
-                    )}
-                    {watchAll.concurrent_connections && (
-                      <FeatureRow
-                        icon={Users}
-                        iconColor='#10b981'
-                        label='Kết nối đồng thời'
-                        value={watchAll.concurrent_connections}
-                      />
-                    )}
-                    {watchAll.type === '1' && watchAll.rotation_type && (
-                      <FeatureRow
-                        icon={RefreshCw}
-                        iconColor='#e53e3e'
-                        label='Kiểu xoay'
-                        value={getRotationTypeLabel(watchAll.rotation_type)}
-                      />
-                    )}
-                    {watchAll.type === '1' &&
-                      watchAll.rotation_interval &&
-                      !isNaN(Number(watchAll.rotation_interval)) && (
-                        <FeatureRow
-                          icon={Clock}
-                          iconColor='#64748b'
-                          label='Tự động xoay'
-                          value={
-                            Number(watchAll.rotation_interval) >= 60
-                              ? Math.floor(Number(watchAll.rotation_interval) / 60) + ' phút'
-                              : watchAll.rotation_interval + ' giây'
-                          }
-                        />
-                      )}
-                    {watchAll.type === '1' && watchAll.pool_size && (
-                      <FeatureRow icon={Globe} iconColor='#0ea5e9' label='Pool size' value={watchAll.pool_size} />
-                    )}
-                    {/* Country flag custom fields */}
-                    {purchaseOptions
-                      .filter(opt => opt.display_type === 'country_flag' && opt.options?.some(o => o.flag))
-                      .map(opt => (
-                        <div
-                          key={opt.key}
-                          style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '6px 4px', borderBottom: '1px solid #f8fafc' }}
-                        >
-                          <Globe size={16} color='#059669' style={{ flexShrink: 0, marginTop: 1 }} />
-                          <div style={{ flex: 1 }}>
-                            <span style={{ fontSize: '13px', color: '#4a5568', fontWeight: 500 }}>{opt.label}: </span>
-                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '3px' }}>
-                              {opt.options.filter(o => o.flag).map(o => (
-                                <img
-                                  key={o.value || o.flag}
-                                  src={`https://flagcdn.com/w20/${o.flag}.png`}
-                                  alt={o.label}
-                                  title={o.label}
-                                  style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
-                                />
-                              ))}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    <FeatureRow
-                      icon={RefreshCw}
-                      iconColor={renewable ? '#10b981' : '#94a3b8'}
-                      label='Gia hạn'
-                      value={
-                        renewable
-                          ? renewalDuration === 'original'
-                            ? 'Hỗ trợ (theo chu kỳ gốc)'
-                            : 'Hỗ trợ (tuỳ chọn thời hạn)'
-                          : 'Không hỗ trợ'
-                      }
-                    />
-                  </div>
-
-                  {/* Divider */}
-                  <div style={{ borderTop: '1px solid #e2e8f0', margin: '10px 0 8px' }} />
-
-                  {/* Footer: price + buy button */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>từ </span>
-                      <span style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>{previewPrice}</span>
-                    </div>
-                    <span
-                      style={{
-                        padding: '5px 12px',
-                        borderRadius: 7,
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        background: watchAll.is_purchasable
-                          ? 'color-mix(in srgb, var(--primary-hover) 12%, white)'
-                          : '#f1f5f9',
-                        color: watchAll.is_purchasable ? 'var(--primary-hover)' : '#94a3b8',
-                        border: watchAll.is_purchasable
-                          ? '1px solid color-mix(in srgb, var(--primary-hover) 30%, transparent)'
-                          : '1px solid #e2e8f0',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}
-                    >
-                      <ShoppingCart size={12} />
-                      {watchAll.is_purchasable ? 'Mua ngay' : 'Tạm ngừng'}
-                    </span>
-                  </div>
+                <div style={{ maxWidth: previewColumns === 3 ? 380 : previewColumns === 4 ? 300 : 240 }}>
+                  <ProxyCard provider={previewProvider} previewMode />
                 </div>
                 <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '11px', color: '#94a3b8' }}>
                   Khách hàng sẽ thấy card này ({previewColumns} cột/hàng)
