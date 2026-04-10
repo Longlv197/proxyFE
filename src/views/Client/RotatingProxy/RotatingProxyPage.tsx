@@ -700,9 +700,11 @@ const PlanCard = ({ plan }) => {
 
 interface RotatingProxyPageProps {
   data: any
+  onRefresh?: () => void
+  isRefreshing?: boolean
 }
 
-export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
+export default function RotatingProxyPage({ data, onRefresh, isRefreshing }: RotatingProxyPageProps) {
   console.log(data)
   const [selectedVersion, setSelectedVersion] = useState('')
   const [selectedProxyType, setSelectedProxyType] = useState('')
@@ -726,7 +728,7 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
       if (!raw) return
       raw.split(',').forEach((c: string) => {
         const code = fixCountryCode(c.trim()).toUpperCase()
-        if (code) countrySet.add(code)
+        if (code.length >= 2) countrySet.add(code)
       })
     })
 
@@ -831,6 +833,27 @@ export default function RotatingProxyPage({ data }: RotatingProxyPageProps) {
                 <X size={14} color='#94a3b8' style={{ cursor: 'pointer' }} onClick={() => setSearchQuery('')} />
               )}
             </div>
+            {onRefresh && (
+              <button
+                type='button'
+                onClick={() => onRefresh()}
+                disabled={isRefreshing}
+                title='Tải lại danh sách'
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 32, height: 32, borderRadius: 8,
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  cursor: isRefreshing ? 'wait' : 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <RefreshCw
+                  size={14}
+                  color={isRefreshing ? '#3b82f6' : '#64748b'}
+                  style={isRefreshing ? { animation: 'spin 1s linear infinite' } : undefined}
+                />
+              </button>
+            )}
           </div>
           {hasActiveFilter && (
             <Chip

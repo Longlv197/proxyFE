@@ -60,7 +60,7 @@ function ProxyPageSkeleton() {
 }
 
 export default function RotatingProxy() {
-  const { data: proxyPlans, isLoading } = useProxyRotatingPlans()
+  const { data: proxyPlans, isLoading, refetch, isFetching } = useProxyRotatingPlans()
 
   const mergedPlans = useMemo(() => {
     if (!proxyPlans?.length) return []
@@ -154,7 +154,7 @@ export default function RotatingProxy() {
 
   return (
     <div key='proxy-xoay' className='main-page'>
-      <ProxyPlansClient data={mergedPlans} />
+      <ProxyPlansClient data={mergedPlans} onRefresh={refetch} isRefreshing={isFetching} />
     </div>
   )
 }

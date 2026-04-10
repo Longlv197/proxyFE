@@ -124,35 +124,61 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
 
   // Tính % tiết kiệm tối đa
   const maxDiscount = useMemo(() => {
-    // Per_unit: max discount từ discount_tiers
+    let max = 0
+
+    // Per_unit: max discount từ discount_tiers (thời gian)
     if (isPerUnit) {
       const tiers = provider.metadata?.discount_tiers || []
 
-      if (tiers.length === 0) return 0
+      tiers.forEach((t: any) => {
+        const d = parseInt(t.discount) || 0
 
-      return Math.max(...tiers.map((t: any) => parseInt(t.discount) || 0))
+        if (d > max) max = d
+      })
+    } else {
+      // Fixed: so sánh price/ngày giữa các mốc
+      if (priceOptions.length > 1) {
+        const sorted = [...priceOptions].sort((a, b) => parseInt(a.key) - parseInt(b.key))
+        const base = sorted[0]
+        const baseDays = parseInt(base.key) || 1
+
+        sorted.slice(1).forEach(opt => {
+          const days = parseInt(opt.key) || 0
+          const origPrice = (base.price / baseDays) * days
+
+          if (opt.price < origPrice) {
+            const pct = Math.round((1 - opt.price / origPrice) * 100)
+
+            if (pct > max) max = pct
+          }
+        })
+      }
     }
 
-    if (priceOptions.length <= 1) return 0
-    const sorted = [...priceOptions].sort((a, b) => parseInt(a.key) - parseInt(b.key))
-    const base = sorted[0]
-    const baseDays = parseInt(base.key) || 1
+    // Quantity tiers: max discount từ tất cả mốc thời gian
+    const qtyTiers = isPerUnit
+      ? (provider.metadata?.quantity_tiers || [])
+      : priceOptions.flatMap((opt: any) => opt.quantity_tiers || [])
 
-    let max = 0
+    qtyTiers.forEach((t: any) => {
+      const d = parseInt(t.discount) || 0
 
-    sorted.slice(1).forEach(opt => {
-      const days = parseInt(opt.key) || 0
-      const origPrice = (base.price / baseDays) * days
+      if (d > max) max = d
 
-      if (opt.price < origPrice) {
-        const pct = Math.round((1 - opt.price / origPrice) * 100)
+      // Nếu chỉ có price (không có discount %), tính % so với giá gốc
+      if (!d && t.price) {
+        const basePrice = isPerUnit ? (provider.price_per_unit || 0) : (priceOptions[0]?.price || 0)
 
-        if (pct > max) max = pct
+        if (basePrice > 0) {
+          const pct = Math.round((1 - parseInt(t.price) / basePrice) * 100)
+
+          if (pct > max) max = pct
+        }
       }
     })
 
     return max
-  }, [priceOptions, isPerUnit])
+  }, [priceOptions, isPerUnit, provider.metadata])
 
   const handleBuy = () => {
     if (session.status !== 'authenticated') {

@@ -60,7 +60,7 @@ function ProxyPageSkeleton() {
 }
 
 export default function StaticProxy() {
-  const { data: proxyPlans, isLoading } = useProxyStaticPlans()
+  const { data: proxyPlans, isLoading, refetch, isFetching } = useProxyStaticPlans()
 
   if (isLoading) {
     return (
@@ -72,7 +72,7 @@ export default function StaticProxy() {
 
   return (
     <div key='proxy-tinh' className='main-page'>
-      <StaticProxyPage data={proxyPlans ?? []} />
+      <StaticProxyPage data={proxyPlans ?? []} onRefresh={refetch} isRefreshing={isFetching} />
     </div>
   )
 }

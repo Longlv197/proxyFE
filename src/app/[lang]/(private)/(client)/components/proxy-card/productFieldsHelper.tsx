@@ -196,7 +196,7 @@ export function renderFeatureRow(
 
     case 'country': {
       const raw = provider?.country || provider?.country_code || ''
-      const codes = raw.split(',').map((c: string) => c.trim().toLowerCase()).filter(Boolean)
+      const codes = raw.split(',').map((c: string) => c.trim().toLowerCase()).filter((c: string) => c.length >= 2)
       if (!codes.length) return null
 
       return (

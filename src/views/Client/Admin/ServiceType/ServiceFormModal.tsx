@@ -1448,9 +1448,10 @@ return { values: {}, errors: formattedErrors }
                     name='country'
                     control={control}
                     render={({ field }) => {
-                      // Normalize: string "us" → ["us"], array giữ nguyên
-                      const values: string[] = Array.isArray(field.value) ? field.value
-                        : (field.value ? [field.value] : [])
+                      // Normalize: string "us" → ["us"], array giữ nguyên, filter invalid codes
+                      const values: string[] = (Array.isArray(field.value) ? field.value
+                        : (field.value ? field.value.split(',').map((c: string) => c.trim().toLowerCase()) : [])
+                      ).filter((c: string) => c.length >= 2)
                       return (
                         <CustomTextField
                           select fullWidth label='Quốc gia'

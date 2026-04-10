@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 
 import './styles.css'
 
-import { Filter, Globe, Wifi, X, SearchX, SlidersHorizontal, ShoppingCart, Search } from 'lucide-react'
+import { Filter, Globe, Wifi, X, SearchX, SlidersHorizontal, ShoppingCart, Search, RefreshCw } from 'lucide-react'
 
 import { Box, Grid2, Typography } from '@mui/material'
 
@@ -17,9 +17,11 @@ import { useCountries } from '@/hooks/apis/useCountries'
 
 interface StaticProxyPageProps {
   data: any
+  onRefresh?: () => void
+  isRefreshing?: boolean
 }
 
-export default function StaticProxyPage({ data }: StaticProxyPageProps) {
+export default function StaticProxyPage({ data, onRefresh, isRefreshing }: StaticProxyPageProps) {
   const [selectedVersion, setSelectedVersion] = useState('')
   const [selectedProxyType, setSelectedProxyType] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('')
@@ -42,7 +44,7 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
       if (!raw) return
       raw.split(',').forEach((c: string) => {
         const code = fixCountryCode(c.trim()).toUpperCase()
-        if (code) countrySet.add(code)
+        if (code.length >= 2) countrySet.add(code)
       })
     })
 
@@ -148,6 +150,27 @@ export default function StaticProxyPage({ data }: StaticProxyPageProps) {
                 <X size={14} color='#94a3b8' style={{ cursor: 'pointer' }} onClick={() => setSearchQuery('')} />
               )}
             </div>
+            {onRefresh && (
+              <button
+                type='button'
+                onClick={() => onRefresh()}
+                disabled={isRefreshing}
+                title='Tải lại danh sách'
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 32, height: 32, borderRadius: 8,
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  cursor: isRefreshing ? 'wait' : 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <RefreshCw
+                  size={14}
+                  color={isRefreshing ? '#3b82f6' : '#64748b'}
+                  style={isRefreshing ? { animation: 'spin 1s linear infinite' } : undefined}
+                />
+              </button>
+            )}
           </div>
           {hasActiveFilter && (
             <Chip
