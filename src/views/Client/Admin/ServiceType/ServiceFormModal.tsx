@@ -480,11 +480,11 @@ interface PurchaseOption {
 }
 
 const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
-  options, onChange, control, errors
+  options, onChange, control, errors, countries
 }: {
   options: PurchaseOption[]
   onChange: (options: PurchaseOption[]) => void
-  control: any; errors: any
+  control: any; errors: any; countries?: any[]
 }) {
   const update = (idx: number, patch: Partial<PurchaseOption>) => {
     onChange(options.map((o, i) => i === idx ? { ...o, ...patch } : o))
@@ -601,17 +601,38 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Giá trị:</div>
                 {opt.options.map((option, valIdx) => (
                   <div key={valIdx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
-                    <CustomTextField size='small' placeholder='Giá trị (value)' value={option.value} sx={{ flex: 1 }}
+                    <CustomTextField size='small' placeholder='Giá trị gửi API' value={option.value} sx={{ flex: 1 }}
                       onChange={(e: any) => {
                         const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
-                        if (!newOpts[valIdx].label) newOpts[valIdx].label = e.target.value
                         update(optIdx, { options: newOpts })
                       }} />
-                    <CustomTextField size='small' placeholder='Hiển thị (label)' value={option.label} sx={{ flex: 1 }}
-                      onChange={(e: any) => {
-                        const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], label: e.target.value }
-                        update(optIdx, { options: newOpts })
-                      }} />
+                    {opt.display_type === 'country_flag' ? (
+                      <CustomTextField size='small' select label='Quốc gia' value={(option as any).flag || ''} sx={{ flex: 1 }}
+                        onChange={(e: any) => {
+                          const code = e.target.value
+                          const country = countries?.find((c: any) => c.code.toLowerCase() === code)
+                          const newOpts = [...opt.options]
+
+                          ;(newOpts[valIdx] as any) = { ...newOpts[valIdx], flag: code, label: country?.name || code.toUpperCase() }
+                          update(optIdx, { options: newOpts })
+                        }}
+                        slotProps={{ select: { MenuProps: { PaperProps: { style: { maxHeight: 250 } } } } }}
+                      >
+                        <MenuItem value=''><em>— Chọn —</em></MenuItem>
+                        {(countries || []).map((c: any) => (
+                          <MenuItem key={c.code} value={c.code.toLowerCase()}>
+                            <img src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`} alt='' style={{ width: 18, height: 13, marginRight: 8, objectFit: 'cover', borderRadius: 1 }} />
+                            {c.name}
+                          </MenuItem>
+                        ))}
+                      </CustomTextField>
+                    ) : (
+                      <CustomTextField size='small' placeholder='Hiển thị (label)' value={option.label} sx={{ flex: 1 }}
+                        onChange={(e: any) => {
+                          const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], label: e.target.value }
+                          update(optIdx, { options: newOpts })
+                        }} />
+                    )}
                     <button type='button'
                       onClick={() => { if (opt.options.length <= 1) return; update(optIdx, { options: opt.options.filter((_, i) => i !== valIdx) }) }}
                       style={{ background: 'none', border: 'none', color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444', cursor: opt.options.length <= 1 ? 'default' : 'pointer', fontSize: 14, padding: '4px 6px' }}>✕</button>
@@ -1099,7 +1120,11 @@ return { values: {}, errors: formattedErrors }
         type: o.type || 'select',
         required: o.required,
         default: o.default || (o.type === 'select' ? o.options[0]?.value || '' : ''),
-        ...(o.type === 'select' ? { options: o.options.filter(opt => opt.value) } : {}),
+        ...(o.type === 'select' ? { options: o.options.filter(opt => opt.value).map(opt => {
+          const entry: any = { value: opt.value, label: opt.label }
+          if ((opt as any).flag) entry.flag = (opt as any).flag
+          return entry
+        }) } : {}),
         ...(o.display_type ? { display_type: o.display_type } : {}),
       }))
     } : null
@@ -2034,6 +2059,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   onChange={setPurchaseOptions}
                   control={control}
                   errors={errors}
+                  countries={countries}
                 />
 
                 {/* Lưu thêm dữ liệu từ nhà cung cấp — per sản phẩm */}

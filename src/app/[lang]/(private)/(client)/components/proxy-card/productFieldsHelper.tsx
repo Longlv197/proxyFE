@@ -181,16 +181,20 @@ export function renderFeatureRow(
           {provider.metadata.custom_fields.map((field: any) => {
             // Country flag display
             if (field.display_type === 'country_flag' && field.options?.length) {
+              const flagOptions = field.options.filter((o: any) => o.flag)
+
+              if (!flagOptions.length) return null
+
               return (
                 <div className='feature-row' key={field.key || field.param}>
                   <div className='feature-icons'><Globe size={14} color='#059669' /></div>
                   <div className='feature-content'>
                     <span className='feature-label'>{field.label}:</span>
                     <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
-                      {field.options.map((o: any) => (
+                      {flagOptions.map((o: any) => (
                         <img
                           key={o.value}
-                          src={`https://flagcdn.com/w20/${fixCountryCode(o.value)}.png`}
+                          src={`https://flagcdn.com/w20/${fixCountryCode(o.flag)}.png`}
                           alt={o.label}
                           title={o.label}
                           style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}

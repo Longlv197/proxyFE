@@ -553,9 +553,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           checked={(customFieldValues[fieldKey] || field.default) === opt.value}
                           onChange={() => setCustomFieldValues(prev => ({ ...prev, [fieldKey]: opt.value }))}
                         />
-                        {isCountryFlag && (
+                        {isCountryFlag && (opt as any).flag && (
                           <img
-                            src={`https://flagcdn.com/w20/${opt.value.toLowerCase()}.png`}
+                            src={`https://flagcdn.com/w20/${(opt as any).flag.toLowerCase()}.png`}
                             alt=''
                             style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 2 }}
                           />
