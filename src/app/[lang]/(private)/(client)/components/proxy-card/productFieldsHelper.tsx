@@ -1,8 +1,8 @@
 import React from 'react'
 
-import { MapPin, Shield, Wifi, Zap, Users } from 'lucide-react'
+import { MapPin, Shield, Wifi, Zap, Users, Globe } from 'lucide-react'
 
-import { fixCountryCode } from '@/configs/tagConfig'
+import { fixCountryCode, getCountryName as getCountryNameFromCode } from '@/configs/tagConfig'
 
 interface ProductField {
   key: string
@@ -12,6 +12,7 @@ interface ProductField {
 
 const DEFAULT_FIELDS: ProductField[] = [
   { key: 'ip_type', label: 'Loại IP', visible: true },
+  { key: 'country', label: 'Quốc gia', visible: true },
   { key: 'protocol', label: 'Hỗ trợ', visible: true },
   { key: 'auth_type', label: 'Xác thực', visible: true },
   { key: 'bandwidth', label: 'Băng thông', visible: true },
@@ -42,26 +43,22 @@ export function renderFeatureRow(
   getCountryName: () => string | null
 ): React.ReactNode {
   switch (key) {
-    case 'ip_type':
+    case 'ip_type': {
+      const rawCountry = provider?.country || provider?.country_code || ''
+      const countryCodes = rawCountry.split(',').map((c: string) => c.trim().toLowerCase()).filter(Boolean)
+
       return (
         <div className='feature-row'>
           <div className='feature-icons'><MapPin size={14} color='#6366f1' /></div>
           <div className='feature-content'>
             <span className='feature-label'>Loại IP:</span>
-            <span className='feature-value' style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              {provider.rotation_type ? 'Rotating' : 'Static'} {convertIpVersion(provider.ip_version)} —{' '}
-              {(provider?.country || provider?.country_code) && (
-                <img
-                  src={`https://flagcdn.com/w40/${fixCountryCode(provider.country || provider.country_code)}.png`}
-                  alt=''
-                  style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 2 }}
-                />
-              )}
-              {getCountryName() || provider?.country_name || provider?.country || 'N/A'}
+            <span className='feature-value'>
+              {provider.rotation_type ? 'Rotating' : 'Static'} {convertIpVersion(provider.ip_version)}
             </span>
           </div>
         </div>
       )
+    }
 
     case 'protocol':
       return (
@@ -196,6 +193,33 @@ export function renderFeatureRow(
           ))}
         </>
       )
+
+    case 'country': {
+      const raw = provider?.country || provider?.country_code || ''
+      const codes = raw.split(',').map((c: string) => c.trim().toLowerCase()).filter(Boolean)
+      if (!codes.length) return null
+
+      return (
+        <div className='feature-row' style={{ alignItems: 'flex-start' }}>
+          <div className='feature-icons' style={{ paddingTop: 2 }}><Globe size={14} color='#059669' /></div>
+          <div className='feature-content'>
+            <span className='feature-label'>Quốc gia:</span>
+            <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 6px' }}>
+              {codes.map((c: string) => (
+                <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  <img
+                    src={`https://flagcdn.com/w20/${fixCountryCode(c)}.png`}
+                    alt=''
+                    style={{ width: 16, height: 11, objectFit: 'cover', borderRadius: 1 }}
+                  />
+                  <span style={{ fontSize: '11.5px' }}>{getCountryNameFromCode(c)}</span>
+                </span>
+              ))}
+            </span>
+          </div>
+        </div>
+      )
+    }
 
     default:
       return null

@@ -2931,28 +2931,42 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                       icon={MapPin}
                       iconColor='#e53e3e'
                       label='Loại IP'
-                      value={`${previewType} ${previewIpVersion}${previewCountryName ? ` — ${previewCountryCode ? `\u{1F1E6}` : ''}` : ''}${previewCountryName ? ` ${previewCountryName}` : ''}`}
+                      value={`${previewType} ${previewIpVersion}`}
                     />
-                    {previewCountryCode && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          padding: '6px 4px',
-                          borderBottom: '1px solid #f8fafc'
-                        }}
-                      >
-                        <MapPin size={16} color='#e53e3e' style={{ visibility: 'hidden' }} />
-                        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                          <img
-                            src={`https://flagcdn.com/w20/${previewCountryCode.toLowerCase()}.png`}
-                            style={{ width: 20, height: 15, marginRight: 4, verticalAlign: 'middle' }}
-                          />
-                          <span style={{ fontSize: '13px', color: '#64748b' }}>{previewCountryName}</span>
+                    {previewCountryCode && (() => {
+                      const codes = previewCountryCode.split(',').map((c: string) => c.trim().toLowerCase()).filter(Boolean)
+
+                      if (!codes.length) return null
+
+                      return (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 10,
+                            padding: '6px 4px',
+                            borderBottom: '1px solid #f8fafc'
+                          }}
+                        >
+                          <Globe size={16} color='#059669' style={{ flexShrink: 0, marginTop: 1 }} />
+                          <div style={{ flex: 1 }}>
+                            <span style={{ fontSize: '13px', color: '#4a5568', fontWeight: 500 }}>Quốc gia: </span>
+                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '3px 6px' }}>
+                              {codes.map((c: string) => (
+                                <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                  <img
+                                    src={`https://flagcdn.com/w20/${c}.png`}
+                                    alt=''
+                                    style={{ width: 16, height: 11, objectFit: 'cover', borderRadius: 1 }}
+                                  />
+                                  <span style={{ fontSize: '12px', color: '#64748b' }}>{getCountryNameFromCode(c)}</span>
+                                </span>
+                              ))}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )
+                    })()}
                     <FeatureRow icon={Shield} iconColor='#6366f1' label='Hỗ trợ' value={previewProtocols} />
                     {watchAll.auth_type && (
                       <FeatureRow

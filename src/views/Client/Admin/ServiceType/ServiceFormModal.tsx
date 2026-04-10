@@ -364,26 +364,40 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
     </div>
   ))
 
-  const renderIpRow = (prefix: string) => (previewObj.ip_version || previewObj.country) ? (
-    <div className='feature-row'>
-      <div className='feature-icons'><MapPin size={16} color='#6366f1' /></div>
-      <div className='feature-content'>
-        <span className='feature-label'>Loại IP:</span>
-        <span className='feature-value' style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-          {prefix} {convertIpVersion(previewObj.ip_version || '')} —
-          {(() => {
-            const countries = Array.isArray(previewObj.country) ? previewObj.country : (previewObj.country ? [previewObj.country] : [])
-            return countries.length > 0 ? countries.map((c: string) => (
-              <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                <img src={`https://flagcdn.com/w40/${fixCountryCode(c)}.png`} alt='' style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 2 }} />
-                {COUNTRY_NAMES[c] || c.toUpperCase()}
+  const renderIpRow = (prefix: string) => {
+    if (!previewObj.ip_version && !previewObj.country) return null
+    const countries = Array.isArray(previewObj.country) ? previewObj.country : (previewObj.country ? [previewObj.country] : [])
+
+    return (
+      <>
+        <div className='feature-row'>
+          <div className='feature-icons'><MapPin size={16} color='#6366f1' /></div>
+          <div className='feature-content'>
+            <span className='feature-label'>Loại IP:</span>
+            <span className='feature-value'>
+              {prefix} {convertIpVersion(previewObj.ip_version || '')}
+            </span>
+          </div>
+        </div>
+        {countries.length > 0 && (
+          <div className='feature-row' style={{ alignItems: 'flex-start' }}>
+            <div className='feature-icons' style={{ paddingTop: 2 }}><Globe size={16} color='#059669' /></div>
+            <div className='feature-content'>
+              <span className='feature-label'>Quốc gia:</span>
+              <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 6px' }}>
+                {countries.map((c: string) => (
+                  <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                    <img src={`https://flagcdn.com/w20/${fixCountryCode(c)}.png`} alt='' style={{ width: 16, height: 11, objectFit: 'cover', borderRadius: 1 }} />
+                    <span style={{ fontSize: '11.5px' }}>{COUNTRY_NAMES[c] || c.toUpperCase()}</span>
+                  </span>
+                ))}
               </span>
-            )) : 'N/A'
-          })()}
-        </span>
-      </div>
-    </div>
-  ) : null
+            </div>
+          </div>
+        )}
+      </>
+    )
+  }
 
   const renderProtocolRow = () => Array.isArray(previewObj.protocols) && previewObj.protocols.length > 0 ? (
     <div className='feature-row'>
