@@ -824,7 +824,7 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
   const [providerAuthType, setProviderAuthType] = useState<string | null>(null) // auth_type gốc từ site mẹ
   const [providerMaxIps, setProviderMaxIps] = useState<number | null>(null) // max_ips gốc từ site mẹ
   const [renewable, setRenewable] = useState(false)
-  const [renewalDuration, setRenewalDuration] = useState('')
+  const [renewalDuration, setRenewalDuration] = useState('ncc')
   const [allowExpiredRenew, setAllowExpiredRenew] = useState('')
   const [renewOverrideEnabled, setRenewOverrideEnabled] = useState(false)
   const [renewOverrideParams, setRenewOverrideParams] = useState<Array<{
@@ -973,7 +973,7 @@ return { values: {}, errors: formattedErrors }
       setProviderAuthType(meta.provider_auth_type || null)
       setProviderMaxIps(meta.provider_max_ips || meta.max_ips || null)
       setRenewable(!!meta.renewable)
-      setRenewalDuration(meta.renewal_duration || '')
+      setRenewalDuration(meta.renewal_duration || 'ncc')
       setAllowExpiredRenew(meta.allow_expired_renew != null ? String(meta.allow_expired_renew) : '')
       setRenewOverrideEnabled(Array.isArray(meta.renew_override_params) && meta.renew_override_params.length > 0)
       setRenewOverrideParams(meta.renew_override_params || [])
@@ -1894,7 +1894,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                                     : 'Khách nhập số ngày muốn gia hạn'
                                 }
                               >
-                                <MenuItem value=''>Theo NCC — khách nhập số ngày</MenuItem>
+                                <MenuItem value='ncc'>Theo NCC — khách nhập số ngày</MenuItem>
                                 <MenuItem value='original'>Như lần mua đầu — tự động</MenuItem>
                               </CustomTextField>
                             </Grid2>
