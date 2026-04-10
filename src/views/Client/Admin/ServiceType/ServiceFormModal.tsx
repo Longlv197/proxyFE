@@ -598,46 +598,100 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
 
             {(opt.type || 'select') === 'select' && (
               <>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Giá trị:</div>
-                {opt.options.map((option, valIdx) => (
-                  <div key={valIdx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
-                    <CustomTextField size='small' placeholder='Giá trị gửi API' value={option.value} sx={{ flex: 1 }}
-                      onChange={(e: any) => {
-                        const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
-                        update(optIdx, { options: newOpts })
-                      }} />
-                    {opt.display_type === 'country_flag' ? (
-                      <CustomTextField size='small' select label='Quốc gia' value={(option as any).flag || ''} sx={{ flex: 1 }}
+                {opt.display_type === 'country_flag' ? (
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Quốc gia:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                      {opt.options.map((option, valIdx) => (
+                        <div
+                          key={valIdx}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '4px 8px 4px 6px', borderRadius: 6,
+                            border: '1px solid #e2e8f0', background: '#f8fafc',
+                            fontSize: 12
+                          }}
+                        >
+                          {(option as any).flag && (
+                            <img src={`https://flagcdn.com/w20/${(option as any).flag}.png`} alt='' style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 1 }} />
+                          )}
+                          <span style={{ fontWeight: 500, color: '#1e293b' }}>{option.label || '—'}</span>
+                          <span style={{ color: '#94a3b8', fontSize: 10 }}>({option.value})</span>
+                          <button type='button'
+                            onClick={() => { if (opt.options.length <= 1) return; update(optIdx, { options: opt.options.filter((_, i) => i !== valIdx) }) }}
+                            style={{ background: 'none', border: 'none', color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444', cursor: opt.options.length <= 1 ? 'default' : 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <CustomTextField size='small' select label='Thêm quốc gia' value='' sx={{ minWidth: 200 }}
                         onChange={(e: any) => {
                           const code = e.target.value
+                          if (!code) return
                           const country = countries?.find((c: any) => c.code.toLowerCase() === code)
-                          const newOpts = [...opt.options]
-
-                          ;(newOpts[valIdx] as any) = { ...newOpts[valIdx], flag: code, label: country?.name || code.toUpperCase() }
-                          update(optIdx, { options: newOpts })
+                          const exists = opt.options.some((o: any) => o.flag === code)
+                          if (exists) return
+                          update(optIdx, { options: [...opt.options, { value: '', label: country?.name || code.toUpperCase(), flag: code } as any] })
                         }}
                         slotProps={{ select: { MenuProps: { PaperProps: { style: { maxHeight: 250 } } } } }}
                       >
-                        <MenuItem value=''><em>— Chọn —</em></MenuItem>
-                        {(countries || []).map((c: any) => (
-                          <MenuItem key={c.code} value={c.code.toLowerCase()}>
-                            <img src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`} alt='' style={{ width: 18, height: 13, marginRight: 8, objectFit: 'cover', borderRadius: 1 }} />
-                            {c.name}
-                          </MenuItem>
-                        ))}
+                        {(countries || []).map((c: any) => {
+                          const exists = opt.options.some((o: any) => (o as any).flag === c.code.toLowerCase())
+                          return (
+                            <MenuItem key={c.code} value={c.code.toLowerCase()} disabled={exists}>
+                              <img src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`} alt='' style={{ width: 18, height: 13, marginRight: 8, objectFit: 'cover', borderRadius: 1 }} />
+                              {c.name} {exists ? '(đã thêm)' : ''}
+                            </MenuItem>
+                          )
+                        })}
                       </CustomTextField>
-                    ) : (
-                      <CustomTextField size='small' placeholder='Hiển thị (label)' value={option.label} sx={{ flex: 1 }}
-                        onChange={(e: any) => {
-                          const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], label: e.target.value }
-                          update(optIdx, { options: newOpts })
-                        }} />
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>Chọn xong → nhập Value (ID gửi API) cho từng nước</span>
+                    </div>
+                    {opt.options.some((o: any) => !o.value) && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>Nhập Value gửi API:</div>
+                        {opt.options.filter((o: any) => !o.value).map((option, i) => {
+                          const realIdx = opt.options.indexOf(option)
+                          return (
+                            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 3 }}>
+                              {(option as any).flag && (
+                                <img src={`https://flagcdn.com/w20/${(option as any).flag}.png`} alt='' style={{ width: 16, height: 11 }} />
+                              )}
+                              <span style={{ fontSize: 12, minWidth: 80 }}>{option.label}</span>
+                              <CustomTextField size='small' placeholder='Value gửi API' value={option.value} sx={{ width: 120 }}
+                                onChange={(e: any) => {
+                                  const newOpts = [...opt.options]; newOpts[realIdx] = { ...newOpts[realIdx], value: e.target.value }
+                                  update(optIdx, { options: newOpts })
+                                }} />
+                            </div>
+                          )
+                        })}
+                      </div>
                     )}
-                    <button type='button'
-                      onClick={() => { if (opt.options.length <= 1) return; update(optIdx, { options: opt.options.filter((_, i) => i !== valIdx) }) }}
-                      style={{ background: 'none', border: 'none', color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444', cursor: opt.options.length <= 1 ? 'default' : 'pointer', fontSize: 14, padding: '4px 6px' }}>✕</button>
-                  </div>
-                ))}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Giá trị:</div>
+                    {opt.options.map((option, valIdx) => (
+                      <div key={valIdx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
+                        <CustomTextField size='small' placeholder='Giá trị (value)' value={option.value} sx={{ flex: 1 }}
+                          onChange={(e: any) => {
+                            const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
+                            if (!newOpts[valIdx].label) newOpts[valIdx].label = e.target.value
+                            update(optIdx, { options: newOpts })
+                          }} />
+                        <CustomTextField size='small' placeholder='Hiển thị (label)' value={option.label} sx={{ flex: 1 }}
+                          onChange={(e: any) => {
+                            const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], label: e.target.value }
+                            update(optIdx, { options: newOpts })
+                          }} />
+                        <button type='button'
+                          onClick={() => { if (opt.options.length <= 1) return; update(optIdx, { options: opt.options.filter((_, i) => i !== valIdx) }) }}
+                          style={{ background: 'none', border: 'none', color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444', cursor: opt.options.length <= 1 ? 'default' : 'pointer', fontSize: 14, padding: '4px 6px' }}>✕</button>
+                      </div>
+                    ))}
+                  </>
+                )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                   <Button size='small' variant='text' sx={{ fontSize: 12 }}
                     onClick={() => update(optIdx, { options: [...opt.options, { value: '', label: '' }] })}>+ Thêm giá trị</Button>
