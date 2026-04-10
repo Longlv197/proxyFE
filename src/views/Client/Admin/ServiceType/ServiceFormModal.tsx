@@ -1083,7 +1083,7 @@ return { values: {}, errors: formattedErrors }
       require_ip: requireIp || undefined,
       max_ips: maxIps > 1 ? maxIps : undefined,
       renewable: renewable || undefined,
-      renewal_duration: renewalDuration || undefined,
+      renewal_duration: renewable ? (renewalDuration || 'ncc') : undefined,
       allow_expired_renew: allowExpiredRenew === 'true' ? true : (allowExpiredRenew === 'false' ? false : undefined),
       renew_override_params: renewOverrideEnabled && renewOverrideParams.filter(p => p.param).length > 0
         ? renewOverrideParams.filter(p => p.param) : undefined,
