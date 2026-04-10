@@ -334,7 +334,7 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
       allow_custom_auth: allowCustomAuth,
       custom_fields: purchaseOptions?.filter(o => o.key && o.label).map(o => ({
         ...o,
-        options: o.options?.filter(opt => opt.value)
+        options: o.options?.filter(opt => (opt as any).provider_value)
       })) || [],
     },
   }), [previewObj, serviceId, validPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit])
@@ -347,7 +347,7 @@ interface PurchaseOption {
   key: string; param_name: string; label: string
   type: 'select' | 'text' | 'number'; required: boolean; default: string
   display_type?: 'country_flag' | ''
-  options: Array<{ value: string; label: string }>
+  options: Array<{ provider_value: string; label: string; key?: string; flag?: string; value?: string }>
 }
 
 const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
@@ -410,7 +410,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
             Khách chọn khi mua — hiện trên form checkout
           </div>
           <Button size='small' variant='outlined'
-            onClick={() => onChange([...options, { key: '', param_name: '', label: '', type: 'select', required: true, default: '', display_type: '', options: [{ value: '', label: '' }] }])}>
+            onClick={() => onChange([...options, { key: '', param_name: '', label: '', type: 'select', required: true, default: '', display_type: '', options: [{ provider_value: '', label: '' }] }])}>
             + Thêm tuỳ chọn
           </Button>
         </div>
@@ -471,7 +471,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
               <>
                 {opt.display_type === 'country_flag' ? (
                   <>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Quốc gia — Value gửi API:</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Quốc gia — Provider Value:</div>
                     {opt.options.map((option, valIdx) => (
                       <div key={valIdx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 140 }}>
@@ -480,11 +480,11 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                           )}
                           <span style={{ fontSize: 12, fontWeight: 500, color: '#1e293b' }}>{option.label || '—'}</span>
                         </div>
-                        <CustomTextField size='small' placeholder='Value (ID gửi API)' value={option.value} sx={{ width: 140 }}
+                        <CustomTextField size='small' placeholder='Provider value' value={(option as any).provider_value || ''} sx={{ width: 140 }}
                           onChange={(e: any) => {
                             const newOpts = [...opt.options]
 
-                            newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
+                            newOpts[valIdx] = { ...newOpts[valIdx], provider_value: e.target.value }
                             update(optIdx, { options: newOpts })
                           }} />
                         <button type='button'
@@ -502,7 +502,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                         const exists = opt.options.some((o: any) => o.flag === code)
 
                         if (exists) return
-                        update(optIdx, { options: [...opt.options, { value: '', label: country?.name || code.toUpperCase(), flag: code } as any] })
+                        update(optIdx, { options: [...opt.options, { key: code, value: '', label: country?.name || code.toUpperCase(), flag: code } as any] })
                       }}
                       slotProps={{ select: { MenuProps: { PaperProps: { style: { maxHeight: 250 } } } } }}
                     >
@@ -523,9 +523,9 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Giá trị:</div>
                     {opt.options.map((option, valIdx) => (
                       <div key={valIdx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
-                        <CustomTextField size='small' placeholder='Giá trị (value)' value={option.value} sx={{ flex: 1 }}
+                        <CustomTextField size='small' placeholder='Provider value' value={(option as any).provider_value || ''} sx={{ flex: 1 }}
                           onChange={(e: any) => {
-                            const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
+                            const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], provider_value: e.target.value }
                             if (!newOpts[valIdx].label) newOpts[valIdx].label = e.target.value
                             update(optIdx, { options: newOpts })
                           }} />
@@ -543,12 +543,12 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                   <Button size='small' variant='text' sx={{ fontSize: 12 }}
-                    onClick={() => update(optIdx, { options: [...opt.options, { value: '', label: '' }] })}>+ Thêm giá trị</Button>
+                    onClick={() => update(optIdx, { options: [...opt.options, { provider_value: '', label: '' } as any] })}>+ Thêm giá trị</Button>
                   <CustomTextField size='small' select label='Mặc định' sx={{ minWidth: 120 }}
-                    value={opt.default || opt.options[0]?.value || ''}
+                    value={opt.default || (opt.options[0] as any)?.provider_value || ''}
                     onChange={(e: any) => update(optIdx, { default: e.target.value })}>
-                    {opt.options.filter(o => o.value).map(o => (
-                      <MenuItem key={o.value} value={o.value}>{o.label || o.value}</MenuItem>
+                    {opt.options.filter(o => (o as any).provider_value).map(o => (
+                      <MenuItem key={(o as any).provider_value} value={(o as any).provider_value}>{o.label || (o as any).provider_value}</MenuItem>
                     ))}
                   </CustomTextField>
                 </div>
@@ -938,7 +938,10 @@ return { values: {}, errors: formattedErrors }
           required: f.required || false,
           default: f.default || '',
           display_type: f.display_type || '',
-          options: f.options || [{ value: '', label: '' }],
+          options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({
+            ...o,
+            provider_value: o.provider_value ?? o.value ?? '',
+          })),
         })))
       } else {
         setPurchaseOptions([])
@@ -1008,7 +1011,7 @@ return { values: {}, errors: formattedErrors }
     const autoCostPrice = costs.length > 0 ? Math.min(...costs) : data.cost_price || 0
 
     // Build metadata từ purchase options
-    const validOptions = purchaseOptions.filter(o => o.key && o.label && (o.type !== 'select' || o.options.some(opt => opt.value)))
+    const validOptions = purchaseOptions.filter(o => o.key && o.label && (o.type !== 'select' || o.options.some(opt => (opt as any).provider_value)))
     const metadata = validOptions.length > 0 ? {
       custom_fields: validOptions.map(o => ({
         key: o.key,
@@ -1017,9 +1020,12 @@ return { values: {}, errors: formattedErrors }
         type: o.type || 'select',
         required: o.required,
         default: o.default || (o.type === 'select' ? o.options[0]?.value || '' : ''),
-        ...(o.type === 'select' ? { options: o.options.filter(opt => opt.value).map(opt => {
-          const entry: any = { value: opt.value, label: opt.label }
+        ...(o.type === 'select' ? { options: o.options.filter(opt => (opt as any).provider_value).map(opt => {
+          const entry: any = { provider_value: (opt as any).provider_value, label: opt.label }
+
+          entry.key = (opt as any).key || (opt as any).flag || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
           if ((opt as any).flag) entry.flag = (opt as any).flag
+
           return entry
         }) } : {}),
         ...(o.display_type ? { display_type: o.display_type } : {}),

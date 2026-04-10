@@ -194,7 +194,7 @@ export function renderFeatureRow(
                     <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
                       {flagOptions.map((o: any) => (
                         <img
-                          key={o.value}
+                          key={o.key || o.value}
                           src={`https://flagcdn.com/w20/${fixCountryCode(o.flag)}.png`}
                           alt={o.label}
                           title={o.label}

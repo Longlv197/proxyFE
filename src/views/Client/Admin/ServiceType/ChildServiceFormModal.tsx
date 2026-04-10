@@ -212,7 +212,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       required: boolean
       default: string
       display_type?: 'country_flag' | ''
-      options: Array<{ value: string; label: string; flag?: string }>
+      options: Array<{ provider_value: string; label: string; key?: string; flag?: string; value?: string }>
     }>
   >([])
 
@@ -332,7 +332,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
             required: f.required || false,
             default: f.default || '',
             display_type: f.display_type || '',
-            options: f.options || [{ value: '', label: '' }]
+            options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? '' }))
           }))
         )
       } else {
@@ -613,7 +613,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
             }))
         })(),
         custom_fields: purchaseOptions
-          .filter(o => o.key && o.label && (o.type !== 'select' || o.options.some(opt => opt.value)))
+          .filter(o => o.key && o.label && (o.type !== 'select' || o.options.some(opt => (opt as any).provider_value)))
           .map(o => ({
             key: o.key,
             param_name: o.param_name || o.key,
@@ -621,9 +621,10 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
             type: o.type || 'select',
             required: o.required,
             default: o.default || (o.type === 'select' ? o.options[0]?.value || '' : ''),
-            ...(o.type === 'select' ? { options: o.options.filter(opt => opt.value).map(opt => {
-              const entry: any = { value: opt.value, label: opt.label }
+            ...(o.type === 'select' ? { options: o.options.filter(opt => (opt as any).provider_value).map(opt => {
+              const entry: any = { provider_value: (opt as any).provider_value, label: opt.label }
 
+              entry.key = (opt as any).key || opt.flag || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
               if (opt.flag) entry.flag = opt.flag
 
               return entry
@@ -711,7 +712,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       allow_custom_auth: allowCustomAuth,
       custom_fields: purchaseOptions
         .filter(o => o.key && o.label)
-        .map(o => ({ ...o, options: o.options?.filter(opt => opt.value) })),
+        .map(o => ({ ...o, options: o.options?.filter(opt => (opt as any).provider_value) })),
     },
   }), [watchAll, serviceId, validPreviewPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit])
 
@@ -1097,7 +1098,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                         required: f.required || false,
                                         default: f.default || '',
                                         display_type: f.display_type || '',
-                                        options: f.options || [{ value: '', label: '' }]
+                                        options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? '' }))
                                       }))
                                     )
                                   }
@@ -1611,7 +1612,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               required: f.required || false,
                               default: f.default || '',
                               display_type: f.display_type || '',
-                              options: f.options || [{ value: '', label: '' }]
+                              options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? '' }))
                             }))
                           )
                         }
@@ -2273,7 +2274,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               type: 'select' as const,
                               required: true,
                               default: '',
-                              options: [{ value: '', label: '' }]
+                              options: [{ provider_value: '', label: '' }]
                             }
                           ])
                         }
@@ -2427,7 +2428,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                             {opt.display_type === 'country_flag' ? (
                               <>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
-                                  Quốc gia — Value gửi API:
+                                  Quốc gia — Provider Value:
                                 </div>
                                 {opt.options.map((option, valIdx) => (
                                   <div
@@ -2448,13 +2449,13 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                     </div>
                                     <TextField
                                       size='small'
-                                      placeholder='Value (ID gửi API)'
-                                      value={option.value}
+                                      placeholder='Provider value'
+                                      value={option.provider_value || ''}
                                       sx={{ width: 140 }}
                                       onChange={e => {
                                         const newOpts = [...opt.options]
 
-                                        newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
+                                        newOpts[valIdx] = { ...newOpts[valIdx], provider_value: e.target.value } as any
                                         setPurchaseOptions(prev =>
                                           prev.map((o, i) => (i === optIdx ? { ...o, options: newOpts } : o))
                                         )
@@ -2507,6 +2508,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                     if (exists) return
 
                                     const newOpt = {
+                                      key: code,
                                       value: '',
                                       label: country?.name || code.toUpperCase(),
                                       flag: code
@@ -2562,13 +2564,13 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                   >
                                     <TextField
                                       size='small'
-                                      placeholder='Value'
-                                      value={option.value}
+                                      placeholder='Provider value'
+                                      value={option.provider_value || ''}
                                       sx={{ flex: 1 }}
                                       onChange={e => {
                                         const newOpts = [...opt.options]
 
-                                        newOpts[valIdx] = { ...newOpts[valIdx], value: e.target.value }
+                                        newOpts[valIdx] = { ...newOpts[valIdx], provider_value: e.target.value } as any
 
                                         if (!newOpts[valIdx].label) newOpts[valIdx].label = e.target.value
 
@@ -2622,7 +2624,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                     variant='text'
                                     sx={{ fontSize: 11 }}
                                     onClick={() => {
-                                      const newOpts = [...opt.options, { value: '', label: '' }]
+                                      const newOpts = [...opt.options, { provider_value: '', label: '' }]
 
                                       setPurchaseOptions(prev =>
                                         prev.map((o, i) => (i === optIdx ? { ...o, options: newOpts } : o))
@@ -2636,7 +2638,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                     select
                                     label='Mặc định'
                                     sx={{ minWidth: 100 }}
-                                    value={opt.default || opt.options[0]?.value || ''}
+                                    value={opt.default || (opt.options[0] as any)?.provider_value || ''}
                                     onChange={e =>
                                       setPurchaseOptions(prev =>
                                         prev.map((o, i) => (i === optIdx ? { ...o, default: e.target.value } : o))
@@ -2644,10 +2646,10 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                     }
                                   >
                                     {opt.options
-                                      .filter(o => o.value)
+                                      .filter(o => (o as any).provider_value)
                                       .map(o => (
-                                        <MenuItem key={o.value} value={o.value}>
-                                          {o.label || o.value}
+                                        <MenuItem key={(o as any).provider_value} value={(o as any).provider_value}>
+                                          {o.label || (o as any).provider_value}
                                         </MenuItem>
                                       ))}
                                   </TextField>

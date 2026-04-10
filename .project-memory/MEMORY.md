@@ -52,6 +52,8 @@ Sau mỗi session có sửa code/thêm tính năng, **tự động cập nhật 
 
 ## Provider & Config
 
+- [Proxyma API](reference_proxyma_api.md) — Residential proxy: endpoints, flow, response format
+
 - [Provider System](project_provider_system_wip.md) — ĐÃ DEPLOY: config-driven + handler plugin
 - [Provider Config UX](project_provider_config_redesign.md) — ĐÃ IMPLEMENT 29/03: vertical tabs, pipeline steps
 - [Response Mapping](project_response_mapping.md) — ĐÃ IMPLEMENT 28/03: 2-tier (provider + product)
@@ -98,6 +100,8 @@ Sau mỗi session có sửa code/thêm tính năng, **tự động cập nhật 
 ## TODO
 
 - **⚠️ RÀ SOÁT BẮT BUỘC**: Sau mỗi thay đổi logic, rà soát lộ thông tin NCC trên site con (provider_code, provider_name, URL NCC, api_config). Grep `provider` trong files đã sửa + liên quan → đảm bảo có `!isChild` guard. Không báo xong nếu chưa rà soát.
+- [Country Flag Custom Field](project_country_flag_custom_field.md) — ĐÃ IMPLEMENT: admin UX + preview dùng ProxyCard
+- [Custom Fields Architecture](project_custom_fields_architecture.md) — ĐANG LÀM: 3 lớp key/value/label, ẩn NCC khỏi client
 - [Naming Refactor](project_naming_refactor.md) — CHƯA: rename supplier→provider variables
 - Params mapping FE admin UI
 

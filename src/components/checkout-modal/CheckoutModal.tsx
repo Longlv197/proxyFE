@@ -541,17 +541,20 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <label className='checkout-section-label'>{field.label.toUpperCase()}</label>
                 {(field.type || 'select') === 'select' && field.options ? (
                   <div className='checkout-duration-options' style={isCountryFlag ? { display: 'flex', flexWrap: 'wrap', gap: 6 } : undefined}>
-                    {field.options.map(opt => (
+                    {field.options.map(opt => {
+                      const optId = (opt as any).key || opt.value
+
+                      return (
                       <label
-                        key={opt.value}
-                        className={`checkout-duration-option ${(customFieldValues[fieldKey] || field.default) === opt.value ? 'active' : ''}`}
+                        key={optId}
+                        className={`checkout-duration-option ${(customFieldValues[fieldKey] || field.default) === optId ? 'active' : ''}`}
                         style={isCountryFlag ? { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 10px' } : undefined}
                       >
                         <input
                           type='radio'
-                          value={opt.value}
-                          checked={(customFieldValues[fieldKey] || field.default) === opt.value}
-                          onChange={() => setCustomFieldValues(prev => ({ ...prev, [fieldKey]: opt.value }))}
+                          value={optId}
+                          checked={(customFieldValues[fieldKey] || field.default) === optId}
+                          onChange={() => setCustomFieldValues(prev => ({ ...prev, [fieldKey]: optId }))}
                         />
                         {isCountryFlag && (opt as any).flag && (
                           <img
@@ -562,7 +565,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         )}
                         <span>{opt.label}</span>
                       </label>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
                   <input
