@@ -298,7 +298,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                     required: f.required || false,
                     default: f.default || '',
                     display_type: f.display_type || '',
-                    options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? '' }))
+                    options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' }))
                   }))
                 )
               }
@@ -353,7 +353,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
             required: f.required || false,
             default: f.default || '',
             display_type: f.display_type || '',
-            options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? '' }))
+            options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' }))
           }))
         )
       } else {
@@ -1119,7 +1119,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                         required: f.required || false,
                                         default: f.default || '',
                                         display_type: f.display_type || '',
-                                        options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? '' }))
+                                        options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' }))
                                       }))
                                     )
                                   }
@@ -1633,7 +1633,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               required: f.required || false,
                               default: f.default || '',
                               display_type: f.display_type || '',
-                              options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? '' }))
+                              options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' }))
                             }))
                           )
                         }
