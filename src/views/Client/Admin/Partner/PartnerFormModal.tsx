@@ -26,15 +26,17 @@ import CustomTextField from '@core/components/mui/TextField'
 import { useCreatePartner, useUpdatePartner, usePartners } from '@/hooks/apis/usePartners'
 
 // ═══ Chuẩn ảnh ═══
+// Banner inline: container ~420×58px, retina 2x → khuyến nghị 840×116px
 const BANNER_SPECS = {
-  maxWidth: 200,
-  maxHeight: 60,
-  recommendedHeight: 30,
-  maxFileSize: 512 * 1024,
-  acceptedFormats: ['image/png', 'image/svg+xml', 'image/webp'],
-  acceptedExtensions: '.png,.svg,.webp',
-  label: 'Logo banner (header)',
-  description: 'Ảnh nhỏ, dài ngang, hiển thị trên thanh cuộn header. Cao ~22px khi render.'
+  maxWidth: 840,
+  maxHeight: 116,
+  minWidth: 420,
+  minHeight: 58,
+  maxFileSize: 1024 * 1024,
+  acceptedFormats: ['image/png', 'image/webp', 'image/jpeg'],
+  acceptedExtensions: '.png,.webp,.jpg,.jpeg',
+  label: 'Ảnh banner (header)',
+  description: 'Hiển thị full khung trên thanh header. Kích thước chuẩn: 840×116px.'
 }
 
 const LANDING_SPECS = {
@@ -161,8 +163,22 @@ export default function PartnerFormModal({ open, onClose, type, partnerData }: P
           const w = img.naturalWidth
           const h = img.naturalHeight
 
-          if (w > specs.maxWidth || h > specs.maxHeight) {
-            warnings.push(`Ảnh ${w}x${h}px vượt chuẩn (khuyến nghị tối đa ${specs.maxWidth}x${specs.maxHeight}px).`)
+          // Kiểm tra quá nhỏ (quan trọng hơn quá lớn)
+          if (specs.minWidth && w < specs.minWidth) {
+            warnings.push(`Chiều rộng ${w}px quá nhỏ — cần tối thiểu ${specs.minWidth}px, khuyến nghị ${specs.maxWidth}px.`)
+          }
+          if (specs.minHeight && h < specs.minHeight) {
+            warnings.push(`Chiều cao ${h}px quá nhỏ — cần tối thiểu ${specs.minHeight}px, khuyến nghị ${specs.maxHeight}px.`)
+          }
+
+          // Kiểm tra tỷ lệ (banner cần ~7:1)
+          if (specs.minWidth && specs.minHeight) {
+            const expectedRatio = specs.minWidth / specs.minHeight // ~7.24
+            const actualRatio = w / h
+            const ratioDiff = Math.abs(actualRatio - expectedRatio) / expectedRatio
+            if (ratioDiff > 0.15) {
+              warnings.push(`Tỷ lệ ảnh ${(actualRatio).toFixed(1)}:1 khác chuẩn ${(expectedRatio).toFixed(1)}:1 — ảnh có thể bị méo hoặc lệch.`)
+            }
           }
 
           // Luôn cho lưu — chỉ cảnh báo
@@ -177,22 +193,6 @@ export default function PartnerFormModal({ open, onClose, type, partnerData }: P
     []
   )
 
-  // Preview data cho banner simulation
-  const previewBannerPartners = useMemo(() => {
-    const current = {
-      name: watchName || 'Tên đối tác',
-      logo_url: bannerLogo.preview || partnerData?.logo_url || null,
-      link: watchLink || null,
-      isCurrent: true
-    }
-
-    const existing = (allPartners || [])
-      .filter((p: any) => p.status === 'active' && p.id !== partnerData?.id)
-      .slice(0, 4)
-      .map((p: any) => ({ name: p.name, logo_url: p.logo_url, link: p.link, isCurrent: false }))
-
-    return [...existing.slice(0, 2), current, ...existing.slice(2)]
-  }, [watchName, watchLink, bannerLogo.preview, partnerData, allPartners])
 
   const onSubmit = (data: any) => {
     const formData = new FormData()
@@ -394,47 +394,43 @@ export default function PartnerFormModal({ open, onClose, type, partnerData }: P
                 onClear={() => setBannerLogo(initialLogoState)}
               />
 
-              {/* Banner preview */}
+              {/* Banner preview — giống PartnersBannerInline thật */}
               <Box sx={{ mt: 2 }}>
                 <Typography variant='caption' sx={{ fontWeight: 600, color: '#64748b', mb: 0.5, display: 'block' }}>
-                  Xem trước banner header:
+                  Xem trước trên header (đúng tỷ lệ thực tế):
                 </Typography>
-
-                {(() => {
-                  return (
-                    <Box
-                      sx={{
-                        overflow: 'hidden',
-                        background: 'linear-gradient(90deg, #f8fafc 0%, #fff 50%, #f8fafc 100%)',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 1,
-                        py: '6px',
-                        position: 'relative'
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: '24px', px: 2, justifyContent: 'center', overflow: 'hidden' }}>
-                        {previewBannerPartners.map((p, i) => (
-                          <Box
-                            key={i}
-                            sx={{
-                              display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0,
-                              px: '10px', py: '3px', borderRadius: '16px',
-                              background: 'rgba(255,255,255,0.8)',
-                              border: p.isCurrent ? '2px solid var(--primary-color, #6366f1)' : '1px solid #f1f5f9'
-                            }}
-                          >
-                            {p.logo_url ? (
-                              <img src={p.logo_url} alt={p.name} style={{ height: 18, maxWidth: 60, objectFit: 'contain' }} />
-                            ) : (
-                              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--primary-color, #6366f1)' }} />
-                            )}
-                            <span style={{ fontSize: 11, fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>{p.name}</span>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  )
-                })()}
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: 58,
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    border: '1px solid #e2e8f0',
+                    background: '#f8fafc',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {(bannerLogo.preview || partnerData?.logo_url) ? (
+                    <img
+                      src={bannerLogo.preview || partnerData?.logo_url}
+                      alt='Preview'
+                      style={{ width: '100%', height: '100%', objectFit: 'fill' }}
+                    />
+                  ) : (
+                    <Typography variant='caption' color='textSecondary'>
+                      Upload ảnh để xem trước
+                    </Typography>
+                  )}
+                </Box>
+                {bannerLogo.dimensions && (
+                  <Typography variant='caption' sx={{ mt: 0.5, display: 'block', color: bannerLogo.warning ? '#f59e0b' : '#22c55e' }}>
+                    Ảnh: {bannerLogo.dimensions.w}×{bannerLogo.dimensions.h}px
+                    {!bannerLogo.warning && ' — kích thước phù hợp'}
+                  </Typography>
+                )}
               </Box>
             </Grid2>
 
@@ -597,10 +593,10 @@ function LogoUploadSection({
 
       {/* Specs chips */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
-        <Chip size='small' label={`Max ${specs.maxWidth}x${specs.maxHeight}px`} variant='outlined' sx={{ fontSize: 11 }} />
+        <Chip size='small' label={`Chuẩn: ${specs.maxWidth}×${specs.maxHeight}px`} color='primary' variant='outlined' sx={{ fontSize: 11, fontWeight: 600 }} />
+        {specs.minWidth && <Chip size='small' label={`Tối thiểu: ${specs.minWidth}×${specs.minHeight}px`} variant='outlined' sx={{ fontSize: 11 }} />}
         <Chip size='small' label={specs.acceptedExtensions.replace(/\./g, '').toUpperCase()} variant='outlined' sx={{ fontSize: 11 }} />
         <Chip size='small' label={`< ${specs.maxFileSize / 1024}KB`} variant='outlined' sx={{ fontSize: 11 }} />
-        <Chip size='small' label='Nền trong suốt' color='success' variant='outlined' sx={{ fontSize: 11 }} />
       </Box>
 
       <Typography variant='caption' color='textSecondary' sx={{ display: 'block', mb: 1 }}>
