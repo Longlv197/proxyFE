@@ -17,6 +17,7 @@
 - [api_config merge](feedback_api_config_merge.md) — BE merge không replace, trace round-trip
 - [Config UI](feedback_config_ui_principles.md) — trực quan, config-driven, ghi đè có ngữ cảnh
 - [Review against design](feedback_review_against_design.md) — đọc design doc TRƯỚC khi suy luận
+- [Tự verify trước khi báo xong](feedback_self_verify.md) — trace e2e + grep logic đồng bộ TRƯỚC khi nói "chờ push"
 
 ## Kiến trúc core
 - [Multi-site](project_multisite_architecture.md) — site mẹ vs site con, phân quyền, data flow

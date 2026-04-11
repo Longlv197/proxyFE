@@ -273,7 +273,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setSelectedSupplierCode(supplierCode)
       setSupplierCodeInput(supplierCode || '')
 
-      // Auto-fetch product từ site mẹ theo code để lấy provider_discount_tiers + auth_type
+      // Auto-fetch product từ site mẹ theo code — sync config nếu có thay đổi
       if (supplierCode && !checkedProduct) {
         checkProductMutation.mutate(supplierCode, {
           onSuccess: data => {
@@ -281,6 +281,27 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
             // Auto-fill auth_type nếu local chưa set
             if (data.auth_type && !serviceData?.auth_type) {
               setValue('auth_type', data.auth_type)
+            }
+
+            // Auto-sync custom_fields nếu site mẹ có mà local thiếu/khác
+            if (data.custom_fields && Array.isArray(data.custom_fields)) {
+              const parentKeys = data.custom_fields.map((f: any) => f.key).sort().join(',')
+              const localKeys = (meta.custom_fields || []).map((f: any) => f.key || f.param || '').sort().join(',')
+
+              if (parentKeys !== localKeys) {
+                setPurchaseOptions(
+                  data.custom_fields.map((f: any) => ({
+                    key: f.key || '',
+                    param_name: f.param_name || f.key || '',
+                    label: f.label || '',
+                    type: f.type || 'select',
+                    required: f.required || false,
+                    default: f.default || '',
+                    display_type: f.display_type || '',
+                    options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? '' }))
+                  }))
+                )
+              }
             }
           }
         })
