@@ -1127,6 +1127,11 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                   if (data?.allow_custom_auth !== undefined)
                                     setAllowCustomAuth(!!data.allow_custom_auth)
 
+                                  // Sync cấu hình chung từ site mẹ
+                                  if (data?.auth_type) setValue('auth_type', data.auth_type)
+                                  if (data?.protocols) setValue('protocols', data.protocols)
+                                  if (data?.time_unit) setTimeUnit(data.time_unit)
+
                                   // Sync renewal
                                   if (data?.renewable != null) {
                                     setParentRenewable(!!data.renewable)
@@ -1640,6 +1645,11 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                         if (product?.allow_custom_auth !== undefined) {
                           setAllowCustomAuth(!!product.allow_custom_auth)
                         }
+
+                        // Sync cấu hình chung từ site mẹ
+                        if (product?.auth_type) setValue('auth_type', product.auth_type)
+                        if (product?.protocols) setValue('protocols', product.protocols)
+                        if (product?.time_unit) setTimeUnit(product.time_unit)
 
                         // Sync pricing_mode + discount_tiers từ site mẹ
                         if (product?.pricing_mode) {
