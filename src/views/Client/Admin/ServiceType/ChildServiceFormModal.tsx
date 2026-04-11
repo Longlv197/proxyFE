@@ -238,7 +238,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       ip_version: 'ipv4',
       proxy_type: 'residential',
       protocols: [] as string[],
-      country: '',
+      country: [] as string[],
       note: '',
       tag: '',
       is_purchasable: true,
@@ -356,7 +356,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         ip_version: serviceData.ip_version?.toLowerCase() || 'ipv4',
         proxy_type: serviceData.proxy_type || 'residential',
         protocols: parsedProtocols || [],
-        country: serviceData.country?.toLowerCase() || '',
+        country: serviceData.country ? serviceData.country.toLowerCase().split(',').map((c: string) => c.trim()).filter(Boolean) : [],
         note: serviceData.note || '',
         tag: serviceData.tag || '',
         is_purchasable: serviceData.is_purchasable !== false,
@@ -381,7 +381,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     // Auto fill from supplier product
     setValue('name', selectedProduct.name)
     setValue('type', selectedProduct.type === 'ROTATING' ? '1' : '0')
-    setValue('country', selectedProduct.country?.toLowerCase() || '')
+    setValue('country', selectedProduct.country ? selectedProduct.country.toLowerCase().split(',').map((c: string) => c.trim()).filter(Boolean) : [])
 
     if (selectedProduct.protocols) {
       setValue('protocols', selectedProduct.protocols)
@@ -430,7 +430,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         ip_version: 'ipv4',
         proxy_type: 'residential',
         protocols: [],
-        country: '',
+        country: [],
         note: '',
         tag: '',
         is_purchasable: true,
@@ -559,7 +559,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
               return costs.length > 0 ? Math.min(...costs) : 0
             })(),
       proxy_type: data.proxy_type || 'residential',
-      country: data.country || '',
+      country: Array.isArray(data.country) ? data.country.join(',') : (data.country || ''),
       api_type: 'buy_api',
       api_provider: '', // Site con không cần — SupplierService tự xử lý
       body_api: null,
@@ -1970,33 +1970,56 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                     </Grid2>
                   </Grid2>
 
-                  {/* Country */}
+                  {/* Country — multi-select giống site mẹ */}
                   <Controller
                     name='country'
                     control={control}
-                    render={({ field }) => (
-                      <CustomTextField
-                        {...field}
-                        fullWidth
-                        select
-                        label='Quốc gia'
-                        error={!!errors.country}
-                        helperText={errors.country?.message as string}
-                      >
-                        <MenuItem value=''>
-                          <em>— Chọn —</em>
-                        </MenuItem>
-                        {(countries || []).map((c: any) => (
-                          <MenuItem key={c.code} value={c.code.toLowerCase()}>
-                            <img
-                              src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
-                              style={{ width: 20, height: 15, marginRight: 8, verticalAlign: 'middle' }}
-                            />
-                            {c.name}
-                          </MenuItem>
-                        ))}
-                      </CustomTextField>
-                    )}
+                    render={({ field }) => {
+                      const values: string[] = (Array.isArray(field.value) ? field.value
+                        : (field.value ? String(field.value).split(',').map((c: string) => c.trim().toLowerCase()) : [])
+                      ).filter((c: string) => c.length >= 2)
+
+                      return (
+                        <CustomTextField
+                          select fullWidth label='Quốc gia'
+                          value={values}
+                          onChange={(e: any) => field.onChange(e.target.value)}
+                          error={!!errors.country}
+                          helperText={errors.country?.message as string}
+                          slotProps={{
+                            select: {
+                              multiple: true,
+                              renderValue: (selected: any) => {
+                                const vals = selected as string[]
+
+                                if (!vals?.length) return <em>— Chọn —</em>
+
+                                return (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                    {vals.map(code => (
+                                      <span key={code} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#f1f5f9', borderRadius: 4, padding: '1px 6px', fontSize: '11px' }}>
+                                        <img src={`https://flagcdn.com/w20/${code}.png`} style={{ width: 14, height: 10 }} alt='' />
+                                        {code.toUpperCase()}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )
+                              }
+                            }
+                          }}
+                        >
+                          {(countries || []).map((c: any) => (
+                            <MenuItem key={c.code} value={c.code.toLowerCase()}>
+                              <img
+                                src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
+                                style={{ width: 20, height: 15, marginRight: 8, verticalAlign: 'middle' }}
+                              />
+                              {c.name}
+                            </MenuItem>
+                          ))}
+                        </CustomTextField>
+                      )
+                    }}
                   />
 
                   {/* Proxy attribute fields */}
