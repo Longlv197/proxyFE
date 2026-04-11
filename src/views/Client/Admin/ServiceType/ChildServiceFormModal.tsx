@@ -403,6 +403,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     setValue('name', selectedProduct.name)
     setValue('type', selectedProduct.type === 'ROTATING' ? '1' : '0')
     setValue('country', selectedProduct.country ? selectedProduct.country.toLowerCase().split(',').map((c: string) => c.trim()).filter(Boolean) : [])
+    if (selectedProduct.ip_version) setValue('ip_version', selectedProduct.ip_version.toLowerCase())
+    if (selectedProduct.proxy_type) setValue('proxy_type', selectedProduct.proxy_type)
 
     if (selectedProduct.protocols) {
       setValue('protocols', selectedProduct.protocols)
@@ -1131,6 +1133,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                   if (data?.auth_type) setValue('auth_type', data.auth_type)
                                   if (data?.protocols) setValue('protocols', data.protocols)
                                   if (data?.time_unit) setTimeUnit(data.time_unit)
+                                  if (data?.ip_version) setValue('ip_version', data.ip_version.toLowerCase())
+                                  if (data?.proxy_type) setValue('proxy_type', data.proxy_type)
 
                                   // Sync renewal
                                   if (data?.renewable != null) {
@@ -1968,7 +1972,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                         name='type'
                         control={control}
                         render={({ field }) => (
-                          <CustomTextField {...field} fullWidth select label='Loại'>
+                          <CustomTextField {...field} fullWidth select label='Loại' disabled={!!(selectedProduct || checkedProduct)}>
                             <MenuItem value='0'>Static</MenuItem>
                             <MenuItem value='1'>Rotating</MenuItem>
                           </CustomTextField>
@@ -1980,7 +1984,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                         name='ip_version'
                         control={control}
                         render={({ field }) => (
-                          <CustomTextField {...field} fullWidth select label='IP Version'>
+                          <CustomTextField {...field} fullWidth select label='IP Version' disabled={!!(selectedProduct || checkedProduct)}>
                             <MenuItem value='ipv4'>IPv4</MenuItem>
                             <MenuItem value='ipv6'>IPv6</MenuItem>
                           </CustomTextField>
@@ -1992,7 +1996,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                         name='proxy_type'
                         control={control}
                         render={({ field }) => (
-                          <CustomTextField {...field} fullWidth select label='Loại proxy'>
+                          <CustomTextField {...field} fullWidth select label='Loại proxy' disabled={!!(selectedProduct || checkedProduct)}>
                             <MenuItem value='residential'>Residential</MenuItem>
                             <MenuItem value='datacenter'>Datacenter</MenuItem>
                           </CustomTextField>
@@ -2015,6 +2019,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                           select fullWidth label='Quốc gia'
                           value={values}
                           onChange={(e: any) => field.onChange(e.target.value)}
+                          disabled={!!(selectedProduct || checkedProduct)}
                           error={!!errors.country}
                           helperText={errors.country?.message as string}
                           slotProps={{
