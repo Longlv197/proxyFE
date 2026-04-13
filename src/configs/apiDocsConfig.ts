@@ -217,48 +217,7 @@ export const apiEndpoints: ApiEndpoint[] = [
     statusCodes: ['200 OK', '401 ERROR']
   },
 
-  {
-    id: 'buy-proxy',
-    title: 'Mua Proxy',
-    method: 'POST',
-    endpoint: `${API_BASE}/buy-proxy`,
-    description: 'Tạo đơn mua proxy (xoay hoặc tĩnh). Loại proxy được xác định tự động từ product_code hoặc service_type_id.',
-    category: 'order',
-    auth: 'x_api_key',
-    requestBody: `{
-  "product_code": "proxy-vn-rotate-30d",
-  "quantity": 1,
-  "duration": 1,
-  "protocol": "http"
-}`,
-    parameters: [
-      { name: 'product_code', type: 'string', required: false, description: 'Code sản phẩm (lấy từ GET /products). Ưu tiên dùng thay service_type_id', example: 'proxy-vn-rotate-30d' },
-      { name: 'service_type_id', type: 'integer', required: false, description: 'ID sản phẩm (backward compat, dùng product_code thay thế)', example: '1' },
-      { name: 'quantity', type: 'integer', required: false, description: 'Số lượng proxy, 1-2000 (mặc định: 1)', example: '1' },
-      { name: 'duration', type: 'integer', required: false, description: 'Số ngày sử dụng: 1, 7 hoặc 30 (mặc định: 1)', example: '1' },
-      { name: 'protocol', type: 'string', required: false, description: 'Giao thức: "http" hoặc "socks5" (mặc định: http)', example: 'http' }
-    ],
-    responses: {
-      '200 OK': `{
-  "status": "success",
-  "order_code": "ORD-ABC123",
-  "message": "Order placed successfully."
-}`,
-      '400 ERROR': `{
-  "status": "error",
-  "message": "Số dư không đủ để mua proxy"
-}`,
-      '404 ERROR': `{
-  "error": "product_not_found",
-  "message": "Product not found or not available."
-}`,
-      '401 ERROR': `{
-  "error": "invalid_credentials",
-  "message": "Invalid API key."
-}`
-    },
-    statusCodes: ['200 OK', '400 ERROR', '404 ERROR', '401 ERROR']
-  },
+  // buy-proxy đã chuyển sang product-driven mode trong ApiDocsPage
 
   {
     id: 'get-orders',
