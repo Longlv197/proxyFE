@@ -23,7 +23,9 @@ import {
   Chip,
   Switch,
   FormControlLabel,
-  Tooltip
+  Tooltip,
+  Box,
+  Typography
 } from '@mui/material'
 import {
   X,
