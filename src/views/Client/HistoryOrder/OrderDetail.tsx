@@ -165,11 +165,13 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
         size: 40
       },
       {
-        header: order?.service_type === '0' ? 'Proxy' : 'API Key',
+        header: 'Proxy / Key',
         cell: ({ row }: { row: any }) => {
           const isCopied = (field: string) => copiedField === field
+          const hasProxy = row.original.proxy || row.original.proxys
+          const isProxyDisplay = order?.service_type === '0' || row.original.rotation_mode === 'rotate_auto' || hasProxy
 
-          if (order?.service_type === '0') {
+          if (isProxyDisplay) {
             const proxys = row.original.proxy || row.original.proxys || {}
             const firstProxy = extractProxyValue(proxys) || '-'
             const copyId = `proxy-${row.id}`
