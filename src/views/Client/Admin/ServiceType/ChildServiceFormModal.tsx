@@ -247,6 +247,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       auth_type: '',
       bandwidth: '',
       rotation_type: '',
+      rotation_mode: '',
       rotation_interval: '',
       pool_size: '',
       request_limit: '',
@@ -386,6 +387,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         auth_type: serviceData.auth_type || '',
         bandwidth: serviceData.bandwidth || '',
         rotation_type: serviceData.rotation_type || '',
+        rotation_mode: serviceData.rotation_mode || '',
         rotation_interval: serviceData.rotation_interval || '',
         pool_size: serviceData.pool_size || '',
         request_limit: serviceData.request_limit || '',
@@ -405,6 +407,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     setValue('country', selectedProduct.country ? selectedProduct.country.toLowerCase().split(',').map((c: string) => c.trim()).filter(Boolean) : [])
     if (selectedProduct.ip_version) setValue('ip_version', selectedProduct.ip_version.toLowerCase())
     if (selectedProduct.proxy_type) setValue('proxy_type', selectedProduct.proxy_type)
+    if (selectedProduct.rotation_mode) setValue('rotation_mode', selectedProduct.rotation_mode)
 
     if (selectedProduct.protocols) {
       setValue('protocols', selectedProduct.protocols)
@@ -460,6 +463,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         auth_type: '',
         bandwidth: '',
         rotation_type: '',
+        rotation_mode: '',
         rotation_interval: '',
         pool_size: '',
         request_limit: '',
@@ -590,6 +594,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       auth_type: data.auth_type || '',
       bandwidth: data.bandwidth || '',
       rotation_type: data.rotation_type || '',
+      rotation_mode: data.rotation_mode || '',
       rotation_interval: data.rotation_interval || '',
       pool_size: data.pool_size || '',
       request_limit: data.request_limit || '',
@@ -720,6 +725,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     protocols: watchAll.protocols,
     auth_type: watchAll.auth_type,
     bandwidth: watchAll.bandwidth,
+    rotation_mode: watchAll.rotation_mode,
     rotation_type: watchAll.rotation_type,
     rotation_interval: watchAll.rotation_interval,
     pool_size: watchAll.pool_size,
@@ -1135,6 +1141,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                   if (data?.time_unit) setTimeUnit(data.time_unit)
                                   if (data?.ip_version) setValue('ip_version', data.ip_version.toLowerCase())
                                   if (data?.proxy_type) setValue('proxy_type', data.proxy_type)
+                                  if (data?.rotation_mode) setValue('rotation_mode', data.rotation_mode)
 
                                   // Sync renewal
                                   if (data?.renewable != null) {
@@ -2225,6 +2232,20 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               label='Kết nối đồng thời'
                               placeholder='VD: 100'
                             />
+                          )}
+                        />
+                      </Grid2>
+                      <Grid2 size={{ xs: 4 }}>
+                        <Controller
+                          name='rotation_mode'
+                          control={control}
+                          render={({ field }) => (
+                            <CustomTextField {...field} fullWidth select label='Chế độ xoay' value={field.value || ''}>
+                              <MenuItem value=''><em>— Mặc định (logic cũ)</em></MenuItem>
+                              <MenuItem value='static'>Proxy tĩnh</MenuItem>
+                              <MenuItem value='rotate_api'>Xoay qua API</MenuItem>
+                              <MenuItem value='rotate_auto'>Tự xoay (gateway NCC)</MenuItem>
+                            </CustomTextField>
                           )}
                         />
                       </Grid2>

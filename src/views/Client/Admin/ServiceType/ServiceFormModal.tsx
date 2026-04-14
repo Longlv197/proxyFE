@@ -91,6 +91,7 @@ const FORM_DEFAULT_VALUES = {
   auth_type: '',
   bandwidth: '',
   rotation_type: '',
+  rotation_mode: '',
   rotation_interval: '',
   request_limit: '',
   concurrent_connections: undefined as number | undefined,
@@ -178,6 +179,7 @@ return true
   auth_type: yup.string().nullable(),
   bandwidth: yup.string().nullable(),
   rotation_type: yup.string().nullable(),
+  rotation_mode: yup.string().nullable(),
   rotation_interval: yup.string().nullable(),
   request_limit: yup.string().nullable(),
   concurrent_connections: yup
@@ -280,7 +282,7 @@ const DiscountTierRow = memo(function DiscountTierRow({ tier, idx, basePrice, ba
 })
 
 // ─── Preview component (cô lập re-render khỏi form chính) ───
-const PREVIEW_FIELDS = ['name', 'type', 'tag', 'status', 'rotation_type', 'protocols', 'auth_type', 'bandwidth',
+const PREVIEW_FIELDS = ['name', 'type', 'tag', 'status', 'rotation_mode', 'rotation_type', 'protocols', 'auth_type', 'bandwidth',
   'rotation_interval', 'pool_size', 'request_limit', 'concurrent_connections', 'note', 'code',
   'country', 'ip_version', 'proxy_type', 'is_purchasable'] as const
 
@@ -319,6 +321,7 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
     protocols: previewObj.protocols,
     auth_type: previewObj.auth_type,
     bandwidth: previewObj.bandwidth,
+    rotation_mode: previewObj.rotation_mode,
     rotation_type: previewObj.rotation_type,
     rotation_interval: previewObj.rotation_interval,
     pool_size: previewObj.pool_size,
@@ -902,6 +905,7 @@ return { values: {}, errors: formattedErrors }
         auth_type: serviceData.auth_type || '',
         bandwidth: serviceData.bandwidth || '',
         rotation_type: serviceData.rotation_type || '',
+        rotation_mode: serviceData.rotation_mode || '',
         rotation_interval: serviceData.rotation_interval || '',
         request_limit: serviceData.request_limit || '',
         concurrent_connections: serviceData.concurrent_connections ?? undefined,
@@ -1933,6 +1937,16 @@ return <Chip key={val} label={p?.label || val} size='small' />
                       <Grid2 size={{ xs: 6, sm: 3 }}>
                         <Controller name='concurrent_connections' control={control} render={({ field }) => (
                           <CustomTextField {...field} value={field.value ?? ''} onChange={e => { field.onChange(e.target.value === '' ? null : Number(e.target.value)) }} fullWidth type='number' label='Kết nối đồng thời' placeholder='—' />
+                        )} />
+                      </Grid2>
+                      <Grid2 size={{ xs: 6, sm: 3 }}>
+                        <Controller name='rotation_mode' control={control} render={({ field }) => (
+                          <CustomTextField {...field} fullWidth select label='Chế độ xoay' value={field.value || ''}>
+                            <MenuItem value=''><em>— Mặc định (logic cũ)</em></MenuItem>
+                            <MenuItem value='static'>Proxy tĩnh</MenuItem>
+                            <MenuItem value='rotate_api'>Xoay qua API</MenuItem>
+                            <MenuItem value='rotate_auto'>Tự xoay (gateway NCC)</MenuItem>
+                          </CustomTextField>
                         )} />
                       </Grid2>
                       {watchedType === '1' && (

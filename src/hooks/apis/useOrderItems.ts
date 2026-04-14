@@ -71,6 +71,22 @@ export const useUnlockRotate = () => {
   })
 }
 
+export const useUpdateOrderItem = () => {
+  const axiosAuth = useAxiosAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ key, data }: { key: string; data: Record<string, any> }) => {
+      const res = await axiosAuth.post(`/admin/update-item/${key}`, data)
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orderItems'] })
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
+    },
+  })
+}
+
 export const useUpdateIpWhitelist = () => {
   const axiosAuth = useAxiosAuth()
   const queryClient = useQueryClient()

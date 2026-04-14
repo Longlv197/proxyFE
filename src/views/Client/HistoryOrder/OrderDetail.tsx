@@ -54,7 +54,7 @@ import { useRole } from '@/hooks/useRole'
 import { useBranding } from '@/app/contexts/BrandingContext'
 import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderHistories'
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
-import { useUnlockRotate } from '@/hooks/apis/useOrderItems'
+import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 import '@/components/checkout-modal/styles.css'
 
 const formatVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
@@ -93,6 +93,7 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   const { isAdmin } = useRole()
   const { isChild } = useBranding()
   const canViewRotateLog = isAdmin && !isChild // Chỉ admin site mẹ thấy log xoay
+  const updateItemMutation = useUpdateOrderItem()
 
   const { data: apiKeysData = [], isLoading: isLoadingKeys } = useApiKeys(order?.id, open)
   const { data: histories = [] } = useOrderHistories(order?.id ?? null, open)
@@ -146,19 +147,31 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
       {
         header: order?.service_type === '0' ? 'Proxy' : 'API Key',
         cell: ({ row }: { row: any }) => {
+          const isCopied = (field: string) => copiedField === field
+
           if (order?.service_type === '0') {
             const proxys = row.original.proxy || row.original.proxys || {}
             const firstProxy = extractProxyValue(proxys) || '-'
+            const copyId = `proxy-${row.id}`
 
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'monospace', fontSize: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'monospace', fontSize: '12px' }}>
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{firstProxy}</span>
                 {firstProxy !== '-' && (
                   <button
-                    onClick={() => copyWithFeedback(firstProxy, `proxy-${row.id}`, 'Đã copy proxy!')}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: copiedField === `proxy-${row.id}` ? '#16a34a' : '#94a3b8' }}
+                    onClick={() => copyWithFeedback(firstProxy, copyId, 'Đã copy proxy!')}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
+                      fontSize: '11px', fontWeight: 600, fontFamily: 'inherit',
+                      border: isCopied(copyId) ? '1px solid #16a34a' : '1px solid #cbd5e1',
+                      background: isCopied(copyId) ? '#f0fdf4' : '#f8fafc',
+                      color: isCopied(copyId) ? '#16a34a' : '#475569',
+                      transition: 'all 0.15s',
+                    }}
                   >
-                    {copiedField === `proxy-${row.id}` ? <CheckCircle size={14} /> : <Copy size={14} />}
+                    {isCopied(copyId) ? <CheckCircle size={12} /> : <Copy size={12} />}
+                    {isCopied(copyId) ? 'Đã copy' : 'Copy'}
                   </button>
                 )}
               </div>
@@ -166,22 +179,32 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
           }
 
           const apiKey = row.original?.key || row.original?.api_key || '-'
+          const copyId = `key-${row.id}`
 
           return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'monospace', fontSize: '12px', color: '#dc2626' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'monospace', fontSize: '12px', color: '#dc2626' }}>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apiKey}</span>
               {apiKey !== '-' && (
                 <button
-                  onClick={() => copyWithFeedback(apiKey, `key-${row.id}`, 'Đã copy API key!')}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: copiedField === `key-${row.id}` ? '#16a34a' : '#94a3b8' }}
+                  onClick={() => copyWithFeedback(apiKey, copyId, 'Đã copy API key!')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
+                    fontSize: '11px', fontWeight: 600, fontFamily: 'inherit',
+                    border: isCopied(copyId) ? '1px solid #16a34a' : '1px solid #cbd5e1',
+                    background: isCopied(copyId) ? '#f0fdf4' : '#f8fafc',
+                    color: isCopied(copyId) ? '#16a34a' : '#475569',
+                    transition: 'all 0.15s',
+                  }}
                 >
-                  {copiedField === `key-${row.id}` ? <CheckCircle size={14} /> : <Copy size={14} />}
+                  {isCopied(copyId) ? <CheckCircle size={12} /> : <Copy size={12} />}
+                  {isCopied(copyId) ? 'Đã copy' : 'Copy'}
                 </button>
               )}
             </div>
           )
         },
-        size: 280
+        size: 320
       },
       {
         header: 'Protocol',
@@ -192,6 +215,32 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
         ),
         size: 80
       },
+      ...(isAdmin ? [{
+        header: 'Chế độ xoay',
+        cell: ({ row }: { row: any }) => {
+          const mode = row.original.rotation_mode || ''
+          const labels: Record<string, string> = { static: 'Tĩnh', rotate_api: 'Xoay API', rotate_auto: 'Tự xoay' }
+          return (
+            <select
+              value={mode}
+              onChange={(e) => {
+                const newMode = e.target.value
+                updateItemMutation.mutate({ key: row.original.key || row.original.api_key, data: { rotation_mode: newMode || null } })
+              }}
+              style={{
+                fontSize: '11px', padding: '3px 6px', borderRadius: 4,
+                border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer',
+              }}
+            >
+              <option value=''>— Mặc định</option>
+              <option value='static'>Tĩnh</option>
+              <option value='rotate_api'>Xoay API</option>
+              <option value='rotate_auto'>Tự xoay</option>
+            </select>
+          )
+        },
+        size: 120
+      }] : []),
       {
         header: 'Hết hạn',
         cell: ({ row }: { row: any }) => (
@@ -204,7 +253,7 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [order, copiedField, copy]
+    [order, copiedField, copy, isAdmin, updateItemMutation]
   )
 
   const table = useReactTable({
