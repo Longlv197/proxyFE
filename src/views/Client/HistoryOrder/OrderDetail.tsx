@@ -95,6 +95,8 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   const { isChild } = useBranding()
   const canViewRotateLog = isAdmin && !isChild // Chỉ admin site mẹ thấy log xoay
   const updateItemMutation = useUpdateOrderItem()
+  const { data: apiKeysData = [], isLoading: isLoadingKeys } = useApiKeys(order?.id, open)
+  const { data: histories = [] } = useOrderHistories(order?.id ?? null, open)
   const pingProxy = usePingProxy()
   const [pingResults, setPingResults] = useState<Record<string, string>>({})
 
@@ -115,9 +117,6 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKeysData])
-
-  const { data: apiKeysData = [], isLoading: isLoadingKeys } = useApiKeys(order?.id, open)
-  const { data: histories = [] } = useOrderHistories(order?.id ?? null, open)
   const renewals = useMemo(() => histories.filter(h => h.type === 'renewal'), [histories])
 
   const copyWithFeedback = (text: string, field: string, msg?: string) => {
