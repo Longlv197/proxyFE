@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, memo } from 'react'
+import { useState, memo, useEffect, useRef } from 'react'
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import Grid2 from '@mui/material/Grid2'
 import Box from '@mui/material/Box'
@@ -8,6 +8,8 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import IconButton from '@mui/material/IconButton'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import Divider from '@mui/material/Divider'
 import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -302,7 +304,7 @@ function StepSuccessCheck({ prefix, control }: BuySectionProps) {
 
 // ─── Pipeline Step 3: Proxy Extract ─────────────────
 
-function StepProxyExtract({ prefix, control }: BuySectionProps) {
+function StepProxyExtract({ prefix, control, setValue }: BuySectionProps & { setValue?: any }) {
   const responseMode = useWatch({ control, name: `${prefix}.response_mode` })
   const responseType = useWatch({ control, name: `${prefix}.response.type` })
   const proxyFormat = useWatch({ control, name: `${prefix}.response.proxy_format` })
@@ -310,6 +312,22 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
   const fetchResponseType = useWatch({ control, name: `${prefix}.fetch_proxies.response_type` })
   const fetchOrderCodeMode = useWatch({ control, name: `${prefix}.fetch_proxies.order_code_mode` })
   const fetchPaginationEnabled = useWatch({ control, name: `${prefix}.fetch_proxies.pagination_enabled` })
+
+  // Auto-default toggles khi format thay đổi
+  const prevFormat = useRef(proxyFormat)
+  useEffect(() => {
+    if (!setValue) return
+    if (prevFormat.current !== proxyFormat) {
+      prevFormat.current = proxyFormat
+      if (proxyFormat === 'key') {
+        setValue(`${prefix}.response.save_provider_key`, true)
+        setValue(`${prefix}.response.save_proxy`, false)
+      } else {
+        setValue(`${prefix}.response.save_provider_key`, false)
+        setValue(`${prefix}.response.save_proxy`, true)
+      }
+    }
+  }, [proxyFormat, prefix, setValue])
 
   return (
     <PipelineStepCard
@@ -384,6 +402,44 @@ function StepProxyExtract({ prefix, control }: BuySectionProps) {
                 <Grid2 size={{ xs: 4, sm: 2 }}><Controller name={`${prefix}.response.item_id_field`} control={control} render={({ field }) => (<CustomTextField {...field} fullWidth label={<>Trường ID proxy <FieldHint text='Mã proxy phía nhà cung cấp. Dùng để gia hạn/xoay IP. Bỏ trống nếu không có.' /></>} placeholder='idproxy' helperText='→ provider_item_id' />)} /></Grid2>
               </>
             )}
+
+            {/* Toggle lưu field mặc định — auto theo format, admin override được */}
+            <Grid2 size={{ xs: 12 }}>
+              <Box sx={{ mt: 1, p: 1, background: '#fefce8', border: '1px solid #fde68a', borderRadius: 1.5 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#92400e', mb: 0.5 }}>
+                  Dữ liệu lưu vào đơn hàng
+                </Typography>
+                <Typography sx={{ fontSize: 11, color: '#78716c', mb: 1 }}>
+                  Hệ thống tự chọn theo format. Bỏ tick nếu không cần lưu.
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                  <Controller name={`${prefix}.response.save_provider_key`} control={control} render={({ field }) => (
+                    <FormControlLabel
+                      control={<Checkbox checked={field.value !== false} onChange={e => field.onChange(e.target.checked)} size='small' />}
+                      label={<Typography sx={{ fontSize: 12, color: proxyFormat === 'key' ? '#1e293b' : '#94a3b8' }}>
+                        Key xoay (provider_key)
+                      </Typography>}
+                    />
+                  )} />
+                  <Controller name={`${prefix}.response.save_proxy`} control={control} render={({ field }) => (
+                    <FormControlLabel
+                      control={<Checkbox checked={field.value !== false} onChange={e => field.onChange(e.target.checked)} size='small' />}
+                      label={<Typography sx={{ fontSize: 12, color: proxyFormat !== 'key' ? '#1e293b' : '#94a3b8' }}>
+                        Proxy (ip:port:user:pass)
+                      </Typography>}
+                    />
+                  )} />
+                  <Controller name={`${prefix}.response.save_item_id`} control={control} render={({ field }) => (
+                    <FormControlLabel
+                      control={<Checkbox checked={field.value !== false} onChange={e => field.onChange(e.target.checked)} size='small' />}
+                      label={<Typography sx={{ fontSize: 12 }}>
+                        Mã proxy NCC (provider_item_id)
+                      </Typography>}
+                    />
+                  )} />
+                </Box>
+              </Box>
+            </Grid2>
           </>
         )}
 
@@ -1094,7 +1150,7 @@ function BuyConfigSection({ control, setValue }: { control: BuySectionProps['con
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
                 <StepApiCall prefix={prefix} control={control} />
                 <StepSuccessCheck prefix={prefix} control={control} />
-                <StepProxyExtract prefix={prefix} control={control} />
+                <StepProxyExtract prefix={prefix} control={control} setValue={setValue} />
                 <StepDataStorage prefix={prefix} control={control} />
                 <StepErrorHandling prefix={prefix} control={control} />
                 <StepParamsMapping prefix={prefix} control={control} />

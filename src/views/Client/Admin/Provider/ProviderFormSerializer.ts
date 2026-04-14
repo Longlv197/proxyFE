@@ -226,6 +226,9 @@ export function parseBuySection(buy: any): ApiConfigBuy {
       proxy_fields_pass: proxyFields.pass || '',
       proxy_fields_type: proxyFields.type || '',
       item_id_field: buyResp.item_id_field || '',
+      save_provider_key: buyResp.save_provider_key !== false,
+      save_proxy: buyResp.save_proxy !== false,
+      save_item_id: buyResp.save_item_id !== false,
       response_mapping: Array.isArray(buyResp.response_mapping)
         ? buyResp.response_mapping.map((r: any) => ({ from: r.from || '', to: r.to || '', store: r.store || 'metadata', save_as: r.save_as || 'raw' }))
         : [],
@@ -425,6 +428,11 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
   }
 
   if (buy.response.item_id_field) resp.item_id_field = buy.response.item_id_field
+
+  // Toggle lưu field mặc định — chỉ ghi vào config khi tắt (false), mặc định = true
+  if (buy.response.save_provider_key === false) resp.save_provider_key = false
+  if (buy.response.save_proxy === false) resp.save_proxy = false
+  if (buy.response.save_item_id === false) resp.save_item_id = false
 
   const validMapping = buy.response.response_mapping.filter((r: ResponseMappingRule) => r.from && r.to)
   if (validMapping.length > 0) {

@@ -14,30 +14,40 @@ export default function SavePreviewBox({ prefix, control }: BuySectionProps) {
   const proxyFieldsPass = useWatch({ control, name: `${prefix}.response.proxy_fields_pass` as any })
   const proxyFieldsType = useWatch({ control, name: `${prefix}.response.proxy_fields_type` as any })
   const itemIdField = useWatch({ control, name: `${prefix}.response.item_id_field` as any })
+  const saveProviderKey = useWatch({ control, name: `${prefix}.response.save_provider_key` as any })
+  const saveProxy = useWatch({ control, name: `${prefix}.response.save_proxy` as any })
+  const saveItemId = useWatch({ control, name: `${prefix}.response.save_item_id` as any })
   const responseMode = useWatch({ control, name: `${prefix}.response_mode` as any })
   const responseMapping: any[] = useWatch({ control, name: `${prefix}.response.response_mapping` as any }) || []
 
   const dbPreview: Record<string, any> = {}
-  if (proxyFormat === 'key') {
+  if (proxyFormat === 'key' && saveProviderKey !== false) {
     dbPreview.provider_key = `← ${proxyKeyField || 'keyxoay'}`
-  } else {
-    const proxyObj: Record<string, string> = {}
-    if (proxyFormat === 'string') {
+  }
+  if (proxyFormat !== 'key' || saveProxy !== false) {
+    // Hiện proxy object nếu format không phải key, hoặc nếu admin bật save_proxy
+    if (proxyFormat === 'string' && saveProxy !== false) {
+      const proxyObj: Record<string, string> = {}
       const f = proxyKeyField || 'proxy'
       proxyObj.ip = `← ${f}:phần1`
       proxyObj.port = `← ${f}:phần2`
-    } else if (proxyFormat === 'fields') {
+      responseMapping.filter(r => r?.from && r?.to && r?.store === 'proxy').forEach(r => {
+        proxyObj[r.to] = `← ${r.from}`
+      })
+      dbPreview.proxy = proxyObj
+    } else if (proxyFormat === 'fields' && saveProxy !== false) {
+      const proxyObj: Record<string, string> = {}
       proxyObj.ip = `← ${proxyFieldsIp || 'ip'}`
       proxyObj.port = `← ${proxyFieldsPort || 'port'}`
       proxyObj.user = `← ${proxyFieldsUser || 'username'}`
       proxyObj.pass = `← ${proxyFieldsPass || 'password'}`
+      responseMapping.filter(r => r?.from && r?.to && r?.store === 'proxy').forEach(r => {
+        proxyObj[r.to] = `← ${r.from}`
+      })
+      dbPreview.proxy = proxyObj
     }
-    responseMapping.filter(r => r?.from && r?.to && r?.store === 'proxy').forEach(r => {
-      proxyObj[r.to] = `← ${r.from}`
-    })
-    dbPreview.proxy = proxyObj
   }
-  if (itemIdField) dbPreview.provider_item_id = `← ${itemIdField}`
+  if (itemIdField && saveItemId !== false) dbPreview.provider_item_id = `← ${itemIdField}`
 
   const rootFields = responseMapping.filter(r => r?.from && r?.to && r?.store === 'root')
   rootFields.forEach(r => { dbPreview[r.to] = `← ${r.from}` })

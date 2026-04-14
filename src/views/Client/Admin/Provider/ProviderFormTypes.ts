@@ -60,6 +60,9 @@ export interface ApiConfigBuyResponse {
   proxy_fields_pass: string
   proxy_fields_type: string
   item_id_field: string
+  save_provider_key: boolean
+  save_proxy: boolean
+  save_item_id: boolean
   response_mapping: ResponseMappingRule[]
 }
 
@@ -383,6 +386,9 @@ export const defaultBuy: ApiConfigBuy = {
     proxy_fields_ip: '', proxy_fields_port: '',
     proxy_fields_user: '', proxy_fields_pass: '', proxy_fields_type: '',
     item_id_field: '',
+    save_provider_key: true,
+    save_proxy: true,
+    save_item_id: true,
     response_mapping: [],
   }
 }
