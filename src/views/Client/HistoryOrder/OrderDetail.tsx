@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo, useState, useCallback, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
 import {
@@ -55,6 +55,7 @@ import { useBranding } from '@/app/contexts/BrandingContext'
 import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderHistories'
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
+import { usePingProxy } from '@/hooks/apis/usePingProxy'
 import '@/components/checkout-modal/styles.css'
 
 const formatVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
@@ -94,6 +95,26 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   const { isChild } = useBranding()
   const canViewRotateLog = isAdmin && !isChild // Chỉ admin site mẹ thấy log xoay
   const updateItemMutation = useUpdateOrderItem()
+  const pingProxy = usePingProxy()
+  const [pingResults, setPingResults] = useState<Record<string, string>>({})
+
+  // Auto-ping proxy gốc cho rotate_auto khi data load xong
+  useEffect(() => {
+    if (!apiKeysData?.length) return
+    apiKeysData.forEach((item: any) => {
+      if (item.rotation_mode !== 'rotate_auto') return
+      const proxys = item.proxy || item.proxys || {}
+      const proxyStr = extractProxyValue(proxys)
+      const itemKey = item.key || item.api_key
+      if (!proxyStr || proxyStr === '-' || !itemKey || pingResults[itemKey]) return
+      setPingResults(prev => ({ ...prev, [itemKey]: 'loading' }))
+      pingProxy.mutate(proxyStr, {
+        onSuccess: (data) => setPingResults(prev => ({ ...prev, [itemKey]: data?.origin_ip || 'N/A' })),
+        onError: () => setPingResults(prev => ({ ...prev, [itemKey]: 'Lỗi kết nối' })),
+      })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKeysData])
 
   const { data: apiKeysData = [], isLoading: isLoadingKeys } = useApiKeys(order?.id, open)
   const { data: histories = [] } = useOrderHistories(order?.id ?? null, open)
@@ -153,26 +174,53 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
             const proxys = row.original.proxy || row.original.proxys || {}
             const firstProxy = extractProxyValue(proxys) || '-'
             const copyId = `proxy-${row.id}`
+            const isRotateAuto = row.original.rotation_mode === 'rotate_auto'
+            const itemKey = row.original.key || row.original.api_key || row.id
+            const pingedIp = pingResults[itemKey]
 
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'monospace', fontSize: '12px' }}>
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{firstProxy}</span>
-                {firstProxy !== '-' && (
-                  <button
-                    onClick={() => copyWithFeedback(firstProxy, copyId, 'Đã copy proxy!')}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
-                      fontSize: '11px', fontWeight: 600, fontFamily: 'inherit',
-                      border: isCopied(copyId) ? '1px solid #16a34a' : '1px solid #cbd5e1',
-                      background: isCopied(copyId) ? '#f0fdf4' : '#f8fafc',
-                      color: isCopied(copyId) ? '#16a34a' : '#475569',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {isCopied(copyId) ? <CheckCircle size={12} /> : <Copy size={12} />}
-                    {isCopied(copyId) ? 'Đã copy' : 'Copy'}
-                  </button>
+              <div style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{firstProxy}</span>
+                  {firstProxy !== '-' && (
+                    <button
+                      onClick={() => copyWithFeedback(firstProxy, copyId, 'Đã copy proxy!')}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
+                        fontSize: '11px', fontWeight: 600, fontFamily: 'inherit',
+                        border: isCopied(copyId) ? '1px solid #16a34a' : '1px solid #cbd5e1',
+                        background: isCopied(copyId) ? '#f0fdf4' : '#f8fafc',
+                        color: isCopied(copyId) ? '#16a34a' : '#475569',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {isCopied(copyId) ? <CheckCircle size={12} /> : <Copy size={12} />}
+                      {isCopied(copyId) ? 'Đã copy' : 'Copy'}
+                    </button>
+                  )}
+                </div>
+                {isRotateAuto && firstProxy !== '-' && (
+                  <div style={{ marginTop: 3, fontSize: '11px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {pingedIp === 'loading' ? (
+                      <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Đang lấy IP gốc...</span>
+                    ) : pingedIp ? (
+                      <>
+                        <span style={{ color: '#059669', fontWeight: 600 }}>IP gốc: {pingedIp}</span>
+                        <button
+                          onClick={() => {
+                            setPingResults(prev => ({ ...prev, [itemKey]: 'loading' }))
+                            pingProxy.mutate(firstProxy, {
+                              onSuccess: (data) => setPingResults(prev => ({ ...prev, [itemKey]: data?.origin_ip || 'N/A' })),
+                              onError: () => setPingResults(prev => ({ ...prev, [itemKey]: 'Lỗi' })),
+                            })
+                          }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, fontSize: '11px' }}
+                          title='Làm mới IP gốc'
+                        >↻</button>
+                      </>
+                    ) : null}
+                  </div>
                 )}
               </div>
             )
@@ -253,7 +301,7 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [order, copiedField, copy, isAdmin, updateItemMutation]
+    [order, copiedField, copy, isAdmin, updateItemMutation, pingResults, pingProxy]
   )
 
   const table = useReactTable({

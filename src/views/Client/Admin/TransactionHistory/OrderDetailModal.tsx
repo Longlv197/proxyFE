@@ -44,6 +44,7 @@ import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderH
 import { useOrderHistoryLogs, type HistoryLogItem } from '@/hooks/apis/useRenewal'
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
+import { usePingProxy } from '@/hooks/apis/usePingProxy'
 
 interface OrderDetailModalProps {
   isOpen: boolean
@@ -81,8 +82,27 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
   const [viewItemKey, setViewItemKey] = useState<string | null>(null)
 
   const updateItemMutation = useUpdateOrderItem()
+  const pingProxy = usePingProxy()
+  const [pingResults, setPingResults] = useState<Record<string, string>>({})
   const orderId = orderData?.order?.id
   const { data: dataApiKeys, isLoading: loadingApiKeys } = useApiKeys(orderId, isOpen)
+
+  // Auto-ping proxy gốc cho rotate_auto khi data load xong
+  useEffect(() => {
+    if (!dataApiKeys?.length) return
+    ;(dataApiKeys as any[]).forEach((item: any) => {
+      if (item.rotation_mode !== 'rotate_auto') return
+      const proxyStr = getProxyText(item)
+      const itemKey = item.key || item.api_key
+      if (!proxyStr || proxyStr === '-' || !itemKey || pingResults[itemKey]) return
+      setPingResults(prev => ({ ...prev, [itemKey]: 'loading' }))
+      pingProxy.mutate(proxyStr, {
+        onSuccess: (data) => setPingResults(prev => ({ ...prev, [itemKey]: data?.origin_ip || 'N/A' })),
+        onError: () => setPingResults(prev => ({ ...prev, [itemKey]: 'Lỗi kết nối' })),
+      })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataApiKeys])
   const dataField = (dataApiKeys as any)?._dataField || 'proxy'
   const { data: orderLogs = [], isLoading: loadingLogs } = useOrderLogs(orderId, isOpen)
   const { data: histories = [], isLoading: loadingHistories } = useOrderHistories(orderId, isOpen)
@@ -198,12 +218,15 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
       },
       {
         header: 'Proxy',
-        size: 200,
+        size: 220,
         cell: ({ row }: { row: any }) => {
           const proxys = row.original.proxy || row.original.proxys
           const text = getProxyText(row.original)
           const protocol = row.original.protocol || extractProtocol(proxys) || '-'
           const allowIps = row.original.ip_whitelist
+          const isRotateAuto = row.original.rotation_mode === 'rotate_auto'
+          const itemKey = row.original.key || row.original.api_key || row.id
+          const pingedIp = pingResults[itemKey]
           return (
             <div style={{ fontSize: '11px' }}>
               <div style={{ fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={text}>
@@ -215,6 +238,29 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
               {allowIps?.length > 0 && (
                 <div style={{ fontSize: '10px', color: '#2563eb', marginTop: 2 }} title={allowIps.join(', ')}>
                   IP: {allowIps.join(', ')}
+                </div>
+              )}
+              {isRotateAuto && text && text !== '-' && (
+                <div style={{ marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  {pingedIp === 'loading' ? (
+                    <span style={{ fontSize: '10px', color: '#94a3b8', fontStyle: 'italic' }}>Đang lấy IP gốc...</span>
+                  ) : pingedIp ? (
+                    <>
+                      <span style={{ fontSize: '10px', color: '#059669', fontWeight: 600 }}>IP gốc: {pingedIp}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPingResults(prev => ({ ...prev, [itemKey]: 'loading' }))
+                          pingProxy.mutate(text, {
+                            onSuccess: (data) => setPingResults(prev => ({ ...prev, [itemKey]: data?.origin_ip || 'N/A' })),
+                            onError: () => setPingResults(prev => ({ ...prev, [itemKey]: 'Lỗi' })),
+                          })
+                        }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, fontSize: '10px' }}
+                        title='Làm mới IP gốc'
+                      >↻</button>
+                    </>
+                  ) : null}
                 </div>
               )}
             </div>
