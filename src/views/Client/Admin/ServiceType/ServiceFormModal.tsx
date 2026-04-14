@@ -1363,6 +1363,21 @@ return { values: {}, errors: formattedErrors }
 
                 <Grid2 size={{ xs: 6, sm: 2 }}>
                   <Controller
+                    name='rotation_mode'
+                    control={control}
+                    render={({ field }) => (
+                      <CustomTextField {...field} fullWidth select label='Chế độ xoay' value={field.value || ''}>
+                        <MenuItem value=''><em>— Mặc định</em></MenuItem>
+                        <MenuItem value='static'>Proxy tĩnh</MenuItem>
+                        <MenuItem value='rotate_api'>Xoay qua API</MenuItem>
+                        <MenuItem value='rotate_auto'>Tự xoay</MenuItem>
+                      </CustomTextField>
+                    )}
+                  />
+                </Grid2>
+
+                <Grid2 size={{ xs: 6, sm: 2 }}>
+                  <Controller
                     name='proxy_type'
                     control={control}
                     render={({ field }) => (
@@ -1937,16 +1952,6 @@ return <Chip key={val} label={p?.label || val} size='small' />
                       <Grid2 size={{ xs: 6, sm: 3 }}>
                         <Controller name='concurrent_connections' control={control} render={({ field }) => (
                           <CustomTextField {...field} value={field.value ?? ''} onChange={e => { field.onChange(e.target.value === '' ? null : Number(e.target.value)) }} fullWidth type='number' label='Kết nối đồng thời' placeholder='—' />
-                        )} />
-                      </Grid2>
-                      <Grid2 size={{ xs: 6, sm: 3 }}>
-                        <Controller name='rotation_mode' control={control} render={({ field }) => (
-                          <CustomTextField {...field} fullWidth select label='Chế độ xoay' value={field.value || ''}>
-                            <MenuItem value=''><em>— Mặc định (logic cũ)</em></MenuItem>
-                            <MenuItem value='static'>Proxy tĩnh</MenuItem>
-                            <MenuItem value='rotate_api'>Xoay qua API</MenuItem>
-                            <MenuItem value='rotate_auto'>Tự xoay (gateway NCC)</MenuItem>
-                          </CustomTextField>
                         )} />
                       </Grid2>
                       {watchedType === '1' && (

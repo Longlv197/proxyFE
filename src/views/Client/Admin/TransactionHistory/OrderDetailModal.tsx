@@ -900,7 +900,7 @@ function ExpandableItemRow({ row, activeItemKey, onViewLogs }: { row: any; activ
           background: isViewing ? '#eff6ff' : expanded ? '#f0f4ff' : undefined,
         }}
         onClick={(e) => {
-          if ((e.target as HTMLElement).closest('input[type="checkbox"], button')) return
+          if ((e.target as HTMLElement).closest('input[type="checkbox"], button, select')) return
           if (item.type === 'ROTATING' && onViewLogs && itemKey) {
             onViewLogs(itemKey)
           } else {
