@@ -45,6 +45,7 @@ import { useOrderHistoryLogs, type HistoryLogItem } from '@/hooks/apis/useRenewa
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 import { usePingProxy } from '@/hooks/apis/usePingProxy'
+import { ROTATION_MODE, ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 
 interface OrderDetailModalProps {
   isOpen: boolean
@@ -91,7 +92,7 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
   useEffect(() => {
     if (!dataApiKeys?.length) return
     ;(dataApiKeys as any[]).forEach((item: any) => {
-      if (item.rotation_mode !== 'rotate_auto') return
+      if (item.rotation_mode !== ROTATION_MODE.ROTATE_AUTO) return
       const proxyStr = getProxyText(item)
       const itemKey = item.key || item.api_key
       if (!proxyStr || proxyStr === '-' || !itemKey || pingResults[itemKey]) return
@@ -224,7 +225,7 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
           const text = getProxyText(row.original)
           const protocol = row.original.protocol || extractProtocol(proxys) || '-'
           const allowIps = row.original.ip_whitelist
-          const isRotateAuto = row.original.rotation_mode === 'rotate_auto'
+          const isRotateAuto = row.original.rotation_mode === ROTATION_MODE.ROTATE_AUTO
           const itemKey = row.original.key || row.original.api_key || row.id
           const pingedIp = pingResults[itemKey]
           return (
@@ -349,9 +350,9 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
               }}
             >
               <option value=''>— Mặc định</option>
-              <option value='static'>Tĩnh</option>
-              <option value='rotate_api'>Xoay API</option>
-              <option value='rotate_auto'>Tự xoay</option>
+              {Object.entries(ROTATION_MODE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           )
         }

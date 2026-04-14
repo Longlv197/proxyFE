@@ -35,6 +35,7 @@ import {
   ShoppingCart
 } from 'lucide-react'
 import { useFormNotification } from '@/hooks/useFormNotification'
+import { ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 import FormAlert from '@/components/FormAlert'
 import { useForm, Controller } from 'react-hook-form'
 
@@ -2242,9 +2243,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                           render={({ field }) => (
                             <CustomTextField {...field} fullWidth select label='Chế độ xoay' value={field.value || ''}>
                               <MenuItem value=''><em>— Mặc định (logic cũ)</em></MenuItem>
-                              <MenuItem value='static'>Proxy tĩnh</MenuItem>
-                              <MenuItem value='rotate_api'>Xoay qua API</MenuItem>
-                              <MenuItem value='rotate_auto'>Tự xoay (gateway NCC)</MenuItem>
+                              {Object.entries(ROTATION_MODE_LABELS).map(([value, label]) => (
+                                <MenuItem key={value} value={value}>{label}</MenuItem>
+                              ))}
                             </CustomTextField>
                           )}
                         />

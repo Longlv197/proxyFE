@@ -56,6 +56,7 @@ import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderH
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 import { usePingProxy } from '@/hooks/apis/usePingProxy'
+import { ROTATION_MODE, ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 import '@/components/checkout-modal/styles.css'
 
 const formatVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
@@ -104,7 +105,7 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   useEffect(() => {
     if (!apiKeysData?.length) return
     apiKeysData.forEach((item: any) => {
-      if (item.rotation_mode !== 'rotate_auto') return
+      if (item.rotation_mode !== ROTATION_MODE.ROTATE_AUTO) return
       const proxys = item.proxy || item.proxys || {}
       const proxyStr = extractProxyValue(proxys)
       const itemKey = item.key || item.api_key
@@ -169,13 +170,13 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
         cell: ({ row }: { row: any }) => {
           const isCopied = (field: string) => copiedField === field
           const hasProxy = row.original.proxy || row.original.proxys
-          const isProxyDisplay = order?.service_type === '0' || row.original.rotation_mode === 'rotate_auto' || hasProxy
+          const isProxyDisplay = order?.service_type === '0' || row.original.rotation_mode === ROTATION_MODE.ROTATE_AUTO || hasProxy
 
           if (isProxyDisplay) {
             const proxys = row.original.proxy || row.original.proxys || {}
             const firstProxy = extractProxyValue(proxys) || '-'
             const copyId = `proxy-${row.id}`
-            const isRotateAuto = row.original.rotation_mode === 'rotate_auto'
+            const isRotateAuto = row.original.rotation_mode === ROTATION_MODE.ROTATE_AUTO
             const itemKey = row.original.key || row.original.api_key || row.id
             const pingedIp = pingResults[itemKey]
 
@@ -282,9 +283,9 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
               }}
             >
               <option value=''>— Mặc định</option>
-              <option value='static'>Tĩnh</option>
-              <option value='rotate_api'>Xoay API</option>
-              <option value='rotate_auto'>Tự xoay</option>
+              {Object.entries(ROTATION_MODE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           )
         },

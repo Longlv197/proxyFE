@@ -41,6 +41,7 @@ import MultiInputModal from '@/views/Client/Admin/ServiceType/MultiInputModal'
 import CollapsibleSection from '@/views/Client/Admin/ServiceType/CollapsibleSection'
 import { useBranding } from '@/app/contexts/BrandingContext'
 
+import { ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 import '@/views/Client/RotatingProxy/styles.css'
 import '@/app/[lang]/(private)/(client)/components/proxy-card/styles.css'
 import ProxyCard from '@/app/[lang]/(private)/(client)/components/proxy-card/ProxyCard'
@@ -1368,9 +1369,9 @@ return { values: {}, errors: formattedErrors }
                     render={({ field }) => (
                       <CustomTextField {...field} fullWidth select label='Chế độ xoay' value={field.value || ''}>
                         <MenuItem value=''><em>— Mặc định</em></MenuItem>
-                        <MenuItem value='static'>Proxy tĩnh</MenuItem>
-                        <MenuItem value='rotate_api'>Xoay qua API</MenuItem>
-                        <MenuItem value='rotate_auto'>Tự xoay</MenuItem>
+                        {Object.entries(ROTATION_MODE_LABELS).map(([value, label]) => (
+                          <MenuItem key={value} value={value}>{label}</MenuItem>
+                        ))}
                       </CustomTextField>
                     )}
                   />
