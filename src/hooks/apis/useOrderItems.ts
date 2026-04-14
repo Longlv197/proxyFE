@@ -82,6 +82,7 @@ export const useUpdateOrderItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orderItems'] })
+      queryClient.invalidateQueries({ queryKey: ['orderApiKeys'] })
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
     },
   })

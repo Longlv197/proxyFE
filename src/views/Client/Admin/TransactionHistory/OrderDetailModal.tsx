@@ -43,7 +43,7 @@ import { useOrderLogs, type OrderLog } from '@/hooks/apis/useOrderLogs'
 import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderHistories'
 import { useOrderHistoryLogs, type HistoryLogItem } from '@/hooks/apis/useRenewal'
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
-import { useUnlockRotate } from '@/hooks/apis/useOrderItems'
+import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 
 interface OrderDetailModalProps {
   isOpen: boolean
@@ -80,6 +80,7 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
   const [viewLogId, setViewLogId] = useState<number | null>(null)
   const [viewItemKey, setViewItemKey] = useState<string | null>(null)
 
+  const updateItemMutation = useUpdateOrderItem()
   const orderId = orderData?.order?.id
   const { data: dataApiKeys, isLoading: loadingApiKeys } = useApiKeys(orderId, isOpen)
   const dataField = (dataApiKeys as any)?._dataField || 'proxy'
@@ -286,6 +287,30 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
         }
       },
       {
+        header: 'Chế độ xoay', size: 120,
+        cell: ({ row }: { row: any }) => {
+          const mode = row.original.rotation_mode || ''
+          return (
+            <select
+              value={mode}
+              onChange={(e) => {
+                const newMode = e.target.value
+                updateItemMutation.mutate({ key: row.original.key || row.original.api_key, data: { rotation_mode: newMode || null } })
+              }}
+              style={{
+                fontSize: '11px', padding: '3px 6px', borderRadius: 4,
+                border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer',
+              }}
+            >
+              <option value=''>— Mặc định</option>
+              <option value='static'>Tĩnh</option>
+              <option value='rotate_api'>Xoay API</option>
+              <option value='rotate_auto'>Tự xoay</option>
+            </select>
+          )
+        }
+      },
+      {
         header: 'Hết hạn', size: 140,
         cell: ({ row }: { row: any }) => (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#64748b', fontSize: '11px' }}>
@@ -295,7 +320,7 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
         )
       }
     ],
-    [copiedField]
+    [copiedField, updateItemMutation]
   )
 
   const table = useReactTable({
