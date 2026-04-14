@@ -203,6 +203,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   const [parentRenewable, setParentRenewable] = useState<boolean | null>(null)
   const [discountTiers, setDiscountTiers] = useState<DiscountTier[]>([])
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [pendingNote, setPendingNote] = useState<string | null>(null)
   const [previewColumns, setPreviewColumns] = useState(3)
   const [purchaseOptions, setPurchaseOptions] = useState<
     Array<{
@@ -418,6 +419,15 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     if (selectedProduct.auth_type) {
       setValue('auth_type', selectedProduct.auth_type)
     }
+
+    // Đồng bộ thông số kỹ thuật từ site mẹ
+    if (selectedProduct.bandwidth) setValue('bandwidth', selectedProduct.bandwidth)
+    if (selectedProduct.request_limit) setValue('request_limit', selectedProduct.request_limit)
+    if (selectedProduct.concurrent_connections) setValue('concurrent_connections', selectedProduct.concurrent_connections)
+    if (selectedProduct.rotation_type) setValue('rotation_type', selectedProduct.rotation_type)
+    if (selectedProduct.rotation_interval) setValue('rotation_interval', selectedProduct.rotation_interval)
+    if (selectedProduct.pool_size) setValue('pool_size', selectedProduct.pool_size)
+    if (selectedProduct.note) setValue('note', selectedProduct.note)
 
     // Set pricing mode theo site mẹ
     const parentMode = selectedProduct.pricing_mode || 'fixed'
@@ -747,6 +757,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   }), [watchAll, serviceId, validPreviewPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit])
 
   return (
+    <>
     <Dialog open={open} onClose={onClose} maxWidth='lg' fullWidth closeAfterTransition={false}>
       {/* Header */}
       <div
@@ -1143,6 +1154,25 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                   if (data?.ip_version) setValue('ip_version', data.ip_version.toLowerCase())
                                   if (data?.proxy_type) setValue('proxy_type', data.proxy_type)
                                   if (data?.rotation_mode) setValue('rotation_mode', data.rotation_mode)
+
+                                  // Sync thông số kỹ thuật
+                                  if (data?.bandwidth) setValue('bandwidth', data.bandwidth)
+                                  if (data?.request_limit) setValue('request_limit', data.request_limit)
+                                  if (data?.concurrent_connections) setValue('concurrent_connections', data.concurrent_connections)
+                                  if (data?.rotation_type) setValue('rotation_type', data.rotation_type)
+                                  if (data?.rotation_interval) setValue('rotation_interval', data.rotation_interval)
+                                  if (data?.pool_size) setValue('pool_size', data.pool_size)
+
+                                  // Ghi chú: hỏi admin trước khi ghi đè
+                                  if (data?.note) {
+                                    const currentNote = watch('note')
+
+                                    if (!currentNote) {
+                                      setValue('note', data.note)
+                                    } else {
+                                      setPendingNote(data.note)
+                                    }
+                                  }
 
                                   // Sync renewal
                                   if (data?.renewable != null) {
@@ -2726,5 +2756,29 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         )}
       </DialogContent>
     </Dialog>
+
+    {/* Confirm ghi đè ghi chú */}
+    <Dialog open={!!pendingNote} onClose={() => setPendingNote(null)} maxWidth='xs' fullWidth>
+      <Box sx={{ p: 3 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 15, mb: 1 }}>Ghi đè ghi chú?</Typography>
+        <Typography sx={{ fontSize: 13, color: '#64748b', mb: 2 }}>
+          Sản phẩm đã có ghi chú. Bạn muốn thay bằng ghi chú từ site mẹ?
+        </Typography>
+        <Box sx={{ p: 1.5, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 1.5, mb: 2, maxHeight: 120, overflow: 'auto' }}>
+          <Typography sx={{ fontSize: 12, color: '#475569', whiteSpace: 'pre-wrap' }}>
+            {pendingNote}
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+          <Button size='small' onClick={() => setPendingNote(null)} sx={{ fontSize: 12 }}>
+            Giữ nguyên
+          </Button>
+          <Button size='small' variant='contained' onClick={() => { setValue('note', pendingNote!); setPendingNote(null) }} sx={{ fontSize: 12 }}>
+            Ghi đè
+          </Button>
+        </Box>
+      </Box>
+    </Dialog>
+    </>
   )
 }
