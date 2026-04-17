@@ -2092,7 +2092,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                 Chính sách chiết khấu từ site mẹ <span style={{ fontSize: 10, fontWeight: 500, color: '#64748b' }}>(chỉ tham khảo)</span>
                               </div>
                               <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
-                                {'Đây là chính sách site mẹ đang áp với bạn: "Trả site mẹ" = giá bạn phải trả; "Giá mẹ bán" = giá site mẹ gợi ý bán cho khách. Để đặt giá riêng cho khách của bạn, dùng '}
+                                {'Chính sách mẹ đang áp với bạn: "Bạn trả mẹ" = giá bạn phải trả; "Mẹ bán cho khách" = giá mẹ niêm yết cho khách (tham khảo). Để đặt giá riêng cho khách của bạn, dùng '}
                                 <strong>&quot;Chiết khấu riêng của bạn&quot;</strong>
                                 {' bên dưới.'}
                               </div>
@@ -2115,9 +2115,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                       fontSize: 10, fontWeight: 600, color: '#64748b', background: '#f8fafc'
                                     }}>
                                       <span>Số lượng</span>
-                                      <span>Trả site mẹ</span>
-                                      <span>Giá mẹ bán</span>
-                                      <span style={{ textAlign: 'right' }}>Lợi nhuận mẹ gợi ý</span>
+                                      <span>Bạn trả mẹ</span>
+                                      <span>Mẹ bán cho khách</span>
+                                      <span style={{ textAlign: 'right' }}>Lãi mẹ gợi ý</span>
                                     </div>
 
                                     {/* Mốc 1 (không chiết khấu) — base */}
@@ -2339,85 +2339,91 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                           <span>Preview</span>
                                           <span></span>
                                         </div>
-                                        {tiers.map((tier, idx) => {
-                                          const tMin = parseInt(tier.min) || 0
-                                          const tMax = tier.max ? parseInt(tier.max) : 0
-                                          const tPrice = parseInt(tier.price) || 0
-                                          const costAtMin = tMin > 0 ? lookupParentCost(tMin) : 0
-                                          const profitPerProxy = tPrice > 0 && costAtMin > 0 ? tPrice - costAtMin : 0
-                                          const isLoss = tPrice > 0 && costAtMin > 0 && profitPerProxy < 0
-                                          const totalAtMin = tMin > 0 && tPrice > 0 ? tMin * tPrice : 0
-                                          const totalCostAtMin = tMin > 0 && costAtMin > 0 ? tMin * costAtMin : 0
-                                          const totalProfitAtMin = totalAtMin - totalCostAtMin
-                                          const costAtMax = tMax > 0 ? lookupParentCost(tMax) : 0
-                                          const totalAtMax = tMax > 0 && tPrice > 0 ? tMax * tPrice : 0
-                                          const totalCostAtMax = tMax > 0 && costAtMax > 0 ? tMax * costAtMax : 0
-                                          const totalProfitAtMax = totalAtMax - totalCostAtMax
+                                        {tiers
+                                          .map((tier, origIdx) => ({ tier, origIdx }))
+                                          .sort((a, b) => (parseInt(a.tier.min) || 0) - (parseInt(b.tier.min) || 0))
+                                          .map(({ tier, origIdx }) => {
+                                            const tMin = parseInt(tier.min) || 0
+                                            const tMax = tier.max ? parseInt(tier.max) : 0
+                                            const tPrice = parseInt(tier.price) || 0
+                                            const costAtMin = tMin > 0 ? lookupParentCost(tMin) : 0
+                                            const profitPerProxy = tPrice > 0 && costAtMin > 0 ? tPrice - costAtMin : 0
+                                            const isLoss = tPrice > 0 && costAtMin > 0 && profitPerProxy < 0
+                                            const totalProfitAtMin = tMin > 0 && tPrice > 0 && costAtMin > 0 ? tMin * (tPrice - costAtMin) : 0
+                                            const costAtMax = tMax > 0 ? lookupParentCost(tMax) : 0
+                                            const totalProfitAtMax = tMax > 0 && tPrice > 0 && costAtMax > 0 ? tMax * (tPrice - costAtMax) : 0
+                                            const fmtK = (n: number) => {
+                                              const abs = Math.abs(n)
 
-                                          return (
-                                            <div key={idx} style={{
-                                              display: 'grid', gridTemplateColumns: '70px 70px 100px 90px 90px 1fr 30px',
-                                              gap: 4, alignItems: 'center', padding: '5px 10px',
-                                              borderTop: '1px solid #e0f2fe',
-                                              background: isLoss ? '#fef2f2' : '#fff'
-                                            }}>
-                                              <TextField
-                                                size='small'
-                                                type='number'
-                                                value={tier.min}
-                                                onChange={e => updateTier(idx, { min: e.target.value })}
-                                                placeholder='Từ'
-                                                sx={{ '& input': { fontSize: '11px', padding: '4px 6px' } }}
-                                              />
-                                              <TextField
-                                                size='small'
-                                                type='number'
-                                                value={tier.max}
-                                                onChange={e => updateTier(idx, { max: e.target.value })}
-                                                placeholder='Đến (tùy)'
-                                                sx={{ '& input': { fontSize: '11px', padding: '4px 6px' } }}
-                                              />
-                                              <TextField
-                                                size='small'
-                                                type='number'
-                                                value={tier.price}
-                                                onChange={e => updateTier(idx, { price: e.target.value })}
-                                                placeholder='Giá'
-                                                error={isLoss}
-                                                sx={{ '& input': { fontSize: '11px', padding: '4px 6px', fontWeight: 600 } }}
-                                              />
-                                              <span style={{ fontSize: 11, color: '#64748b' }}>
-                                                {costAtMin > 0 ? `${costAtMin.toLocaleString('vi-VN')}đ` : '—'}
-                                              </span>
-                                              <span style={{ fontSize: 11, fontWeight: 700, color: profitPerProxy > 0 ? '#15803d' : profitPerProxy < 0 ? '#dc2626' : '#94a3b8' }}>
-                                                {profitPerProxy !== 0 ? `${profitPerProxy > 0 ? '+' : ''}${profitPerProxy.toLocaleString('vi-VN')}đ` : '—'}
-                                              </span>
-                                              <span style={{ fontSize: 10.5, color: '#475569', lineHeight: 1.4 }}>
-                                                {tMin > 0 && tPrice > 0 ? (
-                                                  <>
-                                                    <div>
-                                                      <strong>{tMin} proxy</strong> → khách trả {totalAtMin.toLocaleString('vi-VN')}đ, vốn {totalCostAtMin.toLocaleString('vi-VN')}đ,{' '}
-                                                      <span style={{ color: totalProfitAtMin > 0 ? '#15803d' : '#dc2626', fontWeight: 700 }}>
-                                                        lãi {totalProfitAtMin > 0 ? '+' : ''}{totalProfitAtMin.toLocaleString('vi-VN')}đ
+                                              if (abs >= 1000000) return `${(n / 1000000).toFixed(1)}M`
+
+                                              if (abs >= 1000) return `${Math.round(n / 1000)}k`
+
+                                              return `${n}`
+                                            }
+
+                                            return (
+                                              <div key={origIdx} style={{
+                                                display: 'grid', gridTemplateColumns: '70px 70px 100px 90px 90px 1fr 30px',
+                                                gap: 4, alignItems: 'center', padding: '5px 10px',
+                                                borderTop: '1px solid #e0f2fe',
+                                                background: isLoss ? '#fef2f2' : '#fff'
+                                              }}>
+                                                <TextField
+                                                  size='small'
+                                                  type='number'
+                                                  value={tier.min}
+                                                  onChange={e => updateTier(origIdx, { min: e.target.value })}
+                                                  placeholder='Từ'
+                                                  sx={{ '& input': { fontSize: '11px', padding: '4px 6px' } }}
+                                                />
+                                                <TextField
+                                                  size='small'
+                                                  type='number'
+                                                  value={tier.max}
+                                                  onChange={e => updateTier(origIdx, { max: e.target.value })}
+                                                  placeholder='Đến (tùy)'
+                                                  sx={{ '& input': { fontSize: '11px', padding: '4px 6px' } }}
+                                                />
+                                                <TextField
+                                                  size='small'
+                                                  type='number'
+                                                  value={tier.price}
+                                                  onChange={e => updateTier(origIdx, { price: e.target.value })}
+                                                  placeholder='Giá'
+                                                  error={isLoss}
+                                                  sx={{ '& input': { fontSize: '11px', padding: '4px 6px', fontWeight: 600 } }}
+                                                />
+                                                <span style={{ fontSize: 11, color: '#64748b' }}>
+                                                  {costAtMin > 0 ? `${costAtMin.toLocaleString('vi-VN')}đ` : '—'}
+                                                </span>
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: profitPerProxy > 0 ? '#15803d' : profitPerProxy < 0 ? '#dc2626' : '#94a3b8' }}>
+                                                  {profitPerProxy !== 0 ? `${profitPerProxy > 0 ? '+' : ''}${profitPerProxy.toLocaleString('vi-VN')}đ` : '—'}
+                                                </span>
+                                                <span style={{ fontSize: 11, color: '#475569' }}>
+                                                  {tMin > 0 && tPrice > 0 ? (
+                                                    <>
+                                                      <strong>{tMin}</strong> →{' '}
+                                                      <span style={{ color: totalProfitAtMin >= 0 ? '#15803d' : '#dc2626', fontWeight: 700 }}>
+                                                        {totalProfitAtMin >= 0 ? '+' : ''}{fmtK(totalProfitAtMin)}đ
                                                       </span>
-                                                    </div>
-                                                    {tMax > 0 && (
-                                                      <div>
-                                                        <strong>{tMax} proxy</strong> → khách trả {totalAtMax.toLocaleString('vi-VN')}đ, vốn {totalCostAtMax.toLocaleString('vi-VN')}đ,{' '}
-                                                        <span style={{ color: totalProfitAtMax > 0 ? '#15803d' : '#dc2626', fontWeight: 700 }}>
-                                                          lãi {totalProfitAtMax > 0 ? '+' : ''}{totalProfitAtMax.toLocaleString('vi-VN')}đ
-                                                        </span>
-                                                      </div>
-                                                    )}
-                                                  </>
-                                                ) : <span style={{ color: '#94a3b8' }}>Nhập SL và giá để xem</span>}
-                                              </span>
-                                              <IconButton size='small' color='error' onClick={() => removeTier(idx)} sx={{ p: '2px' }}>
-                                                <X size={14} />
-                                              </IconButton>
-                                            </div>
-                                          )
-                                        })}
+                                                      {tMax > 0 && (
+                                                        <>
+                                                          {' · '}<strong>{tMax}</strong> →{' '}
+                                                          <span style={{ color: totalProfitAtMax >= 0 ? '#15803d' : '#dc2626', fontWeight: 700 }}>
+                                                            {totalProfitAtMax >= 0 ? '+' : ''}{fmtK(totalProfitAtMax)}đ
+                                                          </span>
+                                                        </>
+                                                      )}
+                                                    </>
+                                                  ) : <span style={{ color: '#94a3b8' }}>Nhập SL + giá</span>}
+                                                </span>
+                                                <IconButton size='small' color='error' onClick={() => removeTier(origIdx)} sx={{ p: '2px' }}>
+                                                  <X size={14} />
+                                                </IconButton>
+                                              </div>
+                                            )
+                                          })}
                                       </>
                                     )}
                                   </div>
