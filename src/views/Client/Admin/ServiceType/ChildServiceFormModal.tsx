@@ -198,6 +198,10 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
   // Snapshot chiết khấu SL site mẹ áp cho site con — read-only reference cho admin
   const [providerQuantityTiers, setProviderQuantityTiers] = useState<Record<string, any[]>>({})
+
+  // Chiết khấu riêng của site con theo số lượng per mốc thời gian
+  // Shape: { "<duration_key>": [{ min, max, price }, ...] }
+  const [childQuantityTiers, setChildQuantityTiers] = useState<Record<string, Array<{ min: string; max: string; price: string }>>>({})
   const [pricingMode, setPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   const [parentPricingMode, setParentPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   const [timeUnit, setTimeUnit] = useState<'day' | 'month'>('day')
@@ -343,6 +347,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
       // Load snapshot tiers site mẹ áp
       setProviderQuantityTiers(meta.provider_quantity_tiers || {})
+      setChildQuantityTiers(meta.child_quantity_tiers || {})
 
       // Load pricing mode
       setPricingMode(serviceData.pricing_mode || 'fixed')
@@ -513,6 +518,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setCheckedProduct(null)
       setPriceFields([])
       setProviderQuantityTiers({})
+      setChildQuantityTiers({})
       setAllowCustomAuth(false)
       setRenewable(false)
       setRenewalDuration('ncc')
@@ -717,7 +723,20 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
               ),
 
         // Snapshot chiết khấu SL site mẹ áp (internal, strip khỏi user API)
-        provider_quantity_tiers: providerQuantityTiers
+        provider_quantity_tiers: providerQuantityTiers,
+
+        // Chiết khấu riêng của site con per mốc thời gian (ưu tiên khi user con mua)
+        child_quantity_tiers: (() => {
+          const filtered: Record<string, Array<{ min: string; max: string; price: string }>> = {}
+
+          Object.entries(childQuantityTiers).forEach(([key, tiers]) => {
+            const valid = (tiers || []).filter(t => t.min && t.price)
+
+            if (valid.length > 0) filtered[key] = valid
+          })
+
+          return Object.keys(filtered).length > 0 ? filtered : undefined
+        })()
       }
     }
 
@@ -2063,15 +2082,17 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               : 'Giá nhập lấy tự động từ site mẹ. Phần chênh lệch là lợi nhuận của bạn.'}
                           </div>
 
-                          {/* Chiết khấu theo số lượng — UI thống nhất giống time tier */}
+                          {/* Khu A — Chính sách chiết khấu site mẹ (chỉ tham khảo, không sửa được) */}
                           {priceFields.some(f => f.quantity_tiers && f.quantity_tiers.length > 0) && (
                             <div style={{ marginTop: 16 }}>
                               <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 14 }}>💰</span>
-                                Chiết khấu theo số lượng từ NCC
+                                <span style={{ fontSize: 14 }}>📋</span>
+                                Chính sách chiết khấu từ site mẹ <span style={{ fontSize: 10, fontWeight: 500, color: '#64748b' }}>(chỉ tham khảo)</span>
                               </div>
                               <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
-                                {'Khi khách mua SL lớn: "Trả site mẹ" = giá nhập, bạn đặt "Bán cho khách" — hệ thống tự chọn mốc cao nhất đạt được.'}
+                                {'Đây là chính sách site mẹ đang áp với bạn: "Trả site mẹ" = giá bạn phải trả; "Giá mẹ bán" = giá site mẹ gợi ý bán cho khách. Để đặt giá riêng cho khách của bạn, dùng '}
+                                <strong>&quot;Chiết khấu riêng của bạn&quot;</strong>
+                                {' bên dưới.'}
                               </div>
 
                               {priceFields.map((pf, pfIdx) => {
@@ -2093,8 +2114,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                     }}>
                                       <span>Số lượng</span>
                                       <span>Trả site mẹ</span>
-                                      <span>Bán cho khách</span>
-                                      <span style={{ textAlign: 'right' }}>Lợi nhuận / proxy</span>
+                                      <span>Giá mẹ bán</span>
+                                      <span style={{ textAlign: 'right' }}>Lợi nhuận mẹ gợi ý</span>
                                     </div>
 
                                     {/* Mốc 1 (không chiết khấu) — base */}
@@ -2155,25 +2176,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                               </span>
                                             )}
                                           </span>
-                                          <TextField
-                                            size='small'
-                                            value={price ? price.toLocaleString('vi-VN') : ''}
-                                            placeholder='Nhập giá bán'
-                                            onChange={e => {
-                                              const raw = e.target.value.replace(/[^0-9]/g, '')
-
-                                              setPriceFields(prev => prev.map((p, i) => {
-                                                if (i !== pfIdx) return p
-                                                const newTiers = [...(p.quantity_tiers || [])]
-
-                                                newTiers[tierIdx] = { ...newTiers[tierIdx], price: raw }
-
-                                                return { ...p, quantity_tiers: newTiers }
-                                              }))
-                                            }}
-                                            sx={{ '& input': { fontSize: '12px', padding: '4px 8px', fontWeight: 600 } }}
-                                            error={isLoss}
-                                          />
+                                          <span style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>
+                                            {price > 0 ? `${price.toLocaleString('vi-VN')}đ` : '—'}
+                                          </span>
                                           <span style={{ textAlign: 'right', fontSize: 11 }}>
                                             {price > 0 && cost > 0 ? (
                                               <span style={{
@@ -2188,6 +2193,182 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                         </div>
                                       )
                                     })}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          {/* Khu B — Chiết khấu riêng của site con per mốc thời gian */}
+                          {priceFields.filter(f => f.key && parseInt(f.value) > 0).length > 0 && (
+                            <div style={{ marginTop: 16 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 14 }}>🎯</span>
+                                Chiết khấu riêng của bạn <span style={{ fontSize: 10, fontWeight: 500, color: '#64748b' }}>(ưu tiên khi khách của bạn mua)</span>
+                              </div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+                                Đặt chiết khấu riêng theo số lượng cho từng mốc thời gian. Khi khách mua, hệ thống dùng tier của bạn; nếu không khớp sẽ rơi về giá gốc.
+                              </div>
+
+                              {priceFields.filter(f => f.key && parseInt(f.value) > 0).map(pf => {
+                                const durKey = pf.key
+                                const pfValue = parseInt(pf.value) || 0
+                                const pfCost = parseInt(pf.cost) || 0
+                                const tiers = childQuantityTiers[durKey] || []
+
+                                const lookupParentCost = (qty: number): number => {
+                                  const parentTiers = (pf.quantity_tiers || []).slice().sort((a: any, b: any) => (parseInt(a.min) || 0) - (parseInt(b.min) || 0))
+
+                                  for (const t of parentTiers) {
+                                    const min = parseInt(t.min) || 0
+                                    const max = t.max ? parseInt(t.max) : Infinity
+
+                                    if (qty >= min && qty <= max) return parseInt(t.cost) || 0
+                                  }
+
+                                  return pfCost
+                                }
+
+                                const updateTier = (idx: number, patch: Partial<{ min: string; max: string; price: string }>) => {
+                                  setChildQuantityTiers(prev => {
+                                    const curr = prev[durKey] || []
+                                    const next = curr.map((t, i) => i === idx ? { ...t, ...patch } : t)
+
+                                    return { ...prev, [durKey]: next }
+                                  })
+                                }
+
+                                const addTier = () => {
+                                  setChildQuantityTiers(prev => {
+                                    const curr = prev[durKey] || []
+
+                                    return { ...prev, [durKey]: [...curr, { min: '', max: '', price: '' }] }
+                                  })
+                                }
+
+                                const removeTier = (idx: number) => {
+                                  setChildQuantityTiers(prev => {
+                                    const curr = prev[durKey] || []
+
+                                    return { ...prev, [durKey]: curr.filter((_, i) => i !== idx) }
+                                  })
+                                }
+
+                                return (
+                                  <div key={durKey} style={{ border: '1px solid #bae6fd', borderRadius: 8, overflow: 'hidden', marginBottom: 8, background: '#f0f9ff' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e0f2fe', padding: '6px 10px' }}>
+                                      <span style={{ fontSize: 11, fontWeight: 600, color: '#075985' }}>
+                                        📦 Mốc {getDurationLabel(durKey)} — {tiers.length === 0 ? 'Chưa có tier riêng' : `${tiers.length} tier riêng`}
+                                      </span>
+                                      <button
+                                        type='button'
+                                        onClick={addTier}
+                                        style={{ fontSize: 11, padding: '3px 10px', borderRadius: 5, border: '1px solid #0ea5e9', background: '#fff', color: '#0369a1', cursor: 'pointer', fontWeight: 600 }}
+                                      >
+                                        + Thêm mức
+                                      </button>
+                                    </div>
+
+                                    {tiers.length === 0 ? (
+                                      <div style={{ fontSize: 11, color: '#64748b', padding: '8px 10px', fontStyle: 'italic' }}>
+                                        Chưa đặt tier riêng. Khách của bạn mua mốc này sẽ trả theo &quot;Giá mẹ bán&quot; ở bảng tham khảo bên trên.
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div style={{
+                                          display: 'grid', gridTemplateColumns: '70px 70px 100px 90px 90px 1fr 30px',
+                                          gap: 4, padding: '4px 10px',
+                                          fontSize: 10, fontWeight: 600, color: '#64748b', background: '#f0f9ff'
+                                        }}>
+                                          <span>SL từ</span>
+                                          <span>SL đến</span>
+                                          <span>Giá bán/proxy</span>
+                                          <span>Vốn mẹ (SL từ)</span>
+                                          <span>Lãi/proxy</span>
+                                          <span>Preview</span>
+                                          <span></span>
+                                        </div>
+                                        {tiers.map((tier, idx) => {
+                                          const tMin = parseInt(tier.min) || 0
+                                          const tMax = tier.max ? parseInt(tier.max) : 0
+                                          const tPrice = parseInt(tier.price) || 0
+                                          const costAtMin = tMin > 0 ? lookupParentCost(tMin) : 0
+                                          const profitPerProxy = tPrice > 0 && costAtMin > 0 ? tPrice - costAtMin : 0
+                                          const isLoss = tPrice > 0 && costAtMin > 0 && profitPerProxy < 0
+                                          const totalAtMin = tMin > 0 && tPrice > 0 ? tMin * tPrice : 0
+                                          const totalCostAtMin = tMin > 0 && costAtMin > 0 ? tMin * costAtMin : 0
+                                          const totalProfitAtMin = totalAtMin - totalCostAtMin
+                                          const costAtMax = tMax > 0 ? lookupParentCost(tMax) : 0
+                                          const totalAtMax = tMax > 0 && tPrice > 0 ? tMax * tPrice : 0
+                                          const totalCostAtMax = tMax > 0 && costAtMax > 0 ? tMax * costAtMax : 0
+                                          const totalProfitAtMax = totalAtMax - totalCostAtMax
+
+                                          return (
+                                            <div key={idx} style={{
+                                              display: 'grid', gridTemplateColumns: '70px 70px 100px 90px 90px 1fr 30px',
+                                              gap: 4, alignItems: 'center', padding: '5px 10px',
+                                              borderTop: '1px solid #e0f2fe',
+                                              background: isLoss ? '#fef2f2' : '#fff'
+                                            }}>
+                                              <TextField
+                                                size='small'
+                                                type='number'
+                                                value={tier.min}
+                                                onChange={e => updateTier(idx, { min: e.target.value })}
+                                                placeholder='Từ'
+                                                sx={{ '& input': { fontSize: '11px', padding: '4px 6px' } }}
+                                              />
+                                              <TextField
+                                                size='small'
+                                                type='number'
+                                                value={tier.max}
+                                                onChange={e => updateTier(idx, { max: e.target.value })}
+                                                placeholder='Đến (tùy)'
+                                                sx={{ '& input': { fontSize: '11px', padding: '4px 6px' } }}
+                                              />
+                                              <TextField
+                                                size='small'
+                                                type='number'
+                                                value={tier.price}
+                                                onChange={e => updateTier(idx, { price: e.target.value })}
+                                                placeholder='Giá'
+                                                error={isLoss}
+                                                sx={{ '& input': { fontSize: '11px', padding: '4px 6px', fontWeight: 600 } }}
+                                              />
+                                              <span style={{ fontSize: 11, color: '#64748b' }}>
+                                                {costAtMin > 0 ? `${costAtMin.toLocaleString('vi-VN')}đ` : '—'}
+                                              </span>
+                                              <span style={{ fontSize: 11, fontWeight: 700, color: profitPerProxy > 0 ? '#15803d' : profitPerProxy < 0 ? '#dc2626' : '#94a3b8' }}>
+                                                {profitPerProxy !== 0 ? `${profitPerProxy > 0 ? '+' : ''}${profitPerProxy.toLocaleString('vi-VN')}đ` : '—'}
+                                              </span>
+                                              <span style={{ fontSize: 10.5, color: '#475569', lineHeight: 1.4 }}>
+                                                {tMin > 0 && tPrice > 0 ? (
+                                                  <>
+                                                    <div>
+                                                      <strong>{tMin} proxy</strong> → khách trả {totalAtMin.toLocaleString('vi-VN')}đ, vốn {totalCostAtMin.toLocaleString('vi-VN')}đ,{' '}
+                                                      <span style={{ color: totalProfitAtMin > 0 ? '#15803d' : '#dc2626', fontWeight: 700 }}>
+                                                        lãi {totalProfitAtMin > 0 ? '+' : ''}{totalProfitAtMin.toLocaleString('vi-VN')}đ
+                                                      </span>
+                                                    </div>
+                                                    {tMax > 0 && (
+                                                      <div>
+                                                        <strong>{tMax} proxy</strong> → khách trả {totalAtMax.toLocaleString('vi-VN')}đ, vốn {totalCostAtMax.toLocaleString('vi-VN')}đ,{' '}
+                                                        <span style={{ color: totalProfitAtMax > 0 ? '#15803d' : '#dc2626', fontWeight: 700 }}>
+                                                          lãi {totalProfitAtMax > 0 ? '+' : ''}{totalProfitAtMax.toLocaleString('vi-VN')}đ
+                                                        </span>
+                                                      </div>
+                                                    )}
+                                                  </>
+                                                ) : <span style={{ color: '#94a3b8' }}>Nhập SL và giá để xem</span>}
+                                              </span>
+                                              <IconButton size='small' color='error' onClick={() => removeTier(idx)} sx={{ p: '2px' }}>
+                                                <X size={14} />
+                                              </IconButton>
+                                            </div>
+                                          )
+                                        })}
+                                      </>
+                                    )}
                                   </div>
                                 )
                               })}
