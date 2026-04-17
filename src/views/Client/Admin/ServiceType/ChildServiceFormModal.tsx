@@ -199,6 +199,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   const [pricingMode, setPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   const [parentPricingMode, setParentPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   const [timeUnit, setTimeUnit] = useState<'day' | 'month'>('day')
+  const [priceDisplayUnit, setPriceDisplayUnit] = useState<'' | 'day' | 'month'>('')
   const [pricePerUnit, setPricePerUnit] = useState('')
   const [costPerUnit, setCostPerUnit] = useState('')
   const [allowCustomAuth, setAllowCustomAuth] = useState(false)
@@ -345,6 +346,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setPricingMode(serviceData.pricing_mode || 'fixed')
       setParentPricingMode(meta.parent_pricing_mode || serviceData.pricing_mode || 'fixed')
       setTimeUnit(serviceData.time_unit || 'day')
+      setPriceDisplayUnit(serviceData.price_display_unit || '')
       setPricePerUnit(serviceData.price_per_unit?.toString() || '')
       setCostPerUnit(serviceData.cost_per_unit?.toString() || '')
       setAllowCustomAuth(!!meta.allow_custom_auth)
@@ -588,6 +590,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       ...data,
       pricing_mode: pricingMode,
       time_unit: timeUnit,
+      price_display_unit: priceDisplayUnit || null,
       price_per_unit: pricingMode === 'per_unit' ? parseInt(pricePerUnit) || null : null,
       // Luôn giữ cost_per_unit — cần để tính giá nhập khi đổi mode
       cost_per_unit: parseInt(costPerUnit) || null,
@@ -1137,8 +1140,23 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                           marginBottom: 8
                         }}
                       >
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
-                          Giá theo {timeUnit === 'month' ? 'tháng' : 'ngày'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                            Giá theo {timeUnit === 'month' ? 'tháng' : 'ngày'}
+                          </div>
+                          <TextField
+                            select
+                            size='small'
+                            label='Hiển thị giá theo'
+                            value={priceDisplayUnit}
+                            onChange={e => setPriceDisplayUnit(e.target.value as '' | 'day' | 'month')}
+                            sx={{ minWidth: 170, '& .MuiInputBase-input': { fontSize: '12px', py: 0.5 }, '& .MuiInputLabel-root': { fontSize: '12px' } }}
+                            SelectProps={{ native: false }}
+                          >
+                            <MenuItem value=''>Mặc định</MenuItem>
+                            <MenuItem value='day'>Ngày</MenuItem>
+                            <MenuItem value='month'>Tháng</MenuItem>
+                          </TextField>
                         </div>
                         {selectedSupplierCode && (
                           <button

@@ -129,7 +129,13 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
 
   // Giá hiển thị ở header — giá thấp nhất / đơn vị thời gian (gồm quantity_tiers)
   const isPerUnit = provider.pricing_mode === 'per_unit'
-  const perSuffix = provider.time_unit === 'month' ? t('staticProxy.perMonth') : t('staticProxy.perDay')
+  const sellUnit: 'day' | 'month' = provider.time_unit === 'month' ? 'month' : 'day'
+  const displayUnit: 'day' | 'month' = provider.price_display_unit === 'day' || provider.price_display_unit === 'month'
+    ? provider.price_display_unit
+    : sellUnit
+  const unitFactor = { day: 1, month: 30 }
+  const displayRatio = unitFactor[displayUnit] / unitFactor[sellUnit]
+  const perSuffix = displayUnit === 'month' ? t('staticProxy.perMonth') : t('staticProxy.perDay')
 
   const minPricePerUnit = useMemo(() => {
     if (isPerUnit) {
@@ -170,7 +176,8 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
     return min === Infinity ? 0 : Math.round(min)
   }, [isPerUnit, provider.price_per_unit, provider.metadata, priceOptions])
 
-  const headerPrice = minPricePerUnit || (isPerUnit ? (provider.price_per_unit || 0) : priceOptions[0]?.price || parseInt(provider?.price, 10) || 0)
+  const rawHeaderPrice = minPricePerUnit || (isPerUnit ? (provider.price_per_unit || 0) : priceOptions[0]?.price || parseInt(provider?.price, 10) || 0)
+  const headerPrice = Math.round(rawHeaderPrice * displayRatio)
   const headerPriceSuffix = perSuffix
 
   // Tính % tiết kiệm tối đa

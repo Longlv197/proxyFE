@@ -757,6 +757,7 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
 
   const [pricingMode, setPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   const [timeUnit, setTimeUnit] = useState<'day' | 'month'>('day')
+  const [priceDisplayUnit, setPriceDisplayUnit] = useState<'' | 'day' | 'month'>('')
   const [pricePerUnit, setPricePerUnit] = useState('')
   const [costPerUnit, setCostPerUnit] = useState('')
 
@@ -876,6 +877,7 @@ return { values: {}, errors: formattedErrors }
       // Load pricing mode fields
       setPricingMode(serviceData.pricing_mode || 'fixed')
       setTimeUnit(serviceData.time_unit || 'day')
+      setPriceDisplayUnit(serviceData.price_display_unit || '')
       setPricePerUnit(serviceData.price_per_unit?.toString() || '')
       setCostPerUnit(serviceData.cost_per_unit?.toString() || '')
 
@@ -1072,6 +1074,7 @@ return { values: {}, errors: formattedErrors }
       metadata: metadataFinal,
       pricing_mode: pricingMode,
       time_unit: timeUnit,
+      price_display_unit: priceDisplayUnit || null,
       price_per_unit: pricingMode === 'per_unit' ? (parseInt(pricePerUnit) || null) : null,
       cost_per_unit: pricingMode === 'per_unit' ? (parseFloat(costPerUnit) || null) : null,
     }
@@ -2099,10 +2102,25 @@ return <Chip key={val} label={p?.label || val} size='small' />
                           select
                           fullWidth
                           size='small'
-                          label='Đơn vị'
+                          label='Đơn vị bán'
                           value={timeUnit}
                           onChange={(e) => setTimeUnit(e.target.value as 'day' | 'month')}
                         >
+                          <MenuItem value='day'>Ngày</MenuItem>
+                          <MenuItem value='month'>Tháng</MenuItem>
+                        </CustomTextField>
+                      </Grid2>
+                      <Grid2 size={{ xs: 12, sm: 2.5 }}>
+                        <CustomTextField
+                          select
+                          fullWidth
+                          size='small'
+                          label='Đơn vị hiển thị giá'
+                          value={priceDisplayUnit}
+                          onChange={(e) => setPriceDisplayUnit(e.target.value as '' | 'day' | 'month')}
+                          helperText='Để "Mặc định" nếu muốn hiện theo đơn vị bán'
+                        >
+                          <MenuItem value=''>Mặc định (theo đơn vị bán)</MenuItem>
                           <MenuItem value='day'>Ngày</MenuItem>
                           <MenuItem value='month'>Tháng</MenuItem>
                         </CustomTextField>
