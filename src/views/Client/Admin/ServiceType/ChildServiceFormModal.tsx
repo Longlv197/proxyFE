@@ -192,7 +192,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null)
   const [selectedSupplierCode, setSelectedSupplierCode] = useState<string | null>(null)
   const { notification, showSuccess, showError, clear: clearNotification } = useFormNotification()
-  const [priceFields, setPriceFields] = useState<Array<{ key: string; value: string; cost: string }>>([])
+  const [priceFields, setPriceFields] = useState<Array<{ key: string; value: string; cost: string; quantity_tiers?: any[] }>>([])
   const [pricingMode, setPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   const [parentPricingMode, setParentPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   const [timeUnit, setTimeUnit] = useState<'day' | 'month'>('day')
@@ -329,7 +329,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
           prices.map((p: any) => ({
             key: p.key || '',
             value: String(p.value || ''),
-            cost: String(supplierPrices[p.key] || p.cost || '')
+            cost: String(supplierPrices[p.key] || p.cost || ''),
+            quantity_tiers: p.quantity_tiers || []
           }))
         )
       }
@@ -446,11 +447,20 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       // Fixed: provider_prices giờ trả giá vốn gốc, sell_prices trả giá bán tham khảo
       const costs = selectedProduct.provider_prices || {}
       const sells = selectedProduct.sell_prices || {}
+
+      // Lookup quantity_tiers theo key từ price_by_duration raw
+      const tiersByKey: Record<string, any[]> = {}
+
+      ;(selectedProduct.price_by_duration || []).forEach((p: any) => {
+        if (p.key) tiersByKey[p.key] = p.quantity_tiers || []
+      })
+
       setPriceFields(
         Object.entries(costs).map(([key, cost]) => ({
           key,
-          value: String(sells[key] || ''), // Giá bán tham khảo từ site mẹ (admin có thể sửa)
-          cost: String(cost) // Giá vốn gốc
+          value: String(sells[key] || ''),
+          cost: String(cost),
+          quantity_tiers: tiersByKey[key] || []
         }))
       )
     }
@@ -582,7 +592,13 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                 parseInt(p.cost) ||
                 (parentPricingMode === 'per_unit' ? (parseInt(costPerUnit) || 0) * (parseInt(p.key) || 0) : 0)
 
-              return { key: p.key, value: parseInt(p.value), cost }
+              const entry: any = { key: p.key, value: parseInt(p.value), cost }
+
+              if (p.quantity_tiers && p.quantity_tiers.length > 0) {
+                entry.quantity_tiers = p.quantity_tiers
+              }
+
+              return entry
             }),
       cost_price:
         pricingMode === 'per_unit'
@@ -1739,17 +1755,25 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                           setSyncStatus('done')
                         } else if (product?.provider_prices) {
                           const sp = product.provider_prices
+
+                          // Lookup quantity_tiers từ parent price_by_duration
+                          const tiersByKey: Record<string, any[]> = {}
+
+                          ;(product.price_by_duration || []).forEach((p: any) => {
+                            if (p.key) tiersByKey[p.key] = p.quantity_tiers || []
+                          })
+
                           setPriceFields(prev => {
-                            // Cập nhật cost cho mốc đã có
                             const updated = prev.map(p => ({
                               ...p,
-                              cost: String(sp[p.key] || p.cost || '')
+                              cost: String(sp[p.key] || p.cost || ''),
+                              quantity_tiers: tiersByKey[p.key] || p.quantity_tiers || []
                             }))
-                            // Thêm mốc mới từ site mẹ mà local chưa có
                             const existingKeys = new Set(prev.map(p => p.key))
                             const newFields = Object.entries(sp)
                               .filter(([key]) => !existingKeys.has(key))
-                              .map(([key, cost]) => ({ key, value: '', cost: String(cost) }))
+                              .map(([key, cost]) => ({ key, value: '', cost: String(cost), quantity_tiers: tiersByKey[key] || [] }))
+
                             return [...updated, ...newFields]
                           })
                           setSyncStatus('done')
@@ -1964,6 +1988,37 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               ? `Giá nhập tự tính: ${parentCostPerDay.toLocaleString('vi-VN')}đ/${unitLabel} × số ${unitLabel}. Bạn tự đặt giá bán cho từng mốc.`
                               : 'Giá nhập lấy tự động từ site mẹ. Phần chênh lệch là lợi nhuận của bạn.'}
                           </div>
+
+                          {/* Chiết khấu theo số lượng — đồng bộ từ site mẹ, read-only */}
+                          {priceFields.some(f => f.quantity_tiers && f.quantity_tiers.length > 0) && (
+                            <div style={{ marginTop: 12, padding: '10px 12px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginBottom: 8 }}>
+                                Chiết khấu theo số lượng (từ NCC)
+                              </div>
+                              {priceFields.filter(f => f.quantity_tiers && f.quantity_tiers.length > 0).map((f, idx) => (
+                                <div key={idx} style={{ marginBottom: 8 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 600, color: '#334155', marginBottom: 4 }}>
+                                    Mốc {getDurationLabel(f.key)}:
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    {f.quantity_tiers!.map((t: any, i: number) => (
+                                      <span key={i} style={{
+                                        padding: '3px 8px', borderRadius: 6,
+                                        background: '#fff', border: '1px solid #bbf7d0',
+                                        fontSize: 11, color: '#15803d', fontWeight: 500
+                                      }}>
+                                        {t.min}{t.max ? `-${t.max}` : '+'}: {t.price ? `${parseInt(t.price).toLocaleString('vi-VN')}đ` : (t.discount ? `-${t.discount}%` : '—')}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                              <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                                Khách mua số lượng lớn sẽ được áp giá này tự động (theo markup của bạn).
+                              </div>
+                            </div>
+                          )}
+
                           {/* Thêm/xóa mốc — chỉ khi mẹ per_unit (con tự tạo mốc), mẹ fixed thì khóa */}
                           {parentIsPerUnit && (
                             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
