@@ -1991,31 +1991,94 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
                           {/* Chiết khấu theo số lượng — đồng bộ từ site mẹ, read-only */}
                           {priceFields.some(f => f.quantity_tiers && f.quantity_tiers.length > 0) && (
-                            <div style={{ marginTop: 12, padding: '10px 12px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginBottom: 8 }}>
-                                Chiết khấu theo số lượng (từ NCC)
+                            <div style={{ marginTop: 16, padding: 14, background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ fontSize: 16 }}>💰</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>
+                                  Chiết khấu tự động theo số lượng
+                                </span>
                               </div>
-                              {priceFields.filter(f => f.quantity_tiers && f.quantity_tiers.length > 0).map((f, idx) => (
-                                <div key={idx} style={{ marginBottom: 8 }}>
-                                  <div style={{ fontSize: 11, fontWeight: 600, color: '#334155', marginBottom: 4 }}>
-                                    Mốc {getDurationLabel(f.key)}:
-                                  </div>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                    {f.quantity_tiers!.map((t: any, i: number) => (
-                                      <span key={i} style={{
-                                        padding: '3px 8px', borderRadius: 6,
-                                        background: '#fff', border: '1px solid #bbf7d0',
-                                        fontSize: 11, color: '#15803d', fontWeight: 500
-                                      }}>
-                                        {t.min}{t.max ? `-${t.max}` : '+'}: {t.price ? `${parseInt(t.price).toLocaleString('vi-VN')}đ` : (t.discount ? `-${t.discount}%` : '—')}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                              <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-                                Khách mua số lượng lớn sẽ được áp giá này tự động (theo markup của bạn).
+                              <div style={{ fontSize: 11, color: '#475569', marginBottom: 10, lineHeight: 1.5 }}>
+                                Khi khách mua đủ số lượng trong 1 đơn, hệ thống <strong>tự động</strong> áp giá thấp hơn.
+                                Giá áp dụng = <strong>mốc cao nhất</strong> mà số lượng đạt được.
                               </div>
+
+                              {priceFields.filter(f => f.quantity_tiers && f.quantity_tiers.length > 0).map((f, idx) => {
+                                const basePrice = parseInt(f.value) || 0
+                                const sortedTiers = [...f.quantity_tiers!].sort((a: any, b: any) => (parseInt(a.min) || 0) - (parseInt(b.min) || 0))
+
+                                return (
+                                  <div key={idx} style={{ marginBottom: 10, padding: 10, background: '#fff', borderRadius: 8, border: '1px solid #d1fae5' }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>
+                                      Mốc {getDurationLabel(f.key)}
+                                      {basePrice > 0 && (
+                                        <span style={{ fontWeight: 400, color: '#64748b', marginLeft: 6 }}>
+                                          (giá gốc: {basePrice.toLocaleString('vi-VN')}đ)
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 11 }}>
+                                      <div style={{ fontWeight: 700, color: '#64748b', padding: '4px 0' }}>Số lượng mua</div>
+                                      <div style={{ fontWeight: 700, color: '#64748b', padding: '4px 0', textAlign: 'right' }}>Giá / proxy</div>
+                                      <div style={{ fontWeight: 700, color: '#64748b', padding: '4px 0', textAlign: 'right' }}>Tiết kiệm</div>
+
+                                      {/* Dòng giá gốc (1 - min đầu tiên - 1) */}
+                                      {basePrice > 0 && sortedTiers[0] && (
+                                        <>
+                                          <div style={{ padding: '4px 0', color: '#334155' }}>
+                                            1 - {(parseInt(sortedTiers[0].min) || 1) - 1} proxy
+                                          </div>
+                                          <div style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600, color: '#334155' }}>
+                                            {basePrice.toLocaleString('vi-VN')}đ
+                                          </div>
+                                          <div style={{ padding: '4px 0', textAlign: 'right', color: '#94a3b8' }}>—</div>
+                                        </>
+                                      )}
+
+                                      {/* Các mốc chiết khấu */}
+                                      {sortedTiers.map((t: any, i: number) => {
+                                        const tierPrice = t.price ? parseInt(t.price) : (t.discount && basePrice ? Math.round(basePrice * (1 - parseFloat(t.discount) / 100)) : 0)
+                                        const savingsPct = basePrice > 0 && tierPrice > 0 ? Math.round((1 - tierPrice / basePrice) * 100) : 0
+                                        const saveAmount = basePrice - tierPrice
+                                        const range = t.max ? `${t.min} - ${t.max} proxy` : `${t.min}+ proxy`
+
+                                        return (
+                                          <div key={i} style={{ display: 'contents' }}>
+                                            <div style={{ padding: '4px 0', color: '#15803d', fontWeight: 600 }}>
+                                              {range}
+                                            </div>
+                                            <div style={{ padding: '4px 0', textAlign: 'right', fontWeight: 700, color: '#15803d' }}>
+                                              {tierPrice.toLocaleString('vi-VN')}đ
+                                            </div>
+                                            <div style={{ padding: '4px 0', textAlign: 'right' }}>
+                                              {savingsPct > 0 ? (
+                                                <span style={{ display: 'inline-block', padding: '1px 6px', background: '#dcfce7', borderRadius: 4, color: '#15803d', fontWeight: 700 }}>
+                                                  -{savingsPct}% ({saveAmount.toLocaleString('vi-VN')}đ)
+                                                </span>
+                                              ) : '—'}
+                                            </div>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+
+                                    {/* Ví dụ */}
+                                    {basePrice > 0 && sortedTiers[sortedTiers.length - 1] && (() => {
+                                      const bestTier = sortedTiers[sortedTiers.length - 1]
+                                      const bestPrice = bestTier.price ? parseInt(bestTier.price) : (bestTier.discount ? Math.round(basePrice * (1 - parseFloat(bestTier.discount) / 100)) : basePrice)
+                                      const qty = parseInt(bestTier.min) || 0
+
+                                      return (
+                                        <div style={{ marginTop: 8, padding: '6px 10px', background: '#fef3c7', borderRadius: 6, fontSize: 10.5, color: '#92400e' }}>
+                                          <strong>VD:</strong> Khách mua {qty} proxy → tổng {(qty * bestPrice).toLocaleString('vi-VN')}đ
+                                          {' '}(thay vì {(qty * basePrice).toLocaleString('vi-VN')}đ → tiết kiệm {(qty * (basePrice - bestPrice)).toLocaleString('vi-VN')}đ)
+                                        </div>
+                                      )
+                                    })()}
+                                  </div>
+                                )
+                              })}
                             </div>
                           )}
 
