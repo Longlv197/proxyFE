@@ -20,6 +20,9 @@
   "staticProxy": {
     "title": "Proxy dân cư",
     "describe": "Chọn gói proxy phù hợp với nhu cầu của bạn",
+    "onlyFrom": "chỉ từ",
+    "perDay": "/ngày",
+    "perMonth": "/tháng",
     "days": "Ngày",
     "location": "Location",
     "duration": "Thời gian",

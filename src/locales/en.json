@@ -19,6 +19,9 @@
   "staticProxy": {
     "title": "Residential Proxy",
     "describe": "Choose the proxy package that suits your needs",
+    "onlyFrom": "from",
+    "perDay": "/day",
+    "perMonth": "/month",
     "days": "Days",
     "location": "Location",
     "duration": "Duration",

@@ -7,6 +7,7 @@ import '@/app/[lang]/(private)/(client)/components/proxy-card/styles.css'
 import { ShoppingCart } from 'lucide-react'
 
 import { useSession } from 'next-auth/react'
+import { useTranslation } from 'react-i18next'
 
 import CheckoutModal from '@/components/checkout-modal/CheckoutModal'
 import type { PriceOption } from '@/components/checkout-modal/CheckoutModal'
@@ -28,6 +29,7 @@ interface ProxyCardProps {
 const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, countries = [], previewMode = false }) => {
   const session = useSession()
   const { openAuthModal } = useModalContext()
+  const { t } = useTranslation()
   const { show_product_code, product_fields } = useBranding()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
 
@@ -118,12 +120,51 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
 
   if (shouldHideByTag(provider?.tag)) return null
 
-  // Giá hiển thị ở header
+  // Giá hiển thị ở header — giá thấp nhất / đơn vị thời gian (gồm quantity_tiers)
   const isPerUnit = provider.pricing_mode === 'per_unit'
-  const headerPrice = isPerUnit
-    ? provider.price_per_unit || 0
-    : priceOptions[0]?.price || parseInt(provider?.price, 10) || 0
-  const headerPriceSuffix = isPerUnit ? `/${provider.time_unit === 'month' ? 'tháng' : 'ngày'}` : ''
+  const perSuffix = provider.time_unit === 'month' ? t('staticProxy.perMonth') : t('staticProxy.perDay')
+
+  const minPricePerUnit = useMemo(() => {
+    if (isPerUnit) {
+      // Per_unit: check quantity_tiers trong metadata (áp trực tiếp lên giá/đơn vị)
+      const base = provider.price_per_unit || 0
+      const qtyTiers = provider.metadata?.quantity_tiers || []
+      let min = base
+
+      qtyTiers.forEach((t: any) => {
+        const tierPrice = t.price ? parseInt(t.price) : (t.discount ? Math.round(base * (1 - parseFloat(t.discount) / 100)) : 0)
+
+        if (tierPrice > 0 && tierPrice < min) min = tierPrice
+      })
+
+      return min
+    }
+
+    // Fixed: tính price/day cho từng mốc thời gian, gồm quantity_tiers
+    let min = Infinity
+
+    priceOptions.forEach((opt: any) => {
+      const days = parseInt(opt.key) || 1
+      const basePrice = opt.price || 0
+      const basePricePerDay = basePrice / days
+
+      if (basePricePerDay > 0 && basePricePerDay < min) min = basePricePerDay
+
+      const qtyTiers = opt.quantity_tiers || []
+
+      qtyTiers.forEach((t: any) => {
+        const tierPrice = t.price ? parseInt(t.price) : (t.discount ? Math.round(basePrice * (1 - parseFloat(t.discount) / 100)) : 0)
+        const pricePerDay = tierPrice > 0 ? tierPrice / days : 0
+
+        if (pricePerDay > 0 && pricePerDay < min) min = pricePerDay
+      })
+    })
+
+    return min === Infinity ? 0 : Math.round(min)
+  }, [isPerUnit, provider.price_per_unit, provider.metadata, priceOptions])
+
+  const headerPrice = minPricePerUnit || (isPerUnit ? (provider.price_per_unit || 0) : priceOptions[0]?.price || parseInt(provider?.price, 10) || 0)
+  const headerPriceSuffix = perSuffix
 
   // Tính % tiết kiệm tối đa
   const maxDiscount = useMemo(() => {
@@ -329,9 +370,7 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
         <div className='card-footer'>
           <div>
             <div className='price-amount'>
-              {(priceOptions.length > 1 || isPerUnit) && (
-                <span style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8', marginRight: '2px' }}>từ </span>
-              )}
+              <span style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8', marginRight: '2px' }}>{t('staticProxy.onlyFrom')} </span>
               {headerPrice.toLocaleString('vi-VN')}đ{headerPriceSuffix}
             </div>
             {maxDiscount > 0 && (

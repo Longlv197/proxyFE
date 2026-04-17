@@ -800,34 +800,31 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     </div>
                   ) : null}
 
-                  {/* Tier table */}
+                  {/* Tier cards — click để nhảy đến mốc */}
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
-                    BẢNG CHIẾT KHẤU THEO SỐ LƯỢNG
+                    CHIẾT KHẤU THEO SỐ LƯỢNG — click để áp dụng
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 11 }}>
-                    <div style={{ fontWeight: 600, color: '#94a3b8', padding: '4px 8px' }}>Số lượng</div>
-                    <div style={{ fontWeight: 600, color: '#94a3b8', padding: '4px 8px', textAlign: 'right' }}>Giá/proxy</div>
-                    <div style={{ fontWeight: 600, color: '#94a3b8', padding: '4px 8px', textAlign: 'right' }}>Tiết kiệm</div>
-
-                    {/* Base row — chỉ hiện khi tier đầu tiên min >= 2 */}
+                  <div className='perunit-tiers'>
+                    {/* Card mốc 1 proxy (không CK) — nếu tier đầu min >= 2 */}
                     {basePrice > 0 && sortedTiers[0] && (parseInt(sortedTiers[0].min) || 0) >= 2 && (() => {
                       const firstMin = parseInt(sortedTiers[0].min) || 2
                       const isBaseActive = quantity < firstMin
 
                       return (
-                        <div key='base' style={{ display: 'contents' }}>
-                          <div style={{ padding: '6px 8px', color: isBaseActive ? '#15803d' : '#334155', fontWeight: isBaseActive ? 700 : 500, background: isBaseActive ? '#dcfce7' : 'transparent', borderRadius: 4 }}>
-                            1 - {firstMin - 1}
-                          </div>
-                          <div style={{ padding: '6px 8px', textAlign: 'right', fontWeight: isBaseActive ? 700 : 500, color: isBaseActive ? '#15803d' : '#334155', background: isBaseActive ? '#dcfce7' : 'transparent' }}>
-                            {basePrice.toLocaleString('vi-VN')}đ
-                          </div>
-                          <div style={{ padding: '6px 8px', textAlign: 'right', color: '#94a3b8', background: isBaseActive ? '#dcfce7' : 'transparent' }}>—</div>
-                        </div>
+                        <button
+                          type='button'
+                          className={`perunit-tier ${isBaseActive ? 'active' : ''}`}
+                          onClick={() => setQuantity(1)}
+                        >
+                          <span className='perunit-tier-top'>
+                            <span className='perunit-tier-days'>1-{firstMin - 1}</span>
+                            <span className='perunit-tier-unit'>proxy</span>
+                          </span>
+                          <span className='perunit-tier-price'>{basePrice.toLocaleString('vi-VN')}đ</span>
+                        </button>
                       )
                     })()}
 
-                    {/* Tier rows */}
                     {sortedTiers.map((t: any, i: number) => {
                       const min = parseInt(t.min) || 0
                       const max = parseInt(t.max) || Infinity
@@ -835,22 +832,22 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       const disc = parseFloat(t.discount) || 0
                       const tierPrice = t.price ? parseInt(t.price) : (disc && basePrice ? Math.round(basePrice * (1 - disc / 100)) : 0)
                       const savingsPct = basePrice > 0 && tierPrice > 0 ? Math.round((1 - tierPrice / basePrice) * 100) : 0
-                      const range = t.max ? `${t.min} - ${t.max}` : `${t.min}+`
+                      const rangeLabel = t.max ? `${t.min}-${t.max}` : `${t.min}+`
 
                       return (
-                        <div key={i} style={{ display: 'contents' }}>
-                          <div style={{ padding: '6px 8px', fontWeight: isActive ? 700 : 600, color: isActive ? '#15803d' : '#475569', background: isActive ? '#dcfce7' : 'transparent', borderRadius: 4 }}>
-                            {range}
-                          </div>
-                          <div style={{ padding: '6px 8px', textAlign: 'right', fontWeight: isActive ? 700 : 600, color: isActive ? '#15803d' : '#16a34a', background: isActive ? '#dcfce7' : 'transparent' }}>
-                            {tierPrice.toLocaleString('vi-VN')}đ
-                          </div>
-                          <div style={{ padding: '6px 8px', textAlign: 'right', background: isActive ? '#dcfce7' : 'transparent' }}>
-                            <span style={{ padding: '1px 6px', borderRadius: 4, background: isActive ? '#16a34a' : '#dcfce7', color: isActive ? '#fff' : '#15803d', fontWeight: 700, fontSize: 10.5 }}>
-                              -{savingsPct}%
-                            </span>
-                          </div>
-                        </div>
+                        <button
+                          type='button'
+                          key={i}
+                          className={`perunit-tier ${isActive ? 'active' : ''}`}
+                          onClick={() => setQuantity(min)}
+                        >
+                          {savingsPct > 0 && <span className='perunit-tier-badge'>-{savingsPct}%</span>}
+                          <span className='perunit-tier-top'>
+                            <span className='perunit-tier-days'>{rangeLabel}</span>
+                            <span className='perunit-tier-unit'>proxy</span>
+                          </span>
+                          <span className='perunit-tier-price'>{tierPrice.toLocaleString('vi-VN')}đ</span>
+                        </button>
                       )
                     })}
                   </div>

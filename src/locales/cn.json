@@ -18,6 +18,9 @@
   "staticProxy": {
     "title": "住宅代理",
     "describe": "选择适合您需求的代理套餐",
+    "onlyFrom": "仅从",
+    "perDay": "/天",
+    "perMonth": "/月",
     "days": "天数",
     "location": "地点",
     "duration": "时长",
