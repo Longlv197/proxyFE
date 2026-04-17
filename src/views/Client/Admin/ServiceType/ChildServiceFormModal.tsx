@@ -193,6 +193,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   const [selectedSupplierCode, setSelectedSupplierCode] = useState<string | null>(null)
   const { notification, showSuccess, showError, clear: clearNotification } = useFormNotification()
   const [priceFields, setPriceFields] = useState<Array<{ key: string; value: string; cost: string; quantity_tiers?: any[] }>>([])
+
+  // Snapshot chiết khấu SL site mẹ áp cho site con — read-only reference cho admin
+  const [providerQuantityTiers, setProviderQuantityTiers] = useState<Record<string, any[]>>({})
   const [pricingMode, setPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   const [parentPricingMode, setParentPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   const [timeUnit, setTimeUnit] = useState<'day' | 'month'>('day')
@@ -335,6 +338,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         )
       }
 
+      // Load snapshot tiers site mẹ áp
+      setProviderQuantityTiers(meta.provider_quantity_tiers || {})
+
       // Load pricing mode
       setPricingMode(serviceData.pricing_mode || 'fixed')
       setParentPricingMode(meta.parent_pricing_mode || serviceData.pricing_mode || 'fixed')
@@ -463,6 +469,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
           quantity_tiers: tiersByKey[key] || []
         }))
       )
+
+      // Snapshot tiers site mẹ áp (cho admin reference)
+      setProviderQuantityTiers(tiersByKey)
     }
   }, [selectedProduct, isEditMode, setValue])
 
@@ -499,6 +508,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setSupplierCodeInput('')
       setCheckedProduct(null)
       setPriceFields([])
+      setProviderQuantityTiers({})
       setAllowCustomAuth(false)
       setRenewable(false)
       setRenewalDuration('ncc')
@@ -699,7 +709,10 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
                   return [p.key, cost]
                 })
-              )
+              ),
+
+        // Snapshot chiết khấu SL site mẹ áp (internal, strip khỏi user API)
+        provider_quantity_tiers: providerQuantityTiers
       }
     }
 
@@ -1784,6 +1797,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
                             return [...updated, ...newFields]
                           })
+                          setProviderQuantityTiers(tiersByKey)
                           setSyncStatus('done')
                         } else {
                           setSyncStatus('error')
@@ -1997,7 +2011,49 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               : 'Giá nhập lấy tự động từ site mẹ. Phần chênh lệch là lợi nhuận của bạn.'}
                           </div>
 
-                          {/* Chiết khấu theo số lượng — admin site con sửa giá bán, cost từ NCC */}
+                          {/* Block 1: Site mẹ áp cho bạn — read-only, reference */}
+                          {Object.keys(providerQuantityTiers).length > 0 && Object.values(providerQuantityTiers).some((t: any) => Array.isArray(t) && t.length > 0) && (
+                            <div style={{ marginTop: 16, padding: 14, background: '#fef3c7', borderRadius: 10, border: '1px solid #fcd34d' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ fontSize: 16 }}>📥</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                                  Site mẹ áp chiết khấu SL cho bạn
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 11, color: '#78350f', marginBottom: 10, lineHeight: 1.5 }}>
+                                Đây là giá <strong>site mẹ</strong> áp cho bạn khi khách mua SL lớn. Tham khảo để đặt giá bán phù hợp ở bảng bên dưới.
+                              </div>
+                              {Object.entries(providerQuantityTiers).filter(([, tiers]: any) => Array.isArray(tiers) && tiers.length > 0).map(([dur, tiers]: any) => {
+                                const sorted = [...tiers].sort((a: any, b: any) => (parseInt(a.min) || 0) - (parseInt(b.min) || 0))
+
+                                return (
+                                  <div key={dur} style={{ marginBottom: 8, padding: 8, background: '#fff', borderRadius: 6, border: '1px solid #fde68a' }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#78350f', marginBottom: 4 }}>
+                                      Mốc {getDurationLabel(dur)}
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                      {sorted.map((t: any, i: number) => {
+                                        const range = t.max ? `${t.min}-${t.max}` : `${t.min}+`
+                                        const price = t.price ? parseInt(t.price) : 0
+
+                                        return (
+                                          <span key={i} style={{
+                                            padding: '3px 8px', borderRadius: 4, fontSize: 11,
+                                            background: '#fffbeb', border: '1px solid #fde68a',
+                                            color: '#78350f', fontWeight: 600
+                                          }}>
+                                            {range}: {price > 0 ? `${price.toLocaleString('vi-VN')}đ` : '—'}
+                                          </span>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          {/* Block 2: Chiết khấu của bạn — admin site con sửa giá bán, cost từ NCC */}
                           {priceFields.some(f => f.quantity_tiers && f.quantity_tiers.length > 0) && (
                             <div style={{ marginTop: 16, padding: 14, background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
