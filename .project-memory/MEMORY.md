@@ -60,6 +60,7 @@
 
 ## TODO
 - **RÀ SOÁT BẮT BUỘC**: sau mỗi thay đổi logic → grep provider trong files liên quan → đảm bảo !isChild guard
+- [Tier display config](project_tier_display_config.md) — DONE 17/04: price_display_unit tách khỏi time_unit, dropdown mẹ+con, ProxyCard convert × hệ số. Fixed mode + site-level config để sau.
 - [Residential Proxy Provider](project_residential_proxy_provider.md) — CHƯA LÀM: NCC bán theo GB
 - [Naming Refactor](project_naming_refactor.md) — CHƯA: rename supplier→provider variables
 - Params mapping FE admin UI
