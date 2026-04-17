@@ -105,18 +105,28 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
   }
 
   // Build price options cho CheckoutModal
+  // Nếu sản phẩm có child_quantity_tiers (site con override) cho mốc nào → dùng thay tier mẹ
   const priceOptions: PriceOption[] = useMemo(() => {
     if (hasPriceByDuration) {
-      return provider.price_by_duration.map((item: any) => ({
-        key: item.key,
-        label: getDurationLabel(item.key),
-        price: parseInt(item.value, 10) || 0,
-        quantity_tiers: item.quantity_tiers || []
-      }))
+      const childTiersMap = provider.metadata?.child_quantity_tiers || {}
+
+      return provider.price_by_duration.map((item: any) => {
+        const childTiers = childTiersMap[item.key]
+        const effectiveTiers = Array.isArray(childTiers) && childTiers.length > 0
+          ? childTiers
+          : (item.quantity_tiers || [])
+
+        return {
+          key: item.key,
+          label: getDurationLabel(item.key),
+          price: parseInt(item.value, 10) || 0,
+          quantity_tiers: effectiveTiers
+        }
+      })
     }
 
     return [{ key: '1', label: 'Ngày', price: parseInt(provider.price, 10) || 0 }]
-  }, [provider.price_by_duration, provider.price, hasPriceByDuration])
+  }, [provider.price_by_duration, provider.price, hasPriceByDuration, provider.metadata])
 
   // Protocols cho CheckoutModal
   const protocolList: string[] = useMemo(() => {
