@@ -232,7 +232,8 @@ export const apiEndpoints: ApiEndpoint[] = [
     auth: 'x_api_key',
     responses: {
       '200 OK': `{
-  "status": "success",
+  "success": true,
+  "message": "Lấy danh sách sản phẩm thành công",
   "data": [
     {
       "id": 1,
@@ -240,17 +241,18 @@ export const apiEndpoints: ApiEndpoint[] = [
       "name": "Proxy Xoay VN",
       "type": 1,
       "price_by_duration": [
-        { "key": "1", "value": 5000 },    // 1 ngày = 5,000đ
-        { "key": "7", "value": 25000 },   // 7 ngày = 25,000đ
-        { "key": "30", "value": 80000 }   // 30 ngày = 80,000đ
+        { "key": "1", "value": 5000 },
+        { "key": "7", "value": 25000 },
+        { "key": "30", "value": 80000 }
       ],
       "country": "VN"
     }
   ]
 }`,
       '401 ERROR': `{
+  "success": false,
   "error": "invalid_credentials",
-  "message": "Invalid API key."
+  "message": "API key không hợp lệ"
 }`
     },
     statusCodes: ['200 OK', '401 ERROR']
@@ -273,7 +275,8 @@ export const apiEndpoints: ApiEndpoint[] = [
     ],
     responses: {
       '200 OK': `{
-  "status": "success",
+  "success": true,
+  "message": "Lấy danh sách đơn hàng thành công",
   "data": {
     "current_page": 1,
     "data": [
@@ -290,8 +293,9 @@ export const apiEndpoints: ApiEndpoint[] = [
   }
 }`,
       '401 ERROR': `{
+  "success": false,
   "error": "invalid_credentials",
-  "message": "Invalid API key."
+  "message": "API key không hợp lệ"
 }`
     },
     statusCodes: ['200 OK', '401 ERROR']
@@ -310,7 +314,8 @@ export const apiEndpoints: ApiEndpoint[] = [
     ],
     responses: {
       '200 OK': `{
-  "status": "success",
+  "success": true,
+  "message": "Lấy chi tiết đơn hàng thành công",
   "data": {
     "order_code": "ORD-ABC123",
     "status": "in_use",
@@ -330,8 +335,9 @@ export const apiEndpoints: ApiEndpoint[] = [
   }
 }`,
       '404 ERROR': `{
+  "success": false,
   "error": "order_not_found",
-  "message": "Order not found."
+  "message": "Không tìm thấy đơn hàng"
 }`
     },
     statusCodes: ['200 OK', '404 ERROR']
@@ -350,12 +356,16 @@ export const apiEndpoints: ApiEndpoint[] = [
     auth: 'x_api_key',
     responses: {
       '200 OK': `{
-  "status": "success",
-  "balance": 1500000
+  "success": true,
+  "message": "Lấy số dư thành công",
+  "data": {
+    "balance": 1500000
+  }
 }`,
       '401 ERROR': `{
+  "success": false,
   "error": "invalid_credentials",
-  "message": "Invalid API key."
+  "message": "API key không hợp lệ"
 }`
     },
     statusCodes: ['200 OK', '401 ERROR']
@@ -375,7 +385,8 @@ export const apiEndpoints: ApiEndpoint[] = [
     ],
     responses: {
       '200 OK': `{
-  "status": "success",
+  "success": true,
+  "message": "Lấy lịch sử giao dịch thành công",
   "data": {
     "current_page": 1,
     "data": [
@@ -391,8 +402,9 @@ export const apiEndpoints: ApiEndpoint[] = [
   }
 }`,
       '401 ERROR': `{
+  "success": false,
   "error": "invalid_credentials",
-  "message": "Invalid API key."
+  "message": "API key không hợp lệ"
 }`
     },
     statusCodes: ['200 OK', '401 ERROR']

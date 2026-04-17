@@ -375,25 +375,27 @@ export default function BuyProxyBuilder({ product, apiKey = '' }: BuyProxyBuilde
               <code className='text-gray-300 font-mono'>
                 {JSON.stringify(
                   {
-                    status: 'success',
-                    order_code: 'ORD-XXXXXX',
-                    message: 'Order placed successfully.',
-                    price_per_unit: currentPrice / (Number(params.quantity) || 1),
-                    total_amount: currentPrice,
-                    items: [
-                      {
-                        key: 'abc123xyz...',
-                        status: 0,
-                        proxy: '1.2.3.4:8080:user:pass',
-                        ip_whitelist: ['42.118.149.138']
-                      },
-                      {
-                        key: 'def456uvw...',
-                        status: 3,
-                        proxy: null,
-                        ip_whitelist: ['42.118.149.138']
-                      }
-                    ]
+                    success: true,
+                    message: 'Mua proxy thành công',
+                    data: {
+                      order_code: 'ORD-XXXXXX',
+                      price_per_unit: currentPrice / (Number(params.quantity) || 1),
+                      total_amount: currentPrice,
+                      items: [
+                        {
+                          key: 'abc123xyz...',
+                          status: 0,
+                          proxy: '1.2.3.4:8080:user:pass',
+                          ip_whitelist: ['42.118.149.138']
+                        },
+                        {
+                          key: 'def456uvw...',
+                          status: 3,
+                          proxy: null,
+                          ip_whitelist: ['42.118.149.138']
+                        }
+                      ]
+                    }
                   },
                   null,
                   2

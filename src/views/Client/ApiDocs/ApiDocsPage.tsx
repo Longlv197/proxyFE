@@ -59,18 +59,55 @@ function buildUrl(ep: ApiEndpoint, overrides?: Record<string, string>): string {
   return url
 }
 
+/**
+ * Build JSON body từ parameters cho POST/PUT/DELETE.
+ * - Bỏ qua param đã được đưa vào URL path ({name})
+ * - Parse array/object nếu example là JSON-like "[...]" hoặc "{...}"
+ * - Trả về null nếu không có field nào (không cần body)
+ */
+function buildBody(ep: ApiEndpoint, overrides?: Record<string, string>): string | null {
+  if (ep.method === 'GET') return ep.requestBody ?? null
+  if (ep.requestBody) return ep.requestBody
+
+  const body: Record<string, any> = {}
+
+  ep.parameters?.forEach(p => {
+    if (ep.endpoint.includes(`{${p.name}}`)) return // skip path param
+    const raw = overrides?.[p.name] ?? p.example ?? ''
+    const trimmed = String(raw).trim()
+
+    if (trimmed === '') return
+
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        body[p.name] = JSON.parse(trimmed)
+
+        return
+      } catch {
+        // fall through to raw string
+      }
+    }
+
+    const asNum = Number(trimmed)
+
+    body[p.name] = !isNaN(asNum) && trimmed !== '' && /^-?\d+(\.\d+)?$/.test(trimmed) ? asNum : trimmed
+  })
+
+  return Object.keys(body).length ? JSON.stringify(body, null, 2) : null
+}
+
 function genCode(ep: ApiEndpoint, lang: string, key: string, overrides?: Record<string, string>): string {
   const url = buildUrl(ep, overrides)
   const k = key || 'YOUR_API_KEY'
-  const isPost = ep.method === 'POST'
-  const body = ep.requestBody
+  const isPost = ep.method === 'POST' || ep.method === 'PUT' || ep.method === 'DELETE'
+  const body = buildBody(ep, overrides)
   const compact = body?.replace(/\n\s*/g, ' ').trim()
 
   switch (lang) {
     case 'cURL': {
       const p = ['curl']
 
-      if (isPost) p.push('-X POST')
+      if (isPost) p.push(`-X ${ep.method}`)
       p.push(`-H "X-API-Key: ${k}"`)
       if (isPost && compact) {
         p.push('-H "Content-Type: application/json"')
@@ -87,8 +124,9 @@ function genCode(ep: ApiEndpoint, lang: string, key: string, overrides?: Record<
 
       if (isPost && compact) h.push(`  "Content-Type: application/json"`)
       c += `curl_setopt($ch, CURLOPT_HTTPHEADER, [\n${h.join(',\n')}\n]);\n`
-      if (isPost && compact) {
-        c += `curl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, '${compact}');\n`
+      if (isPost) {
+        c += `curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "${ep.method}");\n`
+        if (compact) c += `curl_setopt($ch, CURLOPT_POSTFIELDS, '${compact}');\n`
       }
       c += `\n$response = curl_exec($ch);\ncurl_close($ch);\n$data = json_decode($response, true);\nprint_r($data);`
 
@@ -101,7 +139,7 @@ function genCode(ep: ApiEndpoint, lang: string, key: string, overrides?: Record<
       if (isPost && compact) h.push(`    "Content-Type": "application/json"`)
       let c = `const res = await fetch("${url}", {\n`
 
-      if (isPost) c += `  method: "POST",\n`
+      if (isPost) c += `  method: "${ep.method}",\n`
       c += `  headers: {\n${h.join(',\n')}\n  }`
       if (isPost && compact) c += `,\n  body: JSON.stringify(${compact})`
       c += `\n});\nconst data = await res.json();\nconsole.log(data);`
@@ -110,7 +148,7 @@ function genCode(ep: ApiEndpoint, lang: string, key: string, overrides?: Record<
     }
 
     case 'Python': {
-      const m = isPost ? 'post' : 'get'
+      const m = ep.method.toLowerCase()
       const a = [`"${url}"`, `headers={"X-API-Key": "${k}"}`]
 
       if (isPost && compact) a.push(`json=${compact}`)
@@ -121,16 +159,16 @@ function genCode(ep: ApiEndpoint, lang: string, key: string, overrides?: Record<
     case 'Go': {
       let c = 'package main\n\nimport (\n  "fmt"\n  "io"\n  "net/http"\n'
 
-      if (isPost) c += '  "strings"\n'
+      if (isPost && compact) c += '  "strings"\n'
       c += ')\n\nfunc main() {\n'
       if (isPost && compact) {
         c += `  body := strings.NewReader(\`${compact}\`)\n`
-        c += `  req, _ := http.NewRequest("POST", "${url}", body)\n`
+        c += `  req, _ := http.NewRequest("${ep.method}", "${url}", body)\n`
       } else {
-        c += `  req, _ := http.NewRequest("GET", "${url}", nil)\n`
+        c += `  req, _ := http.NewRequest("${ep.method}", "${url}", nil)\n`
       }
       c += `  req.Header.Set("X-API-Key", "${k}")\n`
-      if (isPost) c += `  req.Header.Set("Content-Type", "application/json")\n`
+      if (isPost && compact) c += `  req.Header.Set("Content-Type", "application/json")\n`
       c += `\n  resp, _ := http.DefaultClient.Do(req)\n  defer resp.Body.Close()\n  data, _ := io.ReadAll(resp.Body)\n  fmt.Println(string(data))\n}`
 
       return c
@@ -174,10 +212,11 @@ function StaticEndpointView({ ep, apiKey }: { ep: ApiEndpoint; apiKey: string })
       const url = buildUrl(ep, paramOverrides)
       const headers: Record<string, string> = { 'X-API-Key': apiKey }
       const opts: RequestInit = { method: ep.method, headers }
+      const body = buildBody(ep, paramOverrides)
 
-      if (ep.method === 'POST' && ep.requestBody) {
+      if (body && ep.method !== 'GET') {
         headers['Content-Type'] = 'application/json'
-        opts.body = ep.requestBody
+        opts.body = body
       }
 
       const res = await fetch(url, opts)
