@@ -335,8 +335,14 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
               {headerPrice.toLocaleString('vi-VN')}đ{headerPriceSuffix}
             </div>
             {maxDiscount > 0 && (
-              <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#22c55e', marginTop: 1 }}>
-                Tiết kiệm đến {maxDiscount}%
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                padding: '2px 8px', marginTop: 4,
+                background: 'linear-gradient(90deg, #16a34a, #22c55e)',
+                borderRadius: 4, fontSize: '10.5px', fontWeight: 700, color: '#fff',
+                boxShadow: '0 1px 2px rgba(22,163,74,0.3)'
+              }}>
+                🔥 Giảm đến {maxDiscount}%
               </div>
             )}
           </div>

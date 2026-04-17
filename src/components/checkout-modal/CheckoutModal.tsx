@@ -767,51 +767,96 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <span className='subtotal-cell'>{total.toLocaleString('vi-VN')}đ</span>
             </div>
             {/* Qty discount tiers */}
-            {(quantityTiers.length > 0 || fixedQtyTiers.length > 0) && (
-              <div
-                style={{ padding: '8px 12px', fontSize: '11px', background: '#f0fdf4', borderRadius: '0 0 8px 8px' }}
-              >
-                {hasQtyDiscount ? (
-                  <div style={{ color: '#16a34a', fontWeight: 600 }}>Mua {quantity} proxy — đang được giảm giá!</div>
-                ) : (
-                  <div style={{ color: '#64748b', marginBottom: 4 }}>
-                    {(() => {
-                      const tiers = isPerUnit ? quantityTiers : fixedQtyTiers
-                      const nextTier = tiers.find((t: any) => quantity < (parseInt(t.min) || 0))
-                      return nextTier
-                        ? `Mua từ ${nextTier.min}+ proxy để được giảm giá`
-                        : 'Mua nhiều hơn để được giảm giá'
-                    })()}
+            {(quantityTiers.length > 0 || fixedQtyTiers.length > 0) && (() => {
+              const tiers = isPerUnit ? quantityTiers : fixedQtyTiers
+              const sortedTiers = [...tiers]
+                .filter((t: any) => t.min && (t.discount || t.price))
+                .sort((a: any, b: any) => (parseInt(a.min) || 0) - (parseInt(b.min) || 0))
+              const basePrice = baseUnitPrice
+              const saveNow = hasQtyDiscount ? (baseUnitPrice - unitPrice) * quantity : 0
+              const nextTier = sortedTiers.find((t: any) => quantity < (parseInt(t.min) || 0))
+
+              return (
+                <div style={{ padding: '12px 14px', background: '#f0fdf4', borderRadius: '0 0 8px 8px' }}>
+                  {/* Status banner */}
+                  {hasQtyDiscount ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 10px', background: '#dcfce7', borderRadius: 6, border: '1px solid #86efac' }}>
+                      <span style={{ fontSize: 16 }}>🎉</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d' }}>
+                          Đang được giảm giá!
+                        </div>
+                        <div style={{ fontSize: 11, color: '#166534' }}>
+                          Tiết kiệm {saveNow.toLocaleString('vi-VN')}đ cho {quantity} proxy
+                        </div>
+                      </div>
+                    </div>
+                  ) : nextTier ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 10px', background: '#fef3c7', borderRadius: 6, border: '1px solid #fcd34d' }}>
+                      <span style={{ fontSize: 16 }}>💡</span>
+                      <div style={{ fontSize: 11.5, color: '#92400e' }}>
+                        Mua thêm <strong>{(parseInt(nextTier.min) || 0) - quantity}</strong> proxy (tổng {nextTier.min}+) để được giảm giá
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Tier table */}
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
+                    BẢNG CHIẾT KHẤU THEO SỐ LƯỢNG
                   </div>
-                )}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                  {(isPerUnit ? quantityTiers : fixedQtyTiers)
-                    .filter((t: any) => t.min && (t.discount || t.price))
-                    .map((t: any, i: number) => {
-                      const disc = parseFloat(t.discount) || 0
-                      const min = parseInt(t.min) || 0
-                      const isActive = quantity >= min && quantity <= (parseInt(t.max) || Infinity)
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 11 }}>
+                    <div style={{ fontWeight: 600, color: '#94a3b8', padding: '4px 8px' }}>Số lượng</div>
+                    <div style={{ fontWeight: 600, color: '#94a3b8', padding: '4px 8px', textAlign: 'right' }}>Giá/proxy</div>
+                    <div style={{ fontWeight: 600, color: '#94a3b8', padding: '4px 8px', textAlign: 'right' }}>Tiết kiệm</div>
+
+                    {/* Base row — chỉ hiện khi tier đầu tiên min >= 2 */}
+                    {basePrice > 0 && sortedTiers[0] && (parseInt(sortedTiers[0].min) || 0) >= 2 && (() => {
+                      const firstMin = parseInt(sortedTiers[0].min) || 2
+                      const isBaseActive = quantity < firstMin
+
                       return (
-                        <span
-                          key={i}
-                          style={{
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            fontSize: '10.5px',
-                            fontWeight: isActive ? 700 : 500,
-                            background: isActive ? '#dcfce7' : '#f8fafc',
-                            color: isActive ? '#15803d' : '#64748b',
-                            border: `1px solid ${isActive ? '#86efac' : '#e2e8f0'}`
-                          }}
-                        >
-                          {t.min}+: {disc ? `-${disc}%` : ''}
-                          {t.price ? ` ${parseInt(t.price).toLocaleString('vi-VN')}đ` : ''}
-                        </span>
+                        <div key='base' style={{ display: 'contents' }}>
+                          <div style={{ padding: '6px 8px', color: isBaseActive ? '#15803d' : '#334155', fontWeight: isBaseActive ? 700 : 500, background: isBaseActive ? '#dcfce7' : 'transparent', borderRadius: 4 }}>
+                            1 - {firstMin - 1}
+                          </div>
+                          <div style={{ padding: '6px 8px', textAlign: 'right', fontWeight: isBaseActive ? 700 : 500, color: isBaseActive ? '#15803d' : '#334155', background: isBaseActive ? '#dcfce7' : 'transparent' }}>
+                            {basePrice.toLocaleString('vi-VN')}đ
+                          </div>
+                          <div style={{ padding: '6px 8px', textAlign: 'right', color: '#94a3b8', background: isBaseActive ? '#dcfce7' : 'transparent' }}>—</div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* Tier rows */}
+                    {sortedTiers.map((t: any, i: number) => {
+                      const min = parseInt(t.min) || 0
+                      const max = parseInt(t.max) || Infinity
+                      const isActive = quantity >= min && quantity <= max
+                      const disc = parseFloat(t.discount) || 0
+                      const tierPrice = t.price ? parseInt(t.price) : (disc && basePrice ? Math.round(basePrice * (1 - disc / 100)) : 0)
+                      const savingsPct = basePrice > 0 && tierPrice > 0 ? Math.round((1 - tierPrice / basePrice) * 100) : 0
+                      const range = t.max ? `${t.min} - ${t.max}` : `${t.min}+`
+
+                      return (
+                        <div key={i} style={{ display: 'contents' }}>
+                          <div style={{ padding: '6px 8px', fontWeight: isActive ? 700 : 600, color: isActive ? '#15803d' : '#475569', background: isActive ? '#dcfce7' : 'transparent', borderRadius: 4 }}>
+                            {range}
+                          </div>
+                          <div style={{ padding: '6px 8px', textAlign: 'right', fontWeight: isActive ? 700 : 600, color: isActive ? '#15803d' : '#16a34a', background: isActive ? '#dcfce7' : 'transparent' }}>
+                            {tierPrice.toLocaleString('vi-VN')}đ
+                          </div>
+                          <div style={{ padding: '6px 8px', textAlign: 'right', background: isActive ? '#dcfce7' : 'transparent' }}>
+                            <span style={{ padding: '1px 6px', borderRadius: 4, background: isActive ? '#16a34a' : '#dcfce7', color: isActive ? '#fff' : '#15803d', fontWeight: 700, fontSize: 10.5 }}>
+                              -{savingsPct}%
+                            </span>
+                          </div>
+                        </div>
                       )
                     })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
 
           {/* Discount code */}
