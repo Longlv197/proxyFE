@@ -2011,135 +2011,131 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               : 'Giá nhập lấy tự động từ site mẹ. Phần chênh lệch là lợi nhuận của bạn.'}
                           </div>
 
-                          {/* Block 1: Site mẹ áp cho bạn — read-only, reference */}
-                          {Object.keys(providerQuantityTiers).length > 0 && Object.values(providerQuantityTiers).some((t: any) => Array.isArray(t) && t.length > 0) && (
-                            <div style={{ marginTop: 16, padding: 14, background: '#fef3c7', borderRadius: 10, border: '1px solid #fcd34d' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <span style={{ fontSize: 16 }}>📥</span>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>
-                                  Site mẹ áp chiết khấu SL cho bạn
-                                </span>
-                              </div>
-                              <div style={{ fontSize: 11, color: '#78350f', marginBottom: 10, lineHeight: 1.5 }}>
-                                Đây là giá <strong>site mẹ</strong> áp cho bạn khi khách mua SL lớn. Tham khảo để đặt giá bán phù hợp ở bảng bên dưới.
-                              </div>
-                              {Object.entries(providerQuantityTiers).filter(([, tiers]: any) => Array.isArray(tiers) && tiers.length > 0).map(([dur, tiers]: any) => {
-                                const sorted = [...tiers].sort((a: any, b: any) => (parseInt(a.min) || 0) - (parseInt(b.min) || 0))
-
-                                return (
-                                  <div key={dur} style={{ marginBottom: 8, padding: 8, background: '#fff', borderRadius: 6, border: '1px solid #fde68a' }}>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#78350f', marginBottom: 4 }}>
-                                      Mốc {getDurationLabel(dur)}
-                                    </div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                      {sorted.map((t: any, i: number) => {
-                                        const range = t.max ? `${t.min}-${t.max}` : `${t.min}+`
-                                        const price = t.price ? parseInt(t.price) : 0
-
-                                        return (
-                                          <span key={i} style={{
-                                            padding: '3px 8px', borderRadius: 4, fontSize: 11,
-                                            background: '#fffbeb', border: '1px solid #fde68a',
-                                            color: '#78350f', fontWeight: 600
-                                          }}>
-                                            {range}: {price > 0 ? `${price.toLocaleString('vi-VN')}đ` : '—'}
-                                          </span>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )}
-
-                          {/* Block 2: Chiết khấu của bạn — admin site con sửa giá bán, cost từ NCC */}
+                          {/* Chiết khấu theo số lượng — UI thống nhất giống time tier */}
                           {priceFields.some(f => f.quantity_tiers && f.quantity_tiers.length > 0) && (
-                            <div style={{ marginTop: 16, padding: 14, background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <span style={{ fontSize: 16 }}>💰</span>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>
-                                  Chiết khấu theo số lượng
-                                </span>
+                            <div style={{ marginTop: 16 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 14 }}>💰</span>
+                                Chiết khấu theo số lượng từ NCC
                               </div>
-                              <div style={{ fontSize: 11, color: '#475569', marginBottom: 10, lineHeight: 1.5 }}>
-                                Giá nhập từ NCC theo mốc SL. Bạn đặt <strong>giá bán</strong> riêng cho từng mốc.
-                                Khách mua đủ SL sẽ được áp giá thấp hơn — hệ thống tự chọn mốc cao nhất đạt được.
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+                                {'Khi khách mua SL lớn: "Trả site mẹ" = giá nhập, bạn đặt "Bán cho khách" — hệ thống tự chọn mốc cao nhất đạt được.'}
                               </div>
 
                               {priceFields.map((pf, pfIdx) => {
                                 if (!pf.quantity_tiers || pf.quantity_tiers.length === 0) return null
                                 const basePrice = parseInt(pf.value) || 0
+                                const baseCost = parseInt(pf.cost) || 0
                                 const sortedTiers = [...pf.quantity_tiers].sort((a: any, b: any) => (parseInt(a.min) || 0) - (parseInt(b.min) || 0))
 
                                 return (
-                                  <div key={pfIdx} style={{ marginBottom: 10, padding: 10, background: '#fff', borderRadius: 8, border: '1px solid #d1fae5' }}>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>
-                                      Mốc {getDurationLabel(pf.key)}
-                                      {basePrice > 0 && (
-                                        <span style={{ fontWeight: 400, color: '#64748b', marginLeft: 6 }}>
-                                          (giá bán gốc: {basePrice.toLocaleString('vi-VN')}đ)
+                                  <div key={pfIdx} style={{ border: '1px solid #e0e7ff', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+                                    <div style={{ background: '#eef2ff', padding: '6px 10px', fontSize: 11, fontWeight: 600, color: '#4338ca' }}>
+                                      📦 Mốc {getDurationLabel(pf.key)} — {sortedTiers.length} mức chiết khấu
+                                    </div>
+
+                                    <div style={{
+                                      display: 'grid', gridTemplateColumns: '90px 1fr 1fr 120px',
+                                      gap: 2, padding: '4px 10px',
+                                      fontSize: 10, fontWeight: 600, color: '#64748b', background: '#f8fafc'
+                                    }}>
+                                      <span>Số lượng</span>
+                                      <span>Trả site mẹ</span>
+                                      <span>Bán cho khách</span>
+                                      <span style={{ textAlign: 'right' }}>Lợi nhuận / proxy</span>
+                                    </div>
+
+                                    {/* Mốc 1 (không chiết khấu) — base */}
+                                    {sortedTiers[0] && (parseInt(sortedTiers[0].min) || 0) >= 2 && (
+                                      <div style={{
+                                        display: 'grid', gridTemplateColumns: '90px 1fr 1fr 120px',
+                                        gap: 2, alignItems: 'center', padding: '6px 10px',
+                                        borderTop: '1px solid #f1f5f9', background: '#fff'
+                                      }}>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                                          1-{(parseInt(sortedTiers[0].min) || 2) - 1}
                                         </span>
-                                      )}
-                                    </div>
+                                        <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                                          {baseCost > 0 ? `${baseCost.toLocaleString('vi-VN')}đ` : '—'}
+                                        </span>
+                                        <span style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>
+                                          {basePrice.toLocaleString('vi-VN')}đ <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 400 }}>(giá gốc)</span>
+                                        </span>
+                                        <span style={{ textAlign: 'right', fontSize: 11 }}>
+                                          {basePrice > 0 && baseCost > 0 ? (
+                                            <span style={{
+                                              padding: '2px 6px', borderRadius: 4, fontWeight: 700,
+                                              background: (basePrice - baseCost) > 0 ? '#dcfce7' : '#fee2e2',
+                                              color: (basePrice - baseCost) > 0 ? '#15803d' : '#dc2626'
+                                            }}>
+                                              +{(basePrice - baseCost).toLocaleString('vi-VN')}đ
+                                            </span>
+                                          ) : '—'}
+                                        </span>
+                                      </div>
+                                    )}
 
-                                    <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr 1fr', gap: 8, fontSize: 11, alignItems: 'center' }}>
-                                      <div style={{ fontWeight: 700, color: '#64748b', padding: '4px 0' }}>Số lượng</div>
-                                      <div style={{ fontWeight: 700, color: '#64748b', padding: '4px 0' }}>Giá nhập (NCC)</div>
-                                      <div style={{ fontWeight: 700, color: '#64748b', padding: '4px 0' }}>Giá bán (của bạn)</div>
-                                      <div style={{ fontWeight: 700, color: '#64748b', padding: '4px 0', textAlign: 'right' }}>Lợi nhuận</div>
+                                    {/* Các mốc chiết khấu */}
+                                    {sortedTiers.map((t: any) => {
+                                      const tierIdx = pf.quantity_tiers!.indexOf(t)
+                                      const cost = t.cost ? parseInt(t.cost) : 0
+                                      const price = t.price ? parseInt(t.price) : 0
+                                      const profit = price - cost
+                                      const isLoss = price > 0 && profit < 0
+                                      const range = t.max ? `${t.min}-${t.max}` : `${t.min}+`
+                                      const costSavingPct = baseCost > 0 && cost > 0 ? Math.round((1 - cost / baseCost) * 100) : 0
 
-                                      {sortedTiers.map((t: any) => {
-                                        const tierIdx = pf.quantity_tiers!.indexOf(t)
-                                        const cost = t.cost ? parseInt(t.cost) : 0
-                                        const price = t.price ? parseInt(t.price) : 0
-                                        const profit = price - cost
-                                        const profitPct = cost > 0 ? Math.round((profit / cost) * 100) : 0
-                                        const range = t.max ? `${t.min}-${t.max}` : `${t.min}+`
+                                      return (
+                                        <div key={tierIdx} style={{
+                                          display: 'grid', gridTemplateColumns: '90px 1fr 1fr 120px',
+                                          gap: 2, alignItems: 'center', padding: '6px 10px',
+                                          borderTop: '1px solid #f1f5f9',
+                                          background: isLoss ? '#fef2f2' : '#f0fdf4'
+                                        }}>
+                                          <span style={{ fontSize: 12, fontWeight: 700, color: '#15803d' }}>
+                                            {range}
+                                          </span>
+                                          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>
+                                            {cost > 0 ? `${cost.toLocaleString('vi-VN')}đ` : '—'}
+                                            {costSavingPct > 0 && (
+                                              <span style={{ marginLeft: 4, padding: '1px 5px', borderRadius: 3, fontSize: 9.5, background: '#fef3c7', color: '#92400e', fontWeight: 700 }}>
+                                                -{costSavingPct}%
+                                              </span>
+                                            )}
+                                          </span>
+                                          <TextField
+                                            size='small'
+                                            value={price ? price.toLocaleString('vi-VN') : ''}
+                                            placeholder='Nhập giá bán'
+                                            onChange={e => {
+                                              const raw = e.target.value.replace(/[^0-9]/g, '')
 
-                                        return (
-                                          <div key={tierIdx} style={{ display: 'contents' }}>
-                                            <div style={{ padding: '4px 0', color: '#15803d', fontWeight: 600 }}>
-                                              {range}
-                                            </div>
-                                            <div style={{ padding: '4px 0', color: '#64748b', fontWeight: 600 }}>
-                                              {cost > 0 ? `${cost.toLocaleString('vi-VN')}đ` : '—'}
-                                            </div>
-                                            <TextField
-                                              size='small'
-                                              value={price ? price.toLocaleString('vi-VN') : ''}
-                                              placeholder='Nhập giá bán'
-                                              onChange={e => {
-                                                const raw = e.target.value.replace(/[^0-9]/g, '')
+                                              setPriceFields(prev => prev.map((p, i) => {
+                                                if (i !== pfIdx) return p
+                                                const newTiers = [...(p.quantity_tiers || [])]
 
-                                                setPriceFields(prev => prev.map((p, i) => {
-                                                  if (i !== pfIdx) return p
-                                                  const newTiers = [...(p.quantity_tiers || [])]
+                                                newTiers[tierIdx] = { ...newTiers[tierIdx], price: raw }
 
-                                                  newTiers[tierIdx] = { ...newTiers[tierIdx], price: raw }
-
-                                                  return { ...p, quantity_tiers: newTiers }
-                                                }))
-                                              }}
-                                              sx={{ '& input': { fontSize: '11px', padding: '4px 8px', fontWeight: 600 } }}
-                                              error={price > 0 && cost > 0 && price <= cost}
-                                            />
-                                            <div style={{ padding: '4px 0', textAlign: 'right' }}>
-                                              {price > 0 && cost > 0 ? (
-                                                <span style={{
-                                                  display: 'inline-block', padding: '2px 6px', borderRadius: 4,
-                                                  background: profit > 0 ? '#dcfce7' : '#fee2e2',
-                                                  color: profit > 0 ? '#15803d' : '#dc2626',
-                                                  fontWeight: 700, fontSize: 10.5
-                                                }}>
-                                                  {profit > 0 ? '+' : ''}{profit.toLocaleString('vi-VN')}đ ({profitPct}%)
-                                                </span>
-                                              ) : '—'}
-                                            </div>
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
+                                                return { ...p, quantity_tiers: newTiers }
+                                              }))
+                                            }}
+                                            sx={{ '& input': { fontSize: '12px', padding: '4px 8px', fontWeight: 600 } }}
+                                            error={isLoss}
+                                          />
+                                          <span style={{ textAlign: 'right', fontSize: 11 }}>
+                                            {price > 0 && cost > 0 ? (
+                                              <span style={{
+                                                padding: '2px 6px', borderRadius: 4, fontWeight: 700,
+                                                background: profit > 0 ? '#dcfce7' : '#fee2e2',
+                                                color: profit > 0 ? '#15803d' : '#dc2626'
+                                              }}>
+                                                {profit > 0 ? '+' : ''}{profit.toLocaleString('vi-VN')}đ
+                                              </span>
+                                            ) : '—'}
+                                          </span>
+                                        </div>
+                                      )
+                                    })}
                                   </div>
                                 )
                               })}
