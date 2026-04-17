@@ -180,6 +180,45 @@ export const apiEndpoints: ApiEndpoint[] = [
     statusCodes: ['200 OK', '400 ERROR', '404 ERROR']
   },
 
+  {
+    id: 'update-ip-whitelist',
+    title: 'Cập Nhật IP Whitelist',
+    method: 'POST',
+    endpoint: `${API_BASE}/update-ip-whitelist`,
+    description: 'Cập nhật danh sách IP được phép truy cập proxy. Chấp nhận cả POST và PUT. Key gửi trong body (không lộ trong server log). Dùng cho proxy có auth_type=ip_whitelist. Key nhận từ response /buy-proxy items[].key.',
+    category: 'proxy',
+    auth: 'x_api_key',
+    parameters: [
+      { name: 'key', type: 'string', required: true, description: 'Key nội bộ của proxy item (nhận từ /buy-proxy response)', example: 'abc123xyz...' },
+      { name: 'ip_whitelist', type: 'array<string>', required: true, description: 'Danh sách IP (tối đa 10, mỗi IP phải hợp lệ IPv4/IPv6)', example: '["42.118.149.138"]' }
+    ],
+    responses: {
+      '200 OK': `{
+  "success": true,
+  "message": "Cập nhật IP whitelist thành công",
+  "data": {
+    "key": "abc123xyz...",
+    "ip_whitelist": ["42.118.149.138"]
+  }
+}`,
+      '404 ERROR': `{
+  "success": false,
+  "error": "item_not_found",
+  "message": "Không tìm thấy proxy với key này"
+}`,
+      '422 ERROR': `{
+  "success": false,
+  "error": "validation_error",
+  "message": "Dữ liệu không hợp lệ",
+  "errors": {
+    "ip_whitelist.0": ["IP không hợp lệ"]
+  }
+}`
+    },
+    notes: 'Endpoint cũ PUT /reseller/order-items/{key}/ip-whitelist và PUT /proxies/{key}/ip-whitelist (key trong URL) vẫn hoạt động với cùng format response chuẩn này, nhưng không khuyến nghị — key có thể lộ trong log server.',
+    statusCodes: ['200 OK', '404 ERROR', '422 ERROR']
+  },
+
   // ═══════════════════════════════════════
   // ORDER — Mua proxy & quản lý đơn hàng
   // ═══════════════════════════════════════
