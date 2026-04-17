@@ -289,7 +289,7 @@ const PREVIEW_FIELDS = ['name', 'type', 'tag', 'status', 'rotation_mode', 'rotat
   'rotation_interval', 'pool_size', 'request_limit', 'concurrent_connections', 'note', 'code',
   'country', 'ip_version', 'proxy_type', 'is_purchasable'] as const
 
-const ServicePreview = memo(function ServicePreview({ control, serviceId, priceFields, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit }: {
+const ServicePreview = memo(function ServicePreview({ control, serviceId, priceFields, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit, priceDisplayUnit }: {
   control: any; serviceId?: number | null
   priceFields: Array<{ key: string; value: string; cost?: string }>
   allowCustomAuth: boolean
@@ -297,6 +297,7 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
   pricingMode?: string
   pricePerUnit?: string
   timeUnit?: string
+  priceDisplayUnit?: string
 }) {
   const previewData = useWatch({ control, name: PREVIEW_FIELDS as any })
   const previewObj = useMemo(() => {
@@ -334,6 +335,7 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
     pricing_mode: pricingMode || 'fixed',
     price_per_unit: parseInt(pricePerUnit || '0') || 0,
     time_unit: timeUnit || 'day',
+    price_display_unit: priceDisplayUnit || null,
     price: validPrices[0] ? parseInt(validPrices[0].value, 10) : 0,
     price_by_duration: validPrices.map(p => ({ key: p.key, value: p.value })),
     metadata: {
@@ -343,7 +345,7 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
         options: o.options?.filter(opt => (opt as any).provider_value)
       })) || [],
     },
-  }), [previewObj, serviceId, validPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit])
+  }), [previewObj, serviceId, validPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit, priceDisplayUnit])
 
   return <ProxyCard provider={previewProvider} previewMode />
 })
@@ -2523,6 +2525,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   pricingMode={pricingMode}
                   pricePerUnit={pricePerUnit}
                   timeUnit={timeUnit}
+                  priceDisplayUnit={priceDisplayUnit}
                 />
               </div>
 

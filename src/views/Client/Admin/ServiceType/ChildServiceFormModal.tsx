@@ -801,6 +801,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     pricing_mode: pricingMode,
     price_per_unit: parseInt(pricePerUnit) || 0,
     time_unit: timeUnit,
+    price_display_unit: priceDisplayUnit || null,
     price: validPreviewPrices[0] ? parseInt(validPreviewPrices[0].value, 10) : 0,
     price_by_duration: validPreviewPrices.map(p => {
       const entry: any = { key: p.key, value: p.value }
@@ -813,11 +814,12 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     }),
     metadata: {
       allow_custom_auth: allowCustomAuth,
+      child_quantity_tiers: childQuantityTiers,
       custom_fields: purchaseOptions
         .filter(o => o.key && o.label)
         .map(o => ({ ...o, options: o.options?.filter(opt => (opt as any).provider_value) })),
     },
-  }), [watchAll, serviceId, validPreviewPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit])
+  }), [watchAll, serviceId, validPreviewPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit, priceDisplayUnit, childQuantityTiers])
 
   return (
     <>
