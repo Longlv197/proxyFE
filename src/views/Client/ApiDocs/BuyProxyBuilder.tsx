@@ -380,12 +380,33 @@ export default function BuyProxyBuilder({ product, apiKey = '' }: BuyProxyBuilde
                     message: 'Order placed successfully.',
                     price_per_unit: currentPrice / (Number(params.quantity) || 1),
                     total_amount: currentPrice,
+                    items: [
+                      {
+                        key: 'abc123xyz...',
+                        status: 0,
+                        proxy: '1.2.3.4:8080:user:pass',
+                        ip_whitelist: ['42.118.149.138']
+                      },
+                      {
+                        key: 'def456uvw...',
+                        status: 3,
+                        proxy: null,
+                        ip_whitelist: ['42.118.149.138']
+                      }
+                    ]
                   },
                   null,
                   2
                 )}
               </code>
             </pre>
+            <div className='px-4 py-2 bg-gray-800 border-t border-gray-700 text-[11px] text-gray-400 leading-relaxed'>
+              <strong className='text-gray-300'>items[]</strong> — danh sách proxy của đơn hàng.
+              <br />• <code className='text-blue-300'>key</code>: ID nội bộ để quản lý proxy (update IP whitelist, xoay, polling status).
+              <br />• <code className='text-blue-300'>status</code>: <strong>0</strong>=Đang hoạt động, <strong>1</strong>=Đã tắt, <strong>2</strong>=Hết hạn, <strong>3</strong>=Chờ NCC (proxy chưa có).
+              <br />• <code className='text-blue-300'>proxy</code>: <code>null</code> khi status=3 (proxy xoay deferred). Polling <code>GET /order-items/{'{key}'}</code> sau vài giây để nhận.
+              <br />• <code className='text-blue-300'>ip_whitelist</code>: IP đã set khi mua. Update qua <code>PUT /order-items/{'{key}'}/ip-whitelist</code>.
+            </div>
           </div>
         </div>
       </div>

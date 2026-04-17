@@ -281,7 +281,7 @@ export default function ProxyKeysPage() {
         header: '',
         size: 40,
         cell: ({ row }) =>
-          row.original.status === 0 ? (
+          row.original.status !== 2 ? (
             <Tooltip title='Cập nhật IP'>
               <IconButton
                 size='small'
