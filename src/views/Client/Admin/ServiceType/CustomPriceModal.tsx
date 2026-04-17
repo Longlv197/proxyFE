@@ -407,7 +407,7 @@ export default function CustomPriceModal({ open, onClose, serviceType }: CustomP
                         <CustomTextField
                           key={d}
                           size='small'
-                          label={`${d} ngày`}
+                          label={`${d} ${serviceType?.time_unit === 'month' ? 'tháng' : 'ngày'}`}
                           type='number'
                           value={editing.fixed_prices[d] ?? ''}
                           onChange={(e) => setEditing({

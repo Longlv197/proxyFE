@@ -83,6 +83,13 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
   }
 
   function getDurationLabel(duration: string) {
+    if (provider.time_unit === 'month') {
+      if (duration === '1') return 'Tháng'
+      if (duration === '12') return 'Năm'
+
+      return `${duration} tháng`
+    }
+
     switch (duration) {
       case '1':
         return 'Ngày'

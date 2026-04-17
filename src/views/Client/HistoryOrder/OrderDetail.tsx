@@ -1071,7 +1071,7 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
                 <div className='checkout-section'>
                   <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: 14, color: '#1d4ed8', fontWeight: 600, textAlign: 'center' }}>
                     <Clock3 size={15} style={{ verticalAlign: -3, marginRight: 4 }} />
-                    Gia hạn {originalDays} ngày (theo lần mua đầu)
+                    Gia hạn {originalDays} {unitLabel} (theo lần mua đầu)
                   </div>
                 </div>
               ) : (
@@ -1121,7 +1121,7 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
                   {/* Input nhập tự do */}
                   <div className='perunit-input-row'>
                     <span className='perunit-input-label'>
-                      {perUnit?.discount_tiers?.length ? 'Hoặc nhập:' : 'Số ngày:'}
+                      {perUnit?.discount_tiers?.length ? 'Hoặc nhập:' : `Số ${unitLabel}:`}
                     </span>
                     <div className='perunit-input-wrap'>
                       <input
