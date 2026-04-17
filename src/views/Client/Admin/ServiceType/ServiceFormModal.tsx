@@ -20,7 +20,9 @@ import {
   Alert,
   Collapse,
   IconButton,
-  Checkbox
+  Checkbox,
+  Radio,
+  RadioGroup
 } from '@mui/material'
 
 import { toast } from 'react-toastify'
@@ -2095,6 +2097,54 @@ return <Chip key={val} label={p?.label || val} size='small' />
                     </CustomTextField>
                   </Grid2>
 
+                  <Grid2 size={{ xs: 12 }}>
+                    {(() => {
+                      let basePerUnit = 0
+
+                      if (pricingMode === 'per_unit') {
+                        basePerUnit = parseFloat(pricePerUnit) || 0
+                      } else {
+                        const perUnitPrices = priceFields
+                          .filter(f => parseFloat(f.value) > 0 && parseInt(f.key) > 0)
+                          .map(f => parseFloat(f.value) / parseInt(f.key))
+
+                        basePerUnit = perUnitPrices.length ? Math.min(...perUnitPrices) : 0
+                      }
+
+                      const previewDay = timeUnit === 'month' ? Math.round(basePerUnit / 30) : Math.round(basePerUnit)
+                      const previewMonth = timeUnit === 'day' ? Math.round(basePerUnit * 30) : Math.round(basePerUnit)
+                      const fmt = (n: number) => n > 0 ? n.toLocaleString('vi-VN') + 'đ' : '—'
+                      const currentDisplay = priceDisplayUnit || timeUnit
+
+                      return (
+                        <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', background: '#fafbfc' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                            Khách thấy giá trên trang danh sách theo đơn vị nào?
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: 6 }}>
+                            Chỉ thay đổi cách hiển thị. Cách bán/tính tiền vẫn theo đơn vị bán.
+                          </div>
+                          <RadioGroup
+                            row
+                            value={currentDisplay}
+                            onChange={(e) => setPriceDisplayUnit(e.target.value as 'day' | 'month')}
+                          >
+                            <FormControlLabel
+                              value='day'
+                              control={<Radio size='small' />}
+                              label={<span style={{ fontSize: 13 }}>Theo ngày → <strong>chỉ từ {fmt(previewDay)}/ngày</strong></span>}
+                            />
+                            <FormControlLabel
+                              value='month'
+                              control={<Radio size='small' />}
+                              label={<span style={{ fontSize: 13 }}>Theo tháng → <strong>chỉ từ {fmt(previewMonth)}/tháng</strong></span>}
+                            />
+                          </RadioGroup>
+                        </div>
+                      )
+                    })()}
+                  </Grid2>
+
                   {pricingMode === 'per_unit' && (
                     <>
                       <Grid2 size={{ xs: 12, sm: 2.5 }}>
@@ -2106,21 +2156,6 @@ return <Chip key={val} label={p?.label || val} size='small' />
                           value={timeUnit}
                           onChange={(e) => setTimeUnit(e.target.value as 'day' | 'month')}
                         >
-                          <MenuItem value='day'>Ngày</MenuItem>
-                          <MenuItem value='month'>Tháng</MenuItem>
-                        </CustomTextField>
-                      </Grid2>
-                      <Grid2 size={{ xs: 12, sm: 2.5 }}>
-                        <CustomTextField
-                          select
-                          fullWidth
-                          size='small'
-                          label='Đơn vị hiển thị giá'
-                          value={priceDisplayUnit}
-                          onChange={(e) => setPriceDisplayUnit(e.target.value as '' | 'day' | 'month')}
-                          helperText='Để "Mặc định" nếu muốn hiện theo đơn vị bán'
-                        >
-                          <MenuItem value=''>Mặc định (theo đơn vị bán)</MenuItem>
                           <MenuItem value='day'>Ngày</MenuItem>
                           <MenuItem value='month'>Tháng</MenuItem>
                         </CustomTextField>

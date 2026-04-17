@@ -25,7 +25,9 @@ import {
   FormControlLabel,
   Tooltip,
   Box,
-  Typography
+  Typography,
+  Radio,
+  RadioGroup
 } from '@mui/material'
 import {
   X,
@@ -1129,6 +1131,53 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                     </div>
                   )}
 
+                  {/* Đơn vị hiển thị giá trên trang danh sách (radio + preview) */}
+                  {(selectedProduct || isEditMode) && (() => {
+                    let basePerUnit = 0
+
+                    if (pricingMode === 'per_unit') {
+                      basePerUnit = parseFloat(pricePerUnit) || 0
+                    } else {
+                      const perUnitPrices = priceFields
+                        .filter(f => parseFloat(f.value) > 0 && parseInt(f.key) > 0)
+                        .map(f => parseFloat(f.value) / parseInt(f.key))
+
+                      basePerUnit = perUnitPrices.length ? Math.min(...perUnitPrices) : 0
+                    }
+
+                    const previewDay = timeUnit === 'month' ? Math.round(basePerUnit / 30) : Math.round(basePerUnit)
+                    const previewMonth = timeUnit === 'day' ? Math.round(basePerUnit * 30) : Math.round(basePerUnit)
+                    const fmt = (n: number) => n > 0 ? n.toLocaleString('vi-VN') + 'đ' : '—'
+                    const currentDisplay = priceDisplayUnit || timeUnit
+
+                    return (
+                      <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', background: '#fafbfc', marginBottom: 8 }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                          Khách thấy giá trên trang danh sách theo đơn vị nào?
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: 6 }}>
+                          Chỉ thay đổi cách hiển thị. Cách bán/tính tiền vẫn theo đơn vị bán.
+                        </div>
+                        <RadioGroup
+                          row
+                          value={currentDisplay}
+                          onChange={e => setPriceDisplayUnit(e.target.value as 'day' | 'month')}
+                        >
+                          <FormControlLabel
+                            value='day'
+                            control={<Radio size='small' />}
+                            label={<span style={{ fontSize: 13 }}>Theo ngày → <strong>chỉ từ {fmt(previewDay)}/ngày</strong></span>}
+                          />
+                          <FormControlLabel
+                            value='month'
+                            control={<Radio size='small' />}
+                            label={<span style={{ fontSize: 13 }}>Theo tháng → <strong>chỉ từ {fmt(previewMonth)}/tháng</strong></span>}
+                          />
+                        </RadioGroup>
+                      </div>
+                    )
+                  })()}
+
                   {/* Per_unit: giá nhập + giá bán / đơn vị */}
                   {pricingMode === 'per_unit' && (selectedProduct || isEditMode) && (
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, marginBottom: 8 }}>
@@ -1140,23 +1189,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                           marginBottom: 8
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
-                            Giá theo {timeUnit === 'month' ? 'tháng' : 'ngày'}
-                          </div>
-                          <TextField
-                            select
-                            size='small'
-                            label='Hiển thị giá theo'
-                            value={priceDisplayUnit}
-                            onChange={e => setPriceDisplayUnit(e.target.value as '' | 'day' | 'month')}
-                            sx={{ minWidth: 170, '& .MuiInputBase-input': { fontSize: '12px', py: 0.5 }, '& .MuiInputLabel-root': { fontSize: '12px' } }}
-                            SelectProps={{ native: false }}
-                          >
-                            <MenuItem value=''>Mặc định</MenuItem>
-                            <MenuItem value='day'>Ngày</MenuItem>
-                            <MenuItem value='month'>Tháng</MenuItem>
-                          </TextField>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                          Giá theo {timeUnit === 'month' ? 'tháng' : 'ngày'}
                         </div>
                         {selectedSupplierCode && (
                           <button
