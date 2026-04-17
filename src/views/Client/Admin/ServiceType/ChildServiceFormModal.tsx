@@ -2254,19 +2254,68 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                   })
                                 }
 
+                                const parentTiers = pf.quantity_tiers || []
+
+                                const copyFromParent = () => {
+                                  setChildQuantityTiers(prev => {
+                                    const curr = prev[durKey] || []
+                                    const existingMins = new Set(curr.map(t => String(parseInt(t.min) || 0)))
+
+                                    const toAdd = parentTiers
+                                      .filter((pt: any) => pt.min && !existingMins.has(String(parseInt(pt.min) || 0)))
+                                      .map((pt: any) => ({
+                                        min: String(pt.min || ''),
+                                        max: pt.max ? String(pt.max) : '',
+                                        price: pt.price ? String(pt.price) : ''
+                                      }))
+
+                                    if (toAdd.length === 0) return prev
+
+                                    return { ...prev, [durKey]: [...curr, ...toAdd] }
+                                  })
+                                }
+
+                                const parentMinsNotCopied = parentTiers.filter((pt: any) => {
+                                  const existingMins = new Set((tiers || []).map(t => String(parseInt(t.min) || 0)))
+
+                                  return pt.min && !existingMins.has(String(parseInt(pt.min) || 0))
+                                }).length
+
                                 return (
                                   <div key={durKey} style={{ border: '1px solid #bae6fd', borderRadius: 8, overflow: 'hidden', marginBottom: 8, background: '#f0f9ff' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e0f2fe', padding: '6px 10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e0f2fe', padding: '6px 10px', flexWrap: 'wrap', gap: 6 }}>
                                       <span style={{ fontSize: 11, fontWeight: 600, color: '#075985' }}>
                                         📦 Mốc {getDurationLabel(durKey)} — {tiers.length === 0 ? 'Chưa có tier riêng' : `${tiers.length} tier riêng`}
                                       </span>
-                                      <button
-                                        type='button'
-                                        onClick={addTier}
-                                        style={{ fontSize: 11, padding: '3px 10px', borderRadius: 5, border: '1px solid #0ea5e9', background: '#fff', color: '#0369a1', cursor: 'pointer', fontWeight: 600 }}
-                                      >
-                                        + Thêm mức
-                                      </button>
+                                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                        {parentTiers.length > 0 && (
+                                          <button
+                                            type='button'
+                                            onClick={copyFromParent}
+                                            disabled={parentMinsNotCopied === 0}
+                                            title={parentMinsNotCopied === 0 ? 'Đã copy hết tier mẹ — không còn mốc nào chưa copy' : `Copy ${parentMinsNotCopied} mốc mẹ chưa có`}
+                                            style={{
+                                              fontSize: 11,
+                                              padding: '3px 10px',
+                                              borderRadius: 5,
+                                              border: '1px solid #10b981',
+                                              background: parentMinsNotCopied === 0 ? '#f1f5f9' : '#ecfdf5',
+                                              color: parentMinsNotCopied === 0 ? '#94a3b8' : '#047857',
+                                              cursor: parentMinsNotCopied === 0 ? 'not-allowed' : 'pointer',
+                                              fontWeight: 600
+                                            }}
+                                          >
+                                            📋 Copy từ mẹ {parentMinsNotCopied > 0 ? `(${parentMinsNotCopied})` : ''}
+                                          </button>
+                                        )}
+                                        <button
+                                          type='button'
+                                          onClick={addTier}
+                                          style={{ fontSize: 11, padding: '3px 10px', borderRadius: 5, border: '1px solid #0ea5e9', background: '#fff', color: '#0369a1', cursor: 'pointer', fontWeight: 600 }}
+                                        >
+                                          + Thêm mức
+                                        </button>
+                                      </div>
                                     </div>
 
                                     {tiers.length === 0 ? (
