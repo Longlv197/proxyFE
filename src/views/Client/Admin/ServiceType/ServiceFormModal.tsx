@@ -2380,46 +2380,100 @@ return <Chip key={val} label={p?.label || val} size='small' />
                                   ↗ {durationUrlMap[field.key]}
                                 </a>
                               )}
-                              {/* Sub-rows: qty tiers */}
+                              {/* Sub-rows: qty tiers — grid layout với preview dưới SL */}
                               {hasQtyTiers && (
                                 <div style={{ background: '#fafbfc', borderTop: '1px dashed #e2e8f0', padding: '6px 12px 8px 16px', marginTop: 6, borderRadius: '0 0 6px 6px' }}>
                                   <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Giảm giá theo số lượng:</div>
-                                  {qtyTiers.map((qt, qIdx) => {
-                                    const qtSell = parseFloat(qt.price) || 0
-                                    const qtCost = parseFloat(qt.cost) || 0
-                                    const qtProfit = qtSell && qtCost ? qtSell - qtCost : 0
-                                    return (
-                                    <div key={qIdx} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 4 }}>
-                                      <CustomTextField size='small' type='number' placeholder='Từ SL' value={qt.min}
-                                        onChange={(e: any) => setPriceFields(prev => prev.map((f, i) => i === index ? {
-                                          ...f, quantity_tiers: (f.quantity_tiers || []).map((t, j) => j === qIdx ? { ...t, min: e.target.value } : t)
-                                        } : f))} sx={{ width: 70, '& input': { fontSize: '11px', p: '4px 8px' } }} />
-                                      <span style={{ fontSize: '10px', color: '#94a3b8' }}>→</span>
-                                      <CustomTextField size='small' type='number' placeholder='Đến SL' value={qt.max}
-                                        onChange={(e: any) => setPriceFields(prev => prev.map((f, i) => i === index ? {
-                                          ...f, quantity_tiers: (f.quantity_tiers || []).map((t, j) => j === qIdx ? { ...t, max: e.target.value } : t)
-                                        } : f))} sx={{ width: 70, '& input': { fontSize: '11px', p: '4px 8px' } }} />
-                                      <CustomTextField size='small' type='number' placeholder='Giá bán' value={qt.price}
-                                        onChange={(e: any) => setPriceFields(prev => prev.map((f, i) => i === index ? {
-                                          ...f, quantity_tiers: (f.quantity_tiers || []).map((t, j) => j === qIdx ? { ...t, price: e.target.value } : t)
-                                        } : f))} sx={{ width: 90, '& input': { fontSize: '11px', p: '4px 8px' } }} />
-                                      <CustomTextField size='small' type='number' placeholder='Giá vốn' value={qt.cost}
-                                        onChange={(e: any) => setPriceFields(prev => prev.map((f, i) => i === index ? {
-                                          ...f, quantity_tiers: (f.quantity_tiers || []).map((t, j) => j === qIdx ? { ...t, cost: e.target.value } : t)
-                                        } : f))} sx={{ width: 90, '& input': { fontSize: '11px', p: '4px 8px' } }} />
-                                      {qtSell > 0 && qtCost > 0 && (
-                                        <span style={{ fontSize: '10px', fontWeight: 600, color: qtProfit > 0 ? '#16a34a' : qtProfit < 0 ? '#ef4444' : '#94a3b8' }}>
-                                          {qtProfit > 0 ? '+' : ''}{qtProfit.toLocaleString('vi-VN')}đ
-                                        </span>
-                                      )}
-                                      <IconButton size='small' sx={{ p: '1px' }} color='error'
-                                        onClick={() => setPriceFields(prev => prev.map((f, i) => i === index ? {
-                                          ...f, quantity_tiers: (f.quantity_tiers || []).filter((_, j) => j !== qIdx)
-                                        } : f))}>
-                                        <X size={12} />
-                                      </IconButton>
-                                    </div>
-                                    )
+                                  <div style={{
+                                    display: 'grid', gridTemplateColumns: '1fr 1fr 90px 90px 30px',
+                                    gap: 6, padding: '2px 4px 4px',
+                                    fontSize: 9.5, fontWeight: 600, color: '#94a3b8'
+                                  }}>
+                                    <span>Từ SL</span>
+                                    <span>Đến SL</span>
+                                    <span>Giá bán</span>
+                                    <span>Giá vốn</span>
+                                    <span></span>
+                                  </div>
+                                  {qtyTiers
+                                    .map((qt, origIdx) => ({ qt, origIdx }))
+                                    .sort((a, b) => (parseInt(a.qt.min) || 0) - (parseInt(b.qt.min) || 0))
+                                    .map(({ qt, origIdx: qIdx }) => {
+                                      const qtMin = parseInt(qt.min) || 0
+                                      const qtMax = qt.max ? parseInt(qt.max) : 0
+                                      const qtSell = parseFloat(qt.price) || 0
+                                      const qtCost = parseFloat(qt.cost) || 0
+                                      const qtProfit = qtSell && qtCost ? qtSell - qtCost : 0
+                                      const isLoss = qtSell > 0 && qtCost > 0 && qtProfit < 0
+                                      const totalRevMin = qtMin * qtSell
+                                      const totalCostMin = qtMin * qtCost
+                                      const totalProfitMin = totalRevMin - totalCostMin
+                                      const pctMin = totalCostMin > 0 ? Math.round((totalProfitMin / totalCostMin) * 100) : 0
+                                      const totalRevMax = qtMax * qtSell
+                                      const totalCostMax = qtMax * qtCost
+                                      const totalProfitMax = totalRevMax - totalCostMax
+                                      const pctMax = totalCostMax > 0 ? Math.round((totalProfitMax / totalCostMax) * 100) : 0
+                                      const fmtVN = (n: number) => n.toLocaleString('vi-VN')
+
+                                      const PreviewAt = ({ qty, rev, cost, profit, pct }: { qty: number; rev: number; cost: number; profit: number; pct: number }) => (
+                                        <div style={{ marginTop: 4, padding: '3px 5px', background: '#fff', borderRadius: 3, fontSize: 9.5, lineHeight: 1.45, border: '1px solid #f1f5f9' }}>
+                                          <div style={{ color: '#64748b', fontWeight: 600 }}>Tại {qty}:</div>
+                                          <div>Doanh thu: <strong>{fmtVN(rev)}đ</strong></div>
+                                          <div style={{ color: '#94a3b8' }}>Vốn: {fmtVN(cost)}đ</div>
+                                          <div style={{ color: profit >= 0 ? '#16a34a' : '#ef4444', fontWeight: 700 }}>
+                                            Lãi: {profit >= 0 ? '+' : ''}{fmtVN(profit)}đ {cost > 0 ? `(${profit >= 0 ? '+' : ''}${pct}%)` : ''}
+                                          </div>
+                                        </div>
+                                      )
+
+                                      return (
+                                        <div key={qIdx} style={{
+                                          display: 'grid', gridTemplateColumns: '1fr 1fr 90px 90px 30px',
+                                          gap: 6, alignItems: 'start', padding: '4px',
+                                          borderTop: '1px dashed #e2e8f0',
+                                          background: isLoss ? '#fef2f2' : 'transparent'
+                                        }}>
+                                          <div>
+                                            <CustomTextField size='small' type='number' placeholder='Từ SL' value={qt.min}
+                                              onChange={(e: any) => setPriceFields(prev => prev.map((f, i) => i === index ? {
+                                                ...f, quantity_tiers: (f.quantity_tiers || []).map((t, j) => j === qIdx ? { ...t, min: e.target.value } : t)
+                                              } : f))} fullWidth sx={{ '& input': { fontSize: '11px', p: '4px 8px' } }} />
+                                            {qtMin > 0 && qtSell > 0 && qtCost > 0 && (
+                                              <PreviewAt qty={qtMin} rev={totalRevMin} cost={totalCostMin} profit={totalProfitMin} pct={pctMin} />
+                                            )}
+                                          </div>
+                                          <div>
+                                            <CustomTextField size='small' type='number' placeholder='Đến SL' value={qt.max}
+                                              onChange={(e: any) => setPriceFields(prev => prev.map((f, i) => i === index ? {
+                                                ...f, quantity_tiers: (f.quantity_tiers || []).map((t, j) => j === qIdx ? { ...t, max: e.target.value } : t)
+                                              } : f))} fullWidth sx={{ '& input': { fontSize: '11px', p: '4px 8px' } }} />
+                                            {qtMax > 0 && qtSell > 0 && qtCost > 0 && (
+                                              <PreviewAt qty={qtMax} rev={totalRevMax} cost={totalCostMax} profit={totalProfitMax} pct={pctMax} />
+                                            )}
+                                          </div>
+                                          <div>
+                                            <CustomTextField size='small' type='number' placeholder='Giá bán' value={qt.price}
+                                              onChange={(e: any) => setPriceFields(prev => prev.map((f, i) => i === index ? {
+                                                ...f, quantity_tiers: (f.quantity_tiers || []).map((t, j) => j === qIdx ? { ...t, price: e.target.value } : t)
+                                              } : f))} fullWidth sx={{ '& input': { fontSize: '11px', p: '4px 8px', fontWeight: 600 } }} error={isLoss} />
+                                            {qtSell > 0 && qtCost > 0 && (
+                                              <div style={{ marginTop: 4, fontSize: 9.5, color: qtProfit > 0 ? '#16a34a' : qtProfit < 0 ? '#ef4444' : '#94a3b8', fontWeight: 700, padding: '3px 5px' }}>
+                                                Lãi/proxy: {qtProfit > 0 ? '+' : ''}{qtProfit.toLocaleString('vi-VN')}đ
+                                              </div>
+                                            )}
+                                          </div>
+                                          <CustomTextField size='small' type='number' placeholder='Giá vốn' value={qt.cost}
+                                            onChange={(e: any) => setPriceFields(prev => prev.map((f, i) => i === index ? {
+                                              ...f, quantity_tiers: (f.quantity_tiers || []).map((t, j) => j === qIdx ? { ...t, cost: e.target.value } : t)
+                                            } : f))} fullWidth sx={{ '& input': { fontSize: '11px', p: '4px 8px' } }} />
+                                          <IconButton size='small' sx={{ p: '1px', mt: '3px' }} color='error'
+                                            onClick={() => setPriceFields(prev => prev.map((f, i) => i === index ? {
+                                              ...f, quantity_tiers: (f.quantity_tiers || []).filter((_, j) => j !== qIdx)
+                                            } : f))}>
+                                            <X size={12} />
+                                          </IconButton>
+                                        </div>
+                                      )
                                   })}
                                   <Button size='small' sx={{ fontSize: '10px', mt: 0.5 }} startIcon={<Plus size={11} />}
                                     onClick={() => setPriceFields(prev => prev.map((f, i) => i === index ? {
