@@ -465,6 +465,9 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
           {/* Order raw data — expandable */}
           <OrderRawDataPanel order={order} />
 
+          {/* Nguồn mua GEM1 — chỉ hiện khi order được mua qua GEM1 tool */}
+          <GemSourcePanel order={order} />
+
           {/* Tabs — sticky */}
           <Tabs
             value={tabIndex}
@@ -687,6 +690,89 @@ const fmtValue = (v: any): string => {
   if (v == null) return '—'
   if (typeof v === 'object') { try { return JSON.stringify(v) } catch { return String(v) } }
   return String(v)
+}
+
+/** Panel nguồn mua GEM1 — hiện khi order.metadata có gem_buy_token */
+function GemSourcePanel({ order }: { order: any }) {
+  const [showToken, setShowToken] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const meta = useMemo(() => {
+    const raw = order?.metadata
+    if (!raw) return null
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw) } catch { return null }
+    }
+    return raw
+  }, [order?.metadata])
+
+  if (!meta?.gem_buy_token) return null
+
+  const token = String(meta.gem_buy_token)
+  const masked = '•'.repeat(8) + token.slice(-6)
+  const copyToken = () => {
+    navigator.clipboard.writeText(token)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div style={{
+      margin: '0 20px 16px', padding: 14, borderRadius: 10,
+      background: '#faf5ff', border: '1px solid #e9d5ff',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Zap size={14} color='#7e22ce' />
+        <span style={{ fontWeight: 700, fontSize: 13, color: '#7e22ce' }}>Nguồn mua: GEM1 Tool</span>
+      </div>
+
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: 10, fontSize: 12,
+      }}>
+        <div>
+          <div style={{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }}>Mã nạp (code CK)</div>
+          <div style={{ fontFamily: 'monospace', color: '#111' }}>{meta.gem_deposit_code || '—'}</div>
+        </div>
+        <div>
+          <div style={{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }}>Số tiền nạp</div>
+          <div style={{ fontWeight: 600, color: '#111' }}>{formatVND(Number(meta.gem_deposit_amount || 0))}</div>
+        </div>
+        <div>
+          <div style={{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }}>Lệnh nạp</div>
+          <div style={{ color: '#111' }}>#{meta.gem_bank_auto_id || '—'}</div>
+        </div>
+        {meta.external_ref && (
+          <div>
+            <div style={{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }}>External ref</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#64748b' }}>{meta.external_ref}</div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ color: '#94a3b8', fontSize: 11, minWidth: 72 }}>Buy Token:</div>
+        <div style={{ fontFamily: 'monospace', fontSize: 11, flex: 1, wordBreak: 'break-all' }}>
+          {showToken ? token : masked}
+        </div>
+        <button
+          onClick={() => setShowToken(v => !v)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#7e22ce' }}
+          title={showToken ? 'Ẩn' : 'Hiện'}
+        >
+          <Eye size={14} />
+        </button>
+        <button
+          onClick={copyToken}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#7e22ce' }}
+          title='Copy'
+        >
+          <Copy size={14} />
+        </button>
+        {copied && <span style={{ fontSize: 11, color: '#16a34a' }}>✓</span>}
+      </div>
+    </div>
+  )
 }
 
 /** Panel thông tin nội bộ đơn hàng — expandable, trực quan + admin edit */
