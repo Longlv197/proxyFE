@@ -12,7 +12,7 @@ import Chip from '@mui/material/Chip'
 import TextField from '@mui/material/TextField'
 import Autocomplete from '@mui/material/Autocomplete'
 import Divider from '@mui/material/Divider'
-import { X, CheckCircle2, XCircle, Clock, MinusCircle, Lightbulb, HandCoins, Ban, Undo2 } from 'lucide-react'
+import { X, CheckCircle2, XCircle, Clock, MinusCircle, Lightbulb, HandCoins, Ban, Undo2, Key, Copy, Package, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'react-toastify'
 
 import { useInvestigateFull, useDismissTransaction, useUndismissTransaction } from '@/hooks/apis/useDepositManagement'
@@ -67,6 +67,7 @@ export default function InvestigationDrawer({ open, onClose, source, sourceId, h
   const [userSearch, setUserSearch] = useState('')
   const [showDismissForm, setShowDismissForm] = useState(false)
   const [dismissReason, setDismissReason] = useState('')
+  const [showBuyToken, setShowBuyToken] = useState(false)
 
   const { data: usersData } = useAdminUsers(
     { search: userSearch, per_page: 10 },
@@ -235,6 +236,100 @@ export default function InvestigationDrawer({ open, onClose, source, sourceId, h
                 <Typography fontSize={12} color={data.diagnosis.overall === 'pass' ? 'success.main' : 'info.main'}>
                   {data.diagnosis.suggestion}
                 </Typography>
+              </Box>
+            )}
+
+            {/* Gem1 Tool Info (chỉ khi bank_auto type=gem1) */}
+            {data.gem_info && (
+              <Box sx={{ mt: 2, p: 1.5, bgcolor: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                  <Key size={16} color='#7e22ce' />
+                  <Typography fontSize={13} fontWeight={700} color='#7e22ce'>GEM1 Tool</Typography>
+                  {(() => {
+                    const s = data.gem_info.token_status
+                    const map: Record<string, { label: string; color: 'success' | 'warning' | 'default' | 'error' }> = {
+                      ready:               { label: 'Token sẵn sàng', color: 'warning' },
+                      consumed_or_expired: { label: 'Đã mua / hết hạn', color: 'success' },
+                      not_paid_yet:       { label: 'Chưa CK',          color: 'default' },
+                      redis_error:        { label: 'Lỗi Redis',        color: 'error' },
+                      unknown:            { label: 'Không xác định',    color: 'default' },
+                    }
+                    const m = map[s] || map.unknown
+                    return <Chip label={m.label} size='small' color={m.color} />
+                  })()}
+                </Box>
+
+                {/* Buy token (ẩn/hiện) */}
+                {data.gem_info.buy_token && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography fontSize={11} color='text.secondary' minWidth={72}>Buy Token:</Typography>
+                    <Typography fontSize={11} fontFamily='monospace' sx={{ flex: 1, wordBreak: 'break-all' }}>
+                      {showBuyToken ? data.gem_info.buy_token : '•'.repeat(8) + data.gem_info.buy_token.slice(-6)}
+                    </Typography>
+                    <IconButton size='small' onClick={() => setShowBuyToken(!showBuyToken)}>
+                      {showBuyToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </IconButton>
+                    <IconButton
+                      size='small'
+                      onClick={() => {
+                        navigator.clipboard.writeText(data.gem_info.buy_token)
+                        toast.info('Đã copy buy_token')
+                      }}
+                    >
+                      <Copy size={14} />
+                    </IconButton>
+                  </Box>
+                )}
+
+                {/* Token TTL */}
+                {data.gem_info.token_status === 'ready' && data.gem_info.token_ttl != null && (
+                  <Typography fontSize={11} color='warning.main' sx={{ pl: '72px', mb: 1 }}>
+                    Còn {Math.floor(data.gem_info.token_ttl / 3600)}h {Math.floor((data.gem_info.token_ttl % 3600) / 60)}m trước khi expire
+                  </Typography>
+                )}
+
+                {/* Deposit info */}
+                <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+                  <Typography fontSize={11} color='text.secondary'>
+                    Mã nạp: <strong style={{ color: '#111' }}>{data.gem_info.deposit_code}</strong>
+                  </Typography>
+                  <Typography fontSize={11} color='text.secondary'>
+                    Số tiền: <strong style={{ color: '#111' }}>{data.gem_info.deposit_amount.toLocaleString('vi-VN')}đ</strong>
+                  </Typography>
+                </Box>
+
+                {/* Orders list */}
+                <Divider sx={{ my: 1 }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Package size={14} color='#7e22ce' />
+                  <Typography fontSize={12} fontWeight={600}>
+                    Đơn đã mua ({data.gem_info.purchases_count})
+                  </Typography>
+                </Box>
+
+                {data.gem_info.orders.length === 0 ? (
+                  <Typography fontSize={11} color='text.secondary' sx={{ pl: 2.5 }}>
+                    {data.gem_info.token_status === 'ready'
+                      ? 'Khách đã nạp nhưng chưa mua đơn nào'
+                      : data.gem_info.token_status === 'not_paid_yet'
+                      ? 'Khách chưa CK tiền'
+                      : 'Chưa có đơn'}
+                  </Typography>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                    {data.gem_info.orders.map((o: any) => (
+                      <Box key={o.id} sx={{ p: 1, bgcolor: '#fff', border: '1px solid #e9d5ff', borderRadius: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography fontSize={12} fontWeight={600}>{o.order_code}</Typography>
+                          <Chip label={o.status} size='small' variant='outlined' />
+                        </Box>
+                        <Typography fontSize={11} color='text.secondary'>
+                          SL: {o.quantity} · Tổng: {o.total_amount.toLocaleString('vi-VN')}đ
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
               </Box>
             )}
 

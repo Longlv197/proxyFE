@@ -25,6 +25,27 @@ export interface InvestigateStep {
   data: Record<string, any> | null
 }
 
+export interface GemAuditOrder {
+  id: number
+  order_code: string
+  status: string
+  quantity: number
+  total_amount: number
+  service_type_id: number
+  created_at: string | null
+}
+
+export interface GemInfo {
+  buy_token: string | null
+  token_status: 'ready' | 'consumed_or_expired' | 'not_paid_yet' | 'redis_error' | 'unknown'
+  token_ttl: number | null
+  deposit_code: string
+  deposit_amount: number
+  purchases_count: number
+  orders: GemAuditOrder[]
+  activity_log: Array<Record<string, any>>
+}
+
 export interface InvestigateResult {
   checklist: InvestigateStep[]
   diagnosis: {
@@ -37,6 +58,7 @@ export interface InvestigateResult {
     transaction_bank: any
     user: any
   }
+  gem_info: GemInfo | null
 }
 
 // ── Hooks ──

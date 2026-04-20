@@ -3293,3 +3293,24 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Sửa:** AuthGuard bỏ timer 800ms, dựa vào `wasAuthenticated` — đã login thì luôn giữ content, axios interceptor quyết định signOut khi BE xác nhận token chết. Hết lỗi "phải đăng nhập" flash.
 **Sửa:** Form tên chuyển tiền: tiêu đề rõ nghĩa, warning box cảnh báo sai tên = không cộng tiền tự động, placeholder + helper hướng dẫn cụ thể.
 **Files:** `AuthGuard.tsx`, `RechargePage.tsx`
+
+### 20/04/2026
+
+#### 13.N+9 Admin audit GEM1 tool — section trong InvestigationDrawer (chỉ site mẹ)
+
+**Vấn đề:** Admin không có UI xem buy_token khách GEM1, trạng thái "đã nạp chưa / đã mua chưa", list đơn mua từ deposit — phải query DB thủ công.
+
+**Thêm:**
+- Section "GEM1 Tool" tự động hiện trong `InvestigationDrawer` khi BE trả `gem_info` (tức `bank_auto.deposit_type = 'gem1'`):
+  - Badge trạng thái token: Sẵn sàng / Đã mua-hết hạn / Chưa CK / Lỗi Redis
+  - Buy Token: ẩn mặc định, nút 👁 hiện, 📋 copy
+  - TTL còn lại ("Còn Xh Ym" khi token ready, dựa `Redis.ttl()`)
+  - Deposit info: mã CK + số tiền
+  - List đơn đã mua: mã đơn, status, SL, tổng tiền
+- Interface `GemInfo` + `GemAuditOrder` + field `gem_info: GemInfo | null` vào `InvestigateResult`
+
+**BE song song (section 15.N+14):**
+- `TransactionBankController::investigateFull` — thêm `buildGemInfo()` khi `bank_auto.deposit_type = 'gem1'`: Redis LLEN check token status, TTL, query orders từ `activity_log[gem_purchased].order_id`
+- Routes `/api/add-transaction`, `/bank-auto-gem`, `/total-deposit`, `/buy/proxy`, `/gem-orders*` — bọc trong `if (config('site.is_parent'))` — site con không expose
+
+**Files:** `InvestigationDrawer.tsx`, `useDepositManagement.ts`
