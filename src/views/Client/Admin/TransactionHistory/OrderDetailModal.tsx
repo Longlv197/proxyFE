@@ -1077,29 +1077,49 @@ function ExpandableItemRow({ row, activeItemKey, onViewLogs }: { row: any; activ
   )
 }
 
-/** Panel chi tiết OrderItem — bảng có nhóm, luôn hiện cột đối tác + inline edit */
+/** Panel chi tiết OrderItem — bảng có nhóm, luôn hiện cột đối tác + inline edit per-field */
 function ItemDetailPanel({ item }: { item: any }) {
-  const [editing, setEditing] = useState(false)
-  const [proxyStr, setProxyStr] = useState('')
-  const [provKey, setProvKey] = useState('')
+  const [editField, setEditField] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
   const updateItem = useUpdateItem()
 
-  const startEdit = () => {
-    const proxy = item.proxy || item.proxys || {}
-    const proxyValue = extractProxyValue(proxy)
-    setProxyStr(proxyValue)
-    setProvKey(item.provider_key || '')
-    setEditing(true)
+  // Chỉ các field này cho phép admin sửa inline
+  const EDITABLE = new Set(['ip', 'port', 'user', 'pass', 'provider_key'])
+
+  const startEdit = (field: string, currentVal: any) => {
+    setEditField(field)
+    setEditValue(currentVal == null ? '' : String(currentVal))
   }
+
+  const cancelEdit = () => { setEditField(null); setEditValue('') }
 
   const saveEdit = () => {
     const key = item.key || item.api_key
-    if (!key) return
+    if (!key || !editField) return
+
+    const px = item.proxy || item.proxys || {}
+    const proxyParts = {
+      ip:   px.ip   ?? '',
+      port: px.port ?? '',
+      user: px.user ?? '',
+      pass: px.pass ?? '',
+    }
+    let providerKey = item.provider_key ?? ''
+
+    if (['ip', 'port', 'user', 'pass'].includes(editField)) {
+      (proxyParts as any)[editField] = editValue
+    } else if (editField === 'provider_key') {
+      providerKey = editValue
+    }
+
+    const proxyString = `${proxyParts.ip}:${proxyParts.port}:${proxyParts.user}:${proxyParts.pass}`
+
     updateItem.mutate(
-      { itemKey: key, proxyString: proxyStr, providerKey: provKey },
-      { onSuccess: () => setEditing(false) }
+      { itemKey: key, proxyString, providerKey },
+      { onSuccess: cancelEdit }
     )
   }
+
   const origins: Record<string, string> = item.metadata?._field_origins || {}
   const proxy = item.proxy || item.proxys
   const sts = item.status === 0 ? 'Hoạt động' : item.status === 1 ? 'Đã tắt' : 'Hết hạn'
@@ -1154,49 +1174,72 @@ function ItemDetailPanel({ item }: { item: any }) {
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#f7f9fb' }}>
-            <th style={{ ...th, color: '#6b7280', width: '35%' }}>Field hệ thống</th>
-            <th style={{ ...th, color: '#6b7280', width: '40%' }}>Giá trị</th>
-            <th style={{ ...th, color: '#c9a87c', width: '25%' }}>Field đối tác</th>
+            <th style={{ ...th, color: '#6b7280', width: '28%' }}>Field hệ thống</th>
+            <th style={{ ...th, color: '#6b7280', width: '42%' }}>Giá trị</th>
+            <th style={{ ...th, color: '#c9a87c', width: '22%' }}>Field đối tác</th>
+            <th style={{ ...th, color: '#6b7280', width: '8%', textAlign: 'center' }}>Sửa</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.db}-${i}`} style={{ background: i % 2 === 0 ? '#fff' : '#fafbfd' }}>
-              <td style={{ padding: '5px 10px', fontSize: '12px', fontFamily: 'monospace', color: '#4a5568' }}>{r.db}</td>
-              <td style={{ padding: '5px 10px', fontSize: '12px', fontFamily: 'monospace', fontWeight: 600, color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }} title={fmtValue(r.val)}>{fmtValue(r.val)}</td>
-              <td style={{ padding: '5px 10px', fontSize: '12px', fontFamily: 'monospace', color: '#c9a87c' }}>{r.from || <span style={{ color: '#e2e5ea' }}>—</span>}</td>
-            </tr>
-          ))}
+          {rows.map((r, i) => {
+            const isEditing = editField === r.db
+            const canEdit = EDITABLE.has(r.db)
+            return (
+              <tr key={`${r.db}-${i}`} style={{ background: isEditing ? '#eef2ff' : (i % 2 === 0 ? '#fff' : '#fafbfd') }}>
+                <td style={{ padding: '5px 10px', fontSize: '12px', fontFamily: 'monospace', color: '#4a5568' }}>{r.db}</td>
+                <td style={{ padding: '5px 10px', fontSize: '12px', fontFamily: 'monospace', fontWeight: 600, color: '#1a202c', overflow: 'hidden', maxWidth: 280 }} title={fmtValue(r.val)}>
+                  {isEditing ? (
+                    <input
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') saveEdit()
+                        if (e.key === 'Escape') cancelEdit()
+                      }}
+                      autoFocus
+                      style={{ width: '100%', fontSize: '12px', fontFamily: 'monospace', padding: '3px 6px', border: '1px solid #6366f1', borderRadius: 4 }}
+                    />
+                  ) : (
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{fmtValue(r.val)}</span>
+                  )}
+                </td>
+                <td style={{ padding: '5px 10px', fontSize: '12px', fontFamily: 'monospace', color: '#c9a87c' }}>{r.from || <span style={{ color: '#e2e5ea' }}>—</span>}</td>
+                <td style={{ padding: '5px 6px', fontSize: '12px', textAlign: 'center' }}>
+                  {isEditing ? (
+                    <span style={{ display: 'inline-flex', gap: 4 }}>
+                      <button
+                        onClick={saveEdit}
+                        disabled={updateItem.isPending}
+                        style={{ fontSize: '11px', color: '#fff', background: updateItem.isPending ? '#a5b4fc' : '#6366f1', border: 'none', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
+                        title='Lưu (Enter)'
+                      >
+                        <Save size={12} />
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 4, padding: '3px 6px', cursor: 'pointer' }}
+                        title='Huỷ (Esc)'
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ) : canEdit ? (
+                    <button
+                      onClick={() => startEdit(r.db, r.val)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6366f1', padding: 2 }}
+                      title={`Sửa ${r.db}`}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  ) : (
+                    <span style={{ color: '#e2e5ea' }}>—</span>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
-
-      {/* Inline edit */}
-      <div style={{ padding: '8px 10px', borderTop: '1px solid #edf0f4', display: 'flex', gap: 8, alignItems: 'center' }}>
-        {!editing ? (
-          <button onClick={startEdit} style={{ fontSize: '12px', color: '#6366f1', background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontWeight: 500 }}>
-            Sửa proxy
-          </button>
-        ) : (
-          <>
-            <input
-              value={proxyStr} onChange={e => setProxyStr(e.target.value)}
-              placeholder='ip:port:user:pass'
-              style={{ flex: 1, fontSize: '12px', fontFamily: 'monospace', padding: '5px 8px', border: '1px solid #c7d2fe', borderRadius: 4 }}
-            />
-            <input
-              value={provKey} onChange={e => setProvKey(e.target.value)}
-              placeholder='provider_key'
-              style={{ width: 180, fontSize: '12px', fontFamily: 'monospace', padding: '5px 8px', border: '1px solid #c7d2fe', borderRadius: 4 }}
-            />
-            <button onClick={saveEdit} disabled={updateItem.isPending} style={{ fontSize: '12px', color: '#fff', background: updateItem.isPending ? '#a5b4fc' : '#6366f1', border: 'none', borderRadius: 6, padding: '5px 14px', cursor: 'pointer', fontWeight: 500 }}>
-              {updateItem.isPending ? 'Đang lưu...' : 'Lưu'}
-            </button>
-            <button onClick={() => setEditing(false)} style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 10px', cursor: 'pointer' }}>
-              Huỷ
-            </button>
-          </>
-        )}
-      </div>
     </div>
   )
 }
