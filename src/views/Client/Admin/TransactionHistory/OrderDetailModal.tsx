@@ -1045,10 +1045,10 @@ function ExpandableItemRow({ row, activeItemKey, onViewLogs }: { row: any; activ
         }}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('input[type="checkbox"], button, select')) return
-          if (item.type === 'ROTATING' && onViewLogs && itemKey) {
+          // Luôn expand panel chi tiết (edit inline). Rotating + trigger view logs song song.
+          setExpanded(!expanded)
+          if (!expanded && item.type === 'ROTATING' && onViewLogs && itemKey) {
             onViewLogs(itemKey)
-          } else {
-            setExpanded(!expanded)
           }
         }}
         onMouseEnter={(e) => { if (!expanded && !isViewing) e.currentTarget.style.background = '#f8fafc' }}
