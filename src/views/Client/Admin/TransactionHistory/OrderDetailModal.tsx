@@ -1130,14 +1130,20 @@ function ItemDetailPanel({ item }: { item: any }) {
 
   const rows: R[] = []
 
-  // Proxy fields
+  // Proxy fields — LUÔN hiện ip/port/user/pass dù rỗng để admin có thể thêm thủ công
   if (proxy && typeof proxy === 'object') {
-    for (const k of ['ip', 'port', 'user', 'pass', 'loaiproxy']) {
-      if (proxy[k]) rows.push({ db: k, val: proxy[k], from: origins[k] })
+    for (const k of ['ip', 'port', 'user', 'pass']) {
+      rows.push({ db: k, val: proxy[k] ?? '', from: origins[k] })
     }
+    if (proxy.loaiproxy) rows.push({ db: 'loaiproxy', val: proxy.loaiproxy, from: origins.loaiproxy })
     Object.keys(proxy).filter(k => !['http','socks5','HTTP','SOCK5','ip','port','user','pass','loaiproxy'].includes(k)).forEach(k => {
       if (proxy[k]) rows.push({ db: k, val: proxy[k], from: origins[k] })
     })
+  } else {
+    // Không có proxy object (item mới hoặc rotating chưa có proxy) → push 4 row rỗng cho edit
+    for (const k of ['ip', 'port', 'user', 'pass']) {
+      rows.push({ db: k, val: '', from: origins[k] })
+    }
   }
 
   // Metadata (bỏ _field_origins)
@@ -1154,7 +1160,8 @@ function ItemDetailPanel({ item }: { item: any }) {
   if (item.status != null) rows.push({ db: 'status', val: sts })
   if (item.buy_at) rows.push({ db: 'buy_at', val: formatDateTimeLocal(item.buy_at) })
   if (item.expired_at) rows.push({ db: 'expired_at', val: formatDateTimeLocal(item.expired_at) })
-  if (item.provider_key) rows.push({ db: 'provider_key', val: item.provider_key, from: origins['api_key'] })
+  // provider_key: LUÔN hiện (kể cả null) để admin có thể thêm cho proxy xoay
+  rows.push({ db: 'provider_key', val: item.provider_key ?? '', from: origins['api_key'] })
   if (item.provider_order_code) rows.push({ db: 'provider_order_code', val: item.provider_order_code })
   if (item.provider_item_id) rows.push({ db: 'provider_item_id', val: item.provider_item_id, from: origins['provider_item_id'] })
 
@@ -1200,7 +1207,11 @@ function ItemDetailPanel({ item }: { item: any }) {
                       style={{ width: '100%', fontSize: '12px', fontFamily: 'monospace', padding: '3px 6px', border: '1px solid #6366f1', borderRadius: 4 }}
                     />
                   ) : (
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{fmtValue(r.val)}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                      {r.val === '' || r.val == null
+                        ? <span style={{ color: '#cbd5e0', fontStyle: 'italic' }}>(chưa có)</span>
+                        : fmtValue(r.val)}
+                    </span>
                   )}
                 </td>
                 <td style={{ padding: '5px 10px', fontSize: '12px', fontFamily: 'monospace', color: '#c9a87c' }}>{r.from || <span style={{ color: '#e2e5ea' }}>—</span>}</td>
