@@ -25,7 +25,8 @@ import {
   Database,
   Eye,
   Pencil,
-  Save
+  Save,
+  Settings
 } from 'lucide-react'
 
 import { extractProxyValue, extractProtocol } from '@/utils/protocolProxy'
@@ -56,6 +57,86 @@ interface OrderDetailModalProps {
 
 const formatVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
 
+// === Copy preset — field picker + simple/template mode ===
+const COPY_FIELDS: { key: string; label: string; extract: (it: any) => string }[] = [
+  { key: 'key', label: 'Key hệ thống', extract: it => it.key || it.api_key || '' },
+  { key: 'provider_key', label: 'Key đối tác', extract: it => it.provider_key || it.api_key_provider || '' },
+  { key: 'ip', label: 'IP', extract: it => (it.proxy || it.proxys)?.ip || '' },
+  { key: 'port', label: 'Port', extract: it => String((it.proxy || it.proxys)?.port || '') },
+  { key: 'user', label: 'User', extract: it => (it.proxy || it.proxys)?.user || '' },
+  { key: 'pass', label: 'Pass', extract: it => (it.proxy || it.proxys)?.pass || '' },
+  { key: 'proxy', label: 'Proxy (ip:port:user:pass)', extract: it => {
+    const p = it.proxy || it.proxys; if (!p) return ''
+    return [p.ip, p.port, p.user, p.pass].filter(Boolean).join(':')
+  } },
+  { key: 'proxy_hostport', label: 'IP:Port', extract: it => {
+    const p = it.proxy || it.proxys; if (!p) return ''
+    return [p.ip, p.port].filter(Boolean).join(':')
+  } },
+  { key: 'proxy_auth', label: 'User:Pass', extract: it => {
+    const p = it.proxy || it.proxys; if (!p) return ''
+    return [p.user, p.pass].filter(Boolean).join(':')
+  } },
+  { key: 'protocol', label: 'Protocol', extract: it => (it.protocol || '').toUpperCase() },
+  { key: 'expired_at', label: 'Hết hạn', extract: it => it.expired_at || '' },
+  { key: 'buy_at', label: 'Ngày mua', extract: it => it.buy_at || '' },
+  { key: 'created_at', label: 'Ngày tạo', extract: it => it.created_at || '' },
+  { key: 'provider_item_id', label: 'ID NCC', extract: it => String(it.provider_item_id || '') },
+  { key: 'provider_order_code', label: 'Order code NCC', extract: it => it.provider_order_code || '' },
+  { key: 'rotation_mode', label: 'Chế độ xoay', extract: it => it.rotation_mode || '' },
+  { key: 'status', label: 'Trạng thái', extract: it => {
+    const s = it.status
+    if (s === 0 || s === 'ACTIVE') return 'active'
+    if (s === 1 || s === 'INACTIVE') return 'inactive'
+    return 'expired'
+  } },
+  { key: 'ip_whitelist', label: 'IP whitelist', extract: it => Array.isArray(it.ip_whitelist) ? it.ip_whitelist.join(',') : '' },
+]
+
+const COPY_FIELD_MAP: Record<string, (it: any) => string> = Object.fromEntries(
+  COPY_FIELDS.map(f => [f.key, f.extract])
+)
+
+interface CopyPreset {
+  mode: 'simple' | 'template'
+  fields: string[]
+  fieldSep: string
+  template: string
+}
+
+const DEFAULT_COPY_PRESET: CopyPreset = {
+  mode: 'simple',
+  fields: ['key'],
+  fieldSep: ':',
+  template: '{ip}:{port}:{user}:{pass}',
+}
+
+const loadCopyPreset = (): CopyPreset => {
+  if (typeof window === 'undefined') return DEFAULT_COPY_PRESET
+  try {
+    const raw = localStorage.getItem('order_items_copy_preset')
+    if (!raw) return DEFAULT_COPY_PRESET
+    const parsed = JSON.parse(raw)
+    return { ...DEFAULT_COPY_PRESET, ...parsed }
+  } catch { return DEFAULT_COPY_PRESET }
+}
+
+const loadPageSize = (): number => {
+  if (typeof window === 'undefined') return 10
+  const n = Number(localStorage.getItem('order_items_per_page'))
+  return [5, 10, 20, 50, 100].includes(n) ? n : 10
+}
+
+const formatRow = (item: any, preset: CopyPreset): string => {
+  if (preset.mode === 'template') {
+    return preset.template.replace(/\{(\w+)\}/g, (_, k) => {
+      const fn = COPY_FIELD_MAP[k]
+      return fn ? fn(item) : ''
+    })
+  }
+  return preset.fields.map(k => COPY_FIELD_MAP[k]?.(item) || '').join(preset.fieldSep)
+}
+
 // Log action → icon + color + label
 const LOG_ACTION_CONFIG: Record<string, { icon: any; color: string; label: string }> = {
   created: { icon: Zap, color: '#3b82f6', label: 'Tạo đơn' },
@@ -81,6 +162,9 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
   const [tabIndex, setTabIndex] = useState(0)
   const [viewLogId, setViewLogId] = useState<number | null>(null)
   const [viewItemKey, setViewItemKey] = useState<string | null>(null)
+  const [pageSize, setPageSize] = useState<number>(() => loadPageSize())
+  const [copyPreset, setCopyPreset] = useState<CopyPreset>(() => loadCopyPreset())
+  const [copySettingsOpen, setCopySettingsOpen] = useState(false)
 
   const updateItemMutation = useUpdateOrderItem()
   const pingProxy = usePingProxy()
@@ -127,10 +211,10 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
 
   const downloadApiKeys = () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows
-
-    const keys = selectedRows.length > 0
-      ? selectedRows.map((r: any) => r.original.key || r.original.api_key || getProxyText(r.original)).join('\n')
-      : (dataApiKeys || []).map((item: any) => item.key || item.api_key || getProxyText(item)).join('\n')
+    const items = selectedRows.length > 0
+      ? selectedRows.map((r: any) => r.original)
+      : (dataApiKeys || [])
+    const keys = items.map((it: any) => formatRow(it, copyPreset)).join('\n')
 
     const blob = new Blob([keys], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
@@ -389,8 +473,22 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
     onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 5 } }
+    autoResetPageIndex: false,
+    initialState: { pagination: { pageSize } },
   })
+
+  // Sync pageSize state → table + localStorage
+  useEffect(() => {
+    table.setPageSize(pageSize)
+    try { localStorage.setItem('order_items_per_page', String(pageSize)) } catch {}
+  }, [pageSize, table])
+
+  // Persist copy preset
+  useEffect(() => {
+    try { localStorage.setItem('order_items_copy_preset', JSON.stringify(copyPreset)) } catch {}
+  }, [copyPreset])
+
+  const buildCopyText = (rows: any[]) => rows.map(it => formatRow(it, copyPreset)).join('\n')
 
   useEffect(() => {
     if (!isOpen) { setRowSelection({}); setTabIndex(0); setViewLogId(null); setViewItemKey(null) }
@@ -488,38 +586,73 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
             {tabIndex === 0 && (
               <div style={{ display: 'flex', gap: 0 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                {/* Copy/Download buttons */}
-                {selectedCount > 0 && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>Đã chọn: {selectedCount}</span>
+                {/* Action bar — luôn hiện: pageSize + cài đặt copy */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+                  {selectedCount > 0 && (
+                    <>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>Đã chọn: {selectedCount}</span>
+                      <button
+                        onClick={() => {
+                          const rows = table.getFilteredSelectedRowModel().rows.map((r: any) => r.original)
+                          copyToClipboard(buildCopyText(rows), 'bulk')
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          padding: '4px 10px', fontSize: '12px', fontWeight: 500,
+                          background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0',
+                          borderRadius: 6, cursor: 'pointer'
+                        }}
+                        title={`Copy theo cấu hình: ${copyPreset.mode === 'template' ? copyPreset.template : copyPreset.fields.join(copyPreset.fieldSep)}`}
+                      >
+                        <Copy size={13} /> {copiedField === 'bulk' ? 'Đã copy!' : 'Copy'}
+                      </button>
+                      <button
+                        onClick={downloadApiKeys}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          padding: '4px 10px', fontSize: '12px', fontWeight: 500,
+                          background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+                          borderRadius: 6, cursor: 'pointer'
+                        }}
+                      >
+                        <Download size={13} /> Tải
+                      </button>
+                    </>
+                  )}
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <label style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      Hiển thị:
+                      <select
+                        value={pageSize}
+                        onChange={e => setPageSize(Number(e.target.value))}
+                        style={{ fontSize: '12px', padding: '3px 6px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+                      >
+                        {[5, 10, 20, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </label>
                     <button
-                      onClick={() => {
-                        const rows = table.getFilteredSelectedRowModel().rows
-                        const keys = rows.map((r: any) => r.original.key || r.original.api_key || getProxyText(r.original)).join('\n')
-
-                        copyToClipboard(keys, 'bulk')
-                      }}
+                      onClick={() => setCopySettingsOpen(v => !v)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4,
                         padding: '4px 10px', fontSize: '12px', fontWeight: 500,
-                        background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0',
+                        background: copySettingsOpen ? '#eef2ff' : '#f8fafc',
+                        color: '#6366f1', border: `1px solid ${copySettingsOpen ? '#c7d2fe' : '#e2e8f0'}`,
                         borderRadius: 6, cursor: 'pointer'
                       }}
+                      title='Cấu hình copy'
                     >
-                      <Copy size={13} /> {copiedField === 'bulk' ? 'Đã copy!' : 'Copy'}
-                    </button>
-                    <button
-                      onClick={downloadApiKeys}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        padding: '4px 10px', fontSize: '12px', fontWeight: 500,
-                        background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
-                        borderRadius: 6, cursor: 'pointer'
-                      }}
-                    >
-                      <Download size={13} /> Tải
+                      <Settings size={13} /> Cài đặt copy
                     </button>
                   </div>
+                </div>
+
+                {copySettingsOpen && (
+                  <CopyPresetEditor
+                    preset={copyPreset}
+                    onChange={setCopyPreset}
+                    previewItem={dataApiKeys?.[0]}
+                    onClose={() => setCopySettingsOpen(false)}
+                  />
                 )}
 
                 {loadingApiKeys ? (
@@ -1781,6 +1914,212 @@ function ItemLogPanel({ itemKey }: { itemKey: string }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/** Editor cấu hình copy — chọn field + separator hoặc template tuỳ ý */
+function CopyPresetEditor({
+  preset, onChange, previewItem, onClose,
+}: {
+  preset: CopyPreset
+  onChange: (next: CopyPreset) => void
+  previewItem: any
+  onClose: () => void
+}) {
+  const toggleField = (k: string) => {
+    const has = preset.fields.includes(k)
+    const next = has ? preset.fields.filter(f => f !== k) : [...preset.fields, k]
+    onChange({ ...preset, fields: next })
+  }
+
+  const moveField = (k: string, dir: -1 | 1) => {
+    const idx = preset.fields.indexOf(k)
+    if (idx === -1) return
+    const next = [...preset.fields]
+    const target = idx + dir
+    if (target < 0 || target >= next.length) return
+    ;[next[idx], next[target]] = [next[target], next[idx]]
+    onChange({ ...preset, fields: next })
+  }
+
+  const SEP_OPTIONS = [
+    { v: ':', label: ': (hai chấm)' },
+    { v: '|', label: '| (gạch dọc)' },
+    { v: ' ', label: '  (khoảng trắng)' },
+    { v: '\t', label: '\\t (tab)' },
+    { v: ',', label: ', (phẩy)' },
+    { v: ';', label: '; (chấm phẩy)' },
+    { v: '-', label: '- (gạch ngang)' },
+  ]
+
+  const preview = previewItem
+    ? formatRow(previewItem, preset)
+    : '(chưa có dữ liệu để preview)'
+
+  return (
+    <div style={{
+      background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
+      padding: 14, marginBottom: 12, fontSize: '12px',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ fontWeight: 600, color: '#1e293b' }}>Cấu hình copy</div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Mode toggle */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        {(['simple', 'template'] as const).map(m => (
+          <button
+            key={m}
+            onClick={() => onChange({ ...preset, mode: m })}
+            style={{
+              padding: '4px 12px', fontSize: '12px', borderRadius: 6, cursor: 'pointer',
+              background: preset.mode === m ? '#6366f1' : '#fff',
+              color: preset.mode === m ? '#fff' : '#475569',
+              border: `1px solid ${preset.mode === m ? '#6366f1' : '#e2e8f0'}`,
+              fontWeight: preset.mode === m ? 600 : 400,
+            }}
+          >
+            {m === 'simple' ? 'Đơn giản (chọn field)' : 'Template (tự viết format)'}
+          </button>
+        ))}
+      </div>
+
+      {preset.mode === 'simple' ? (
+        <>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontWeight: 500, marginBottom: 6, color: '#475569' }}>Chọn field (click để bật/tắt):</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {COPY_FIELDS.map(f => {
+                const active = preset.fields.includes(f.key)
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => toggleField(f.key)}
+                    style={{
+                      padding: '3px 9px', fontSize: '11px', borderRadius: 12, cursor: 'pointer',
+                      background: active ? '#6366f1' : '#fff',
+                      color: active ? '#fff' : '#64748b',
+                      border: `1px solid ${active ? '#6366f1' : '#e2e8f0'}`,
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {preset.fields.length > 1 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontWeight: 500, marginBottom: 6, color: '#475569' }}>Thứ tự (kéo lên/xuống):</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {preset.fields.map((k, i) => {
+                  const f = COPY_FIELDS.find(x => x.key === k)
+                  if (!f) return null
+                  return (
+                    <div key={k} style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '4px 8px', background: '#fff', borderRadius: 4, border: '1px solid #e2e8f0'
+                    }}>
+                      <span style={{ color: '#94a3b8', fontSize: '10px', width: 16 }}>{i + 1}.</span>
+                      <span style={{ flex: 1, color: '#1e293b' }}>{f.label}</span>
+                      <button onClick={() => moveField(k, -1)} disabled={i === 0} style={{ background: 'none', border: 'none', cursor: i === 0 ? 'not-allowed' : 'pointer', color: i === 0 ? '#cbd5e1' : '#6366f1', padding: 2 }}>▲</button>
+                      <button onClick={() => moveField(k, 1)} disabled={i === preset.fields.length - 1} style={{ background: 'none', border: 'none', cursor: i === preset.fields.length - 1 ? 'not-allowed' : 'pointer', color: i === preset.fields.length - 1 ? '#cbd5e1' : '#6366f1', padding: 2 }}>▼</button>
+                      <button onClick={() => toggleField(k)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 2 }}>
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontWeight: 500, color: '#475569', display: 'block', marginBottom: 6 }}>
+              Dấu phân cách giữa các field:
+            </label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {SEP_OPTIONS.map(s => (
+                <button
+                  key={s.v}
+                  onClick={() => onChange({ ...preset, fieldSep: s.v })}
+                  style={{
+                    padding: '3px 9px', fontSize: '11px', borderRadius: 4, cursor: 'pointer',
+                    background: preset.fieldSep === s.v ? '#6366f1' : '#fff',
+                    color: preset.fieldSep === s.v ? '#fff' : '#64748b',
+                    border: `1px solid ${preset.fieldSep === s.v ? '#6366f1' : '#e2e8f0'}`,
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+              <input
+                value={SEP_OPTIONS.find(s => s.v === preset.fieldSep) ? '' : preset.fieldSep}
+                onChange={e => onChange({ ...preset, fieldSep: e.target.value })}
+                placeholder='tuỳ chỉnh'
+                style={{ width: 80, padding: '3px 8px', fontSize: '11px', border: '1px solid #e2e8f0', borderRadius: 4, fontFamily: 'monospace' }}
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontWeight: 500, color: '#475569', marginBottom: 6 }}>
+            Template (dùng placeholder <code>{'{field}'}</code>):
+          </div>
+          <textarea
+            value={preset.template}
+            onChange={e => onChange({ ...preset, template: e.target.value })}
+            rows={2}
+            style={{
+              width: '100%', padding: 8, fontSize: '12px', fontFamily: 'monospace',
+              border: '1px solid #e2e8f0', borderRadius: 4, resize: 'vertical'
+            }}
+            placeholder='{ip}:{port}:{user}:{pass}'
+          />
+          <div style={{ marginTop: 6, fontSize: '10px', color: '#64748b' }}>
+            Placeholder có sẵn:
+            {' '}
+            {COPY_FIELDS.map(f => (
+              <code
+                key={f.key}
+                onClick={() => onChange({ ...preset, template: preset.template + `{${f.key}}` })}
+                style={{
+                  display: 'inline-block', margin: '2px 3px', padding: '1px 6px',
+                  background: '#fff', border: '1px solid #e2e8f0', borderRadius: 3,
+                  cursor: 'pointer', color: '#6366f1',
+                }}
+                title='Click để thêm vào template'
+              >
+                {`{${f.key}}`}
+              </code>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Preview */}
+      <div style={{ marginTop: 10, padding: 8, background: '#fff', border: '1px dashed #cbd5e1', borderRadius: 4 }}>
+        <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: 4 }}>Preview (row đầu tiên):</div>
+        <code style={{ fontSize: '11px', fontFamily: 'monospace', color: '#1e293b', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
+          {preview || '(rỗng)'}
+        </code>
+      </div>
+
+      <div style={{ marginTop: 10, display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+        <button
+          onClick={() => onChange(DEFAULT_COPY_PRESET)}
+          style={{ padding: '4px 12px', fontSize: '11px', background: '#fff', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer' }}
+        >
+          Reset mặc định
+        </button>
+      </div>
     </div>
   )
 }

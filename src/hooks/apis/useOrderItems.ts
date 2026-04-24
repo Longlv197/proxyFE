@@ -80,12 +80,37 @@ export const useUpdateOrderItem = () => {
       const res = await axiosAuth.post(`/admin/update-item/${key}`, data)
       return res.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orderItems'] })
-      queryClient.invalidateQueries({ queryKey: ['orderApiKeys'] })
+    onSuccess: (result, variables) => {
+      const updated = result?.data
+      if (updated) {
+        // Patch tại chỗ các query cache — giữ pagination state của TanStack Table
+        queryClient.setQueriesData({ queryKey: ['orderApiKeys'] }, (old: any) => patchItem(old, variables.key, updated))
+        queryClient.setQueriesData({ queryKey: ['orderItems'] }, (old: any) => {
+          if (!old?.data || !Array.isArray(old.data)) return old
+          const idx = old.data.findIndex((it: any) => (it.key || it.api_key) === variables.key)
+          if (idx === -1) return old
+          const next = [...old.data]
+          next[idx] = { ...old.data[idx], ...updated }
+          return { ...old, data: next }
+        })
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['orderApiKeys'] })
+        queryClient.invalidateQueries({ queryKey: ['orderItems'] })
+      }
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
     },
   })
+}
+
+// Helper: patch 1 item trong array (giữ _dataField gắn trên array)
+function patchItem(old: any, itemKey: string, updated: any) {
+  if (!Array.isArray(old)) return old
+  const idx = old.findIndex((it: any) => (it.key || it.api_key) === itemKey)
+  if (idx === -1) return old
+  const next = [...old]
+  next[idx] = { ...old[idx], ...updated }
+  ;(next as any)._dataField = (old as any)._dataField
+  return next
 }
 
 export const useUpdateIpWhitelist = () => {

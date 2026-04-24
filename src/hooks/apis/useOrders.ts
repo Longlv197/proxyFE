@@ -111,8 +111,22 @@ export const useUpdateItem = () => {
 
       return res?.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orderApiKeys'] })
+    onSuccess: (result, variables) => {
+      const updated = result?.data
+      if (updated) {
+        // Patch tại chỗ — không invalidate để giữ pagination TanStack Table
+        queryClient.setQueriesData({ queryKey: ['orderApiKeys'] }, (old: any) => {
+          if (!Array.isArray(old)) return old
+          const idx = old.findIndex((it: any) => (it.key || it.api_key) === variables.itemKey)
+          if (idx === -1) return old
+          const next = [...old]
+          next[idx] = { ...old[idx], ...updated }
+          ;(next as any)._dataField = (old as any)._dataField
+          return next
+        })
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['orderApiKeys'] })
+      }
       queryClient.invalidateQueries({ queryKey: ['adminOrders'] })
     }
   })

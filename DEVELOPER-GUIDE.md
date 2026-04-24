@@ -3314,3 +3314,26 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 - Routes `/api/add-transaction`, `/bank-auto-gem`, `/total-deposit`, `/buy/proxy`, `/gem-orders*` — bọc trong `if (config('site.is_parent'))` — site con không expose
 
 **Files:** `InvestigationDrawer.tsx`, `useDepositManagement.ts`
+
+#### 13.N+10 Admin OrderDetailModal — chọn số item/trang + cấu hình copy field + edit không reset page
+
+**Vấn đề:**
+- `pageSize: 5` hardcode → admin phải click next nhiều lần khi order nhiều proxy.
+- Nút Copy chỉ copy `key`, không chọn field, không format — admin không chủ động.
+- Edit `rotation_mode` hoặc sửa proxy inline → `invalidateQueries(['orderApiKeys'])` refetch → TanStack Table auto-reset `pageIndex` về 0.
+
+**Thêm:**
+- Dropdown "Hiển thị: 5/10/20/50/100" lưu `localStorage.order_items_per_page`.
+- Nút "Cài đặt copy" mở editor:
+  - **Simple mode**: checklist field (Key hệ thống, Key đối tác, IP, Port, User, Pass, proxy full ip:port:user:pass, IP:Port, User:Pass, Protocol, Hết hạn, Ngày mua/tạo, ID NCC, Order code NCC, Rotation mode, Status, IP whitelist) + sắp xếp thứ tự ▲▼ + separator dropdown (`:` `|` space tab `,` `;` `-` hoặc custom).
+  - **Template mode**: viết format tự do như `{ip}:{port}@{user}:{pass}` — click placeholder để chèn.
+  - Preview live row đầu tiên. Reset mặc định.
+- Preset lưu `localStorage.order_items_copy_preset` — nhớ qua session.
+- Nút Copy + Download dùng preset hiện tại.
+
+**Sửa:**
+- `useUpdateOrderItem` + `useUpdateItem`: `setQueriesData` patch item tại chỗ thay vì `invalidateQueries(['orderApiKeys'])` → giữ pagination.
+- `autoResetPageIndex: false` trên `useReactTable` — phòng trường hợp data reference đổi.
+- BE `admin/update-item` đã trả full item trong `data` → FE patch bằng response, không cần gọi lại.
+
+**Files:** `OrderDetailModal.tsx`, `hooks/apis/useOrderItems.ts`, `hooks/apis/useOrders.ts`
