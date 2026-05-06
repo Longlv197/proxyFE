@@ -51,7 +51,7 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Lấy Proxy Xoay Mới',
     method: 'GET',
     endpoint: `${PROXY_BASE}/proxies/new`,
-    description: 'Lấy proxy xoay mới. Mỗi lần gọi sẽ trả proxy IP mới (nếu hết cooldown).',
+    description: 'Lấy proxy xoay hiện tại từ cache. Trả kèm field second = số giây trước lần xoay tự động kế tiếp.',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
@@ -63,6 +63,7 @@ export const apiEndpoints: ApiEndpoint[] = [
   "success": true,
   "code": 200,
   "status": "SUCCESS",
+  "second": 45,
   "data": {
     "realIpAddress": "27.66.201.201",
     "http": "27.66.201.201:20814:khljtiNj3Kd:fdkm3nbjg45d",
@@ -95,7 +96,7 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Lấy Proxy Hiện Tại',
     method: 'GET',
     endpoint: `${PROXY_BASE}/proxies/current`,
-    description: 'Lấy thông tin proxy xoay đang active. Không tạo proxy mới, chỉ trả proxy hiện tại và thời gian còn lại.',
+    description: 'Lấy proxy hiện tại (alias của /proxies/new). Trả kèm second = số giây trước lần xoay tự động kế tiếp.',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
@@ -106,6 +107,7 @@ export const apiEndpoints: ApiEndpoint[] = [
   "success": true,
   "code": 200,
   "status": "SUCCESS",
+  "second": 45,
   "data": {
     "realIpAddress": "42.119.124.219",
     "http": "42.119.124.219:16847:kh1jtlNj3Kd:rdkm3hbjq45d",
@@ -114,11 +116,7 @@ export const apiEndpoints: ApiEndpoint[] = [
     "socks5Port": "26847",
     "host": "42.119.124.219",
     "user": "kh1jtlNj3Kd",
-    "pass": "rdkm3hbjq45d",
-    "location": "VN",
-    "timeLeft": 1800,
-    "nextChange": "2024-01-15T10:30:00Z",
-    "status": "active"
+    "pass": "rdkm3hbjq45d"
   }
 }`,
       '404 ERROR': `{
