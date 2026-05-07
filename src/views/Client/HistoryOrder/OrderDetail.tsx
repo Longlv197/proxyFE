@@ -469,6 +469,11 @@ return row.original?.key || row.original?.api_key || ''
                     : String(order.quantity)
                 } />
                 <InfoCard icon={<DollarSign size={16} />} label='Tổng tiền' value={formatVND(order.total_amount)} highlight />
+                <InfoCard
+                  icon={<Clock size={16} />}
+                  label='Thời hạn'
+                  value={(order as any).metadata?.duration_label || `${(order as any).time ?? 0} ngày`}
+                />
                 <InfoCard icon={<Clock3 size={16} />} label='Ngày mua' value={formatDateTimeLocal(order.buy_at)} />
                 <Box sx={{
                   p: '10px 12px', borderRadius: '10px',
