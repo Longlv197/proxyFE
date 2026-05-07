@@ -64,35 +64,34 @@ function DurationUrlTable({ prefix, control }: { prefix: string; control: any })
     <Box sx={{ border: '1px solid #e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', px: 1.5, py: 0.75, borderBottom: '1px solid #e2e8f0' }}>
         <Box>
-          <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>URL theo tổng số ngày</Typography>
+          <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Quy tắc chọn URL theo thời hạn user mua</Typography>
           <Typography sx={{ fontSize: 10, color: '#94a3b8', mt: 0.25 }}>
-            Tổng ngày sử dụng (vd: <b>1</b>=mua 1 ngày, <b>7</b>=mua 1 tuần, <b>30</b>=mua 1 tháng) → URL nào sẽ gọi
+            Khi user mua thời hạn nào (theo ngày), hệ thống sẽ gọi URL tương ứng. Mỗi thời hạn map 1 URL duy nhất.
           </Typography>
         </Box>
         <Button size='small' startIcon={<Plus size={13} />} onClick={() => append({ days: '', url: '' })}>Thêm</Button>
-      </Box>
-      <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr 36px', gap: 1, px: 1.5, py: 0.5, fontSize: 10, fontWeight: 600, color: '#64748b', background: '#f1f5f9' }}>
-        <span>Tổng ngày</span><span>URL gọi</span><span></span>
       </Box>
       {fields.map((field, index) => {
         const currentDays = String(watchedFields[index]?.days || '').trim()
         const isDuplicate = currentDays && dayCounts[currentDays] > 1
 
         return (
-          <Box key={field.id} sx={{ display: 'grid', gridTemplateColumns: '120px 1fr 36px', gap: 1, alignItems: 'center', px: 1.5, py: 0.5, borderBottom: '1px solid #f1f5f9', background: isDuplicate ? '#fef2f2' : 'transparent' }}>
+          <Box key={field.id} sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, px: 1.5, py: 0.75, borderBottom: '1px solid #f1f5f9', background: isDuplicate ? '#fef2f2' : 'transparent' }}>
+            <Typography sx={{ fontSize: 12, color: '#475569', fontWeight: 500 }}>Khi user mua</Typography>
             <Controller name={`${prefix}.duration_urls.${index}.days`} control={control} render={({ field: f }) => (
               <CustomTextField
                 {...f}
                 size='small'
                 type='number'
-                placeholder='VD: 7 (1 tuần)'
+                placeholder='1'
                 error={!!isDuplicate}
-                helperText={isDuplicate ? 'Trùng' : ''}
-                sx={{ '& input': { fontSize: 13 } }}
+                helperText={isDuplicate ? 'Trùng giá trị' : ''}
+                sx={{ width: 90, '& input': { fontSize: 13, textAlign: 'center', fontWeight: 600 } }}
               />
             )} />
+            <Typography sx={{ fontSize: 12, color: '#475569', fontWeight: 500 }}>ngày → gọi URL:</Typography>
             <Controller name={`${prefix}.duration_urls.${index}.url`} control={control} render={({ field: f }) => (
-              <CustomTextField {...f} size='small' placeholder='https://api.provider.com/buy-weekly' sx={{ '& input': { fontSize: 12 } }} />
+              <CustomTextField {...f} size='small' placeholder='https://api.provider.com/...' sx={{ flex: 1, minWidth: 250, '& input': { fontSize: 12 } }} />
             )} />
             {fields.length > 1 ? (
               <IconButton size='small' color='error' onClick={() => remove(index)} sx={{ p: '2px' }}>
