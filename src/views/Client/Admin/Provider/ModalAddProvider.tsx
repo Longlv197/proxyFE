@@ -167,6 +167,25 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
   }
 
   const onSubmit = (data: FormValues) => {
+    // Validate: nếu use_url_by_duration=true thì phải có ít nhất 1 row có URL
+    // Tránh bug ghi đè url_by_duration thành empty khi rows toàn trống
+    const validateDurationUrls = (sectionKey: 'buy_rotating' | 'buy_static', label: string): boolean => {
+      const section = (data as any)[sectionKey]
+
+      if (!section?.enabled || !section?.use_url_by_duration) return true
+      const rows = section.duration_urls || []
+      const hasValidUrl = rows.some((r: any) => r.days && r.url)
+
+      if (!hasValidUrl) {
+        toast.error(`${label}: Đã chọn "URL theo thời hạn" nhưng chưa có URL nào. Vui lòng nhập hoặc chuyển sang "URL chung".`)
+        return false
+      }
+      return true
+    }
+
+    if (!validateDurationUrls('buy_rotating', 'Mua proxy xoay')) return
+    if (!validateDurationUrls('buy_static', 'Mua proxy tĩnh')) return
+
     const apiConfig = buildApiConfig(data)
 
     const payload: any = {

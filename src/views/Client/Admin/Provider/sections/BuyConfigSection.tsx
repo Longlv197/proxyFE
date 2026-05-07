@@ -32,17 +32,22 @@ import { STANDARD_VARIABLES, VARIABLE_FORMAT_OPTIONS, defaultParamsMappingEntry 
 function DurationUrlTable({ prefix, control }: { prefix: string; control: any }) {
   const { fields, append, remove } = useFieldArray({ control, name: `${prefix}.duration_urls` })
 
-  // Nếu chưa có dòng nào → thêm 3 mặc định (1/7/30)
-  if (fields.length === 0) {
-    setTimeout(() => {
-      append([
-        { days: '1', url: '' },
-        { days: '7', url: '' },
-        { days: '30', url: '' }
-      ])
-    }, 0)
+  const addDefaults = () => append([
+    { days: '1', url: '' },
+    { days: '7', url: '' },
+    { days: '30', url: '' }
+  ])
 
-    return null
+  if (fields.length === 0) {
+    return (
+      <Box sx={{ border: '1px dashed #cbd5e1', borderRadius: 2, p: 2, textAlign: 'center', background: '#f8fafc' }}>
+        <Typography sx={{ fontSize: 12, color: '#64748b', mb: 1 }}>Chưa có URL nào</Typography>
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+          <Button size='small' variant='outlined' onClick={() => append({ days: '', url: '' })}>Thêm 1 dòng</Button>
+          <Button size='small' variant='outlined' onClick={addDefaults}>Tạo mặc định 1/7/30 ngày</Button>
+        </Box>
+      </Box>
+    )
   }
 
   return (

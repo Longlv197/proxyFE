@@ -182,87 +182,69 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
         header: 'Proxy / Key',
         cell: ({ row }: { row: any }) => {
           const isCopied = (field: string) => copiedField === field
-          const hasProxy = row.original.proxy || row.original.proxys
-          const isProxyDisplay = order?.service_type === '0' || row.original.rotation_mode === ROTATION_MODE.ROTATE_AUTO || hasProxy
+          const defaultMode = order?.service_type === '0' ? ROTATION_MODE.STATIC : ROTATION_MODE.ROTATE_API
+          const mode = row.original.rotation_mode || defaultMode
 
-          if (isProxyDisplay) {
-            const proxys = row.original.proxy || row.original.proxys || {}
-            const firstProxy = extractProxyValue(proxys) || '-'
-            const copyId = `proxy-${row.id}`
-            const isRotateAuto = row.original.rotation_mode === ROTATION_MODE.ROTATE_AUTO
-            const itemKey = row.original.key || row.original.api_key || row.id
-            const pingedIp = pingResults[itemKey]
+          const proxys = row.original.proxy || row.original.proxys || {}
+          const proxyStr = extractProxyValue(proxys)
+          const apiKey = row.original?.key || row.original?.api_key || ''
+          const showProxy = !!proxyStr && proxyStr !== '-'
+          // STATIC không cần key, các mode còn lại hiện key nếu có
+          const showKey = !!apiKey && mode !== ROTATION_MODE.STATIC
+          const isRotateAuto = mode === ROTATION_MODE.ROTATE_AUTO
+          const pingedIp = pingResults[apiKey || row.id]
 
-            return (
-              <div style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{firstProxy}</span>
-                  {firstProxy !== '-' && (
-                    <button
-                      onClick={() => copyWithFeedback(firstProxy, copyId, 'Đã copy proxy!')}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
-                        fontSize: '11px', fontWeight: 600, fontFamily: 'inherit',
-                        border: isCopied(copyId) ? '1px solid #16a34a' : '1px solid #cbd5e1',
-                        background: isCopied(copyId) ? '#f0fdf4' : '#f8fafc',
-                        color: isCopied(copyId) ? '#16a34a' : '#475569',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      {isCopied(copyId) ? <CheckCircle size={12} /> : <Copy size={12} />}
-                      {isCopied(copyId) ? 'Đã copy' : 'Copy'}
-                    </button>
-                  )}
-                </div>
-                {isRotateAuto && firstProxy !== '-' && (
-                  <div style={{ marginTop: 3, fontSize: '11px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {pingedIp === 'loading' ? (
-                      <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Đang lấy IP gốc...</span>
-                    ) : pingedIp ? (
-                      <>
-                        <span style={{ color: '#059669', fontWeight: 600 }}>IP gốc: {pingedIp}</span>
-                        <button
-                          onClick={() => {
-                            setPingResults(prev => ({ ...prev, [itemKey]: 'loading' }))
-                            pingProxy.mutate(firstProxy, {
-                              onSuccess: (data) => setPingResults(prev => ({ ...prev, [itemKey]: data?.origin_ip || 'N/A' })),
-                              onError: () => setPingResults(prev => ({ ...prev, [itemKey]: 'Lỗi' })),
-                            })
-                          }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, fontSize: '11px' }}
-                          title='Làm mới IP gốc'
-                        >↻</button>
-                      </>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            )
-          }
-
-          const apiKey = row.original?.key || row.original?.api_key || '-'
-          const copyId = `key-${row.id}`
+          const renderRow = (label: string, value: string, copyId: string, color: string) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', minWidth: 36 }}>{label}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color }}>{value}</span>
+              <button
+                onClick={() => copyWithFeedback(value, copyId, `Đã copy ${label.toLowerCase()}!`)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
+                  fontSize: '10px', fontWeight: 600, fontFamily: 'inherit',
+                  border: isCopied(copyId) ? '1px solid #16a34a' : '1px solid #cbd5e1',
+                  background: isCopied(copyId) ? '#f0fdf4' : '#f8fafc',
+                  color: isCopied(copyId) ? '#16a34a' : '#475569',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {isCopied(copyId) ? <CheckCircle size={11} /> : <Copy size={11} />}
+                {isCopied(copyId) ? 'Đã copy' : 'Copy'}
+              </button>
+            </div>
+          )
 
           return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'monospace', fontSize: '12px', color: '#dc2626' }}>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apiKey}</span>
-              {apiKey !== '-' && (
-                <button
-                  onClick={() => copyWithFeedback(apiKey, copyId, 'Đã copy API key!')}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
-                    fontSize: '11px', fontWeight: 600, fontFamily: 'inherit',
-                    border: isCopied(copyId) ? '1px solid #16a34a' : '1px solid #cbd5e1',
-                    background: isCopied(copyId) ? '#f0fdf4' : '#f8fafc',
-                    color: isCopied(copyId) ? '#16a34a' : '#475569',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {isCopied(copyId) ? <CheckCircle size={12} /> : <Copy size={12} />}
-                  {isCopied(copyId) ? 'Đã copy' : 'Copy'}
-                </button>
+            <div style={{ fontFamily: 'monospace', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {showProxy && renderRow('PROXY', proxyStr, `proxy-${row.id}`, '#0f172a')}
+              {showKey && renderRow('KEY', apiKey, `key-${row.id}`, '#dc2626')}
+              {!showProxy && !showKey && (
+                <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>Chưa có dữ liệu</span>
+              )}
+              {isRotateAuto && showProxy && (
+                <div style={{ marginTop: 3, fontSize: '11px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {pingedIp === 'loading' ? (
+                    <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Đang lấy IP gốc...</span>
+                  ) : pingedIp && pingedIp !== 'loading' ? (
+                    <>
+                      <span style={{ color: '#059669', fontWeight: 600 }}>IP gốc: {pingedIp}</span>
+                      <button
+                        onClick={() => {
+                          const k = apiKey || row.id
+                          setPingResults(prev => ({ ...prev, [k]: 'loading' }))
+                          pingProxy.mutate(proxyStr, {
+                            onSuccess: (data) => setPingResults(prev => ({ ...prev, [k]: data?.origin_ip || 'N/A' })),
+                            onError: () => setPingResults(prev => ({ ...prev, [k]: 'Lỗi' })),
+                          })
+                        }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, fontSize: '11px' }}
+                        title='Làm mới IP gốc'
+                      >↻</button>
+                    </>
+                  ) : null}
+                </div>
               )}
             </div>
           )
