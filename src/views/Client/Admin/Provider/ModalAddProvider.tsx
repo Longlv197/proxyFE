@@ -174,12 +174,28 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
 
       if (!section?.enabled || !section?.use_url_by_duration) return true
       const rows = section.duration_urls || []
-      const hasValidUrl = rows.some((r: any) => r.days && r.url)
+      const validRows = rows.filter((r: any) => r.days && r.url)
 
-      if (!hasValidUrl) {
+      if (validRows.length === 0) {
         toast.error(`${label}: Đã chọn "URL theo thời hạn" nhưng chưa có URL nào. Vui lòng nhập hoặc chuyển sang "URL chung".`)
         return false
       }
+
+      // Check duplicate days — JS object key sẽ ghi đè, mất URL
+      const daysCount: Record<string, number> = {}
+
+      validRows.forEach((r: any) => {
+        const d = String(r.days).trim()
+
+        daysCount[d] = (daysCount[d] || 0) + 1
+      })
+      const dupDays = Object.entries(daysCount).filter(([, c]) => c > 1).map(([d]) => d)
+
+      if (dupDays.length > 0) {
+        toast.error(`${label}: Trùng giá trị "Tổng ngày" (${dupDays.join(', ')}). Mỗi giá trị chỉ map được 1 URL.`)
+        return false
+      }
+
       return true
     }
 

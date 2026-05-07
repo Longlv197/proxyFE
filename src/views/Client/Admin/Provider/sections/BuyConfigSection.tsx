@@ -50,30 +50,58 @@ function DurationUrlTable({ prefix, control }: { prefix: string; control: any })
     )
   }
 
+  // Detect duplicate days values để cảnh báo user
+  const watchedFields = useWatch({ control, name: `${prefix}.duration_urls` }) || []
+  const dayCounts: Record<string, number> = {}
+
+  watchedFields.forEach((f: any) => {
+    const d = String(f?.days || '').trim()
+
+    if (d) dayCounts[d] = (dayCounts[d] || 0) + 1
+  })
+
   return (
     <Box sx={{ border: '1px solid #e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', px: 1.5, py: 0.75, borderBottom: '1px solid #e2e8f0' }}>
-        <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>URL theo thời hạn</Typography>
+        <Box>
+          <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>URL theo tổng số ngày</Typography>
+          <Typography sx={{ fontSize: 10, color: '#94a3b8', mt: 0.25 }}>
+            Tổng ngày sử dụng (vd: <b>1</b>=mua 1 ngày, <b>7</b>=mua 1 tuần, <b>30</b>=mua 1 tháng) → URL nào sẽ gọi
+          </Typography>
+        </Box>
         <Button size='small' startIcon={<Plus size={13} />} onClick={() => append({ days: '', url: '' })}>Thêm</Button>
       </Box>
-      <Box sx={{ display: 'grid', gridTemplateColumns: '100px 1fr 36px', gap: 1, px: 1.5, py: 0.5, fontSize: 10, fontWeight: 600, color: '#64748b', background: '#f1f5f9' }}>
-        <span>Số ngày</span><span>URL</span><span></span>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr 36px', gap: 1, px: 1.5, py: 0.5, fontSize: 10, fontWeight: 600, color: '#64748b', background: '#f1f5f9' }}>
+        <span>Tổng ngày</span><span>URL gọi</span><span></span>
       </Box>
-      {fields.map((field, index) => (
-        <Box key={field.id} sx={{ display: 'grid', gridTemplateColumns: '100px 1fr 36px', gap: 1, alignItems: 'center', px: 1.5, py: 0.5, borderBottom: '1px solid #f1f5f9' }}>
-          <Controller name={`${prefix}.duration_urls.${index}.days`} control={control} render={({ field: f }) => (
-            <CustomTextField {...f} size='small' type='number' placeholder='VD: 7' sx={{ '& input': { fontSize: 13 } }} />
-          )} />
-          <Controller name={`${prefix}.duration_urls.${index}.url`} control={control} render={({ field: f }) => (
-            <CustomTextField {...f} size='small' placeholder='https://api.provider.com/buy-weekly' sx={{ '& input': { fontSize: 12 } }} />
-          )} />
-          {fields.length > 1 ? (
-            <IconButton size='small' color='error' onClick={() => remove(index)} sx={{ p: '2px' }}>
-              <Trash2 size={14} />
-            </IconButton>
-          ) : <span />}
-        </Box>
-      ))}
+      {fields.map((field, index) => {
+        const currentDays = String(watchedFields[index]?.days || '').trim()
+        const isDuplicate = currentDays && dayCounts[currentDays] > 1
+
+        return (
+          <Box key={field.id} sx={{ display: 'grid', gridTemplateColumns: '120px 1fr 36px', gap: 1, alignItems: 'center', px: 1.5, py: 0.5, borderBottom: '1px solid #f1f5f9', background: isDuplicate ? '#fef2f2' : 'transparent' }}>
+            <Controller name={`${prefix}.duration_urls.${index}.days`} control={control} render={({ field: f }) => (
+              <CustomTextField
+                {...f}
+                size='small'
+                type='number'
+                placeholder='VD: 7 (1 tuần)'
+                error={!!isDuplicate}
+                helperText={isDuplicate ? 'Trùng' : ''}
+                sx={{ '& input': { fontSize: 13 } }}
+              />
+            )} />
+            <Controller name={`${prefix}.duration_urls.${index}.url`} control={control} render={({ field: f }) => (
+              <CustomTextField {...f} size='small' placeholder='https://api.provider.com/buy-weekly' sx={{ '& input': { fontSize: 12 } }} />
+            )} />
+            {fields.length > 1 ? (
+              <IconButton size='small' color='error' onClick={() => remove(index)} sx={{ p: '2px' }}>
+                <Trash2 size={14} />
+              </IconButton>
+            ) : <span />}
+          </Box>
+        )
+      })}
     </Box>
   )
 }
