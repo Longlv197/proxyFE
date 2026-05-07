@@ -120,6 +120,8 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
           key: item.key,
           label: getDurationLabel(item.key),
           price: parseInt(item.value, 10) || 0,
+          unit: item.unit || undefined,    // Phase 2: pass through cho CheckoutModal hiển thị "3 tháng"
+          qty: item.qty != null ? Number(item.qty) : undefined,
           quantity_tiers: effectiveTiers
         }
       })

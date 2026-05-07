@@ -21,6 +21,28 @@ export interface PriceOption {
   key: string
   label: string
   price: number
+  unit?: string  // Phase 2: 'day' | 'week' | 'month' | 'quarter' | 'year' | 'half_day' | 'custom'
+  qty?: number   // Phase 2: số đơn vị (vd 3 tháng)
+}
+
+// Format label đẹp cho user theo unit + qty (vd '3 tháng', '1 quý', '1 năm')
+// Fallback: 'X ngày' nếu không có unit
+const UNIT_LABELS: Record<string, string> = {
+  half_day: 'nửa ngày',
+  day: 'ngày',
+  week: 'tuần',
+  month: 'tháng',
+  quarter: 'quý',
+  year: 'năm',
+}
+
+export function formatDurationLabel(opt: PriceOption): string {
+  if (opt.unit && UNIT_LABELS[opt.unit] && opt.qty) {
+    return `${opt.qty} ${UNIT_LABELS[opt.unit]}`
+  }
+
+  // Fallback: dùng label cũ hoặc "X ngày"
+  return opt.label || `${opt.key} ngày`
 }
 
 interface CheckoutModalProps {
@@ -510,7 +532,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         checked={selectedDuration === option.key}
                         onChange={() => setSelectedDuration(option.key)}
                       />
-                      <span>{option.label}</span>
+                      <span>{formatDurationLabel(option)}</span>
                       {discount !== null && discount > 0 && <span className='duration-discount'>-{discount}%</span>}
                     </label>
                   )

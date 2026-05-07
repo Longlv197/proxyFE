@@ -754,7 +754,7 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
 
   // Out-of-form state
   const [multiInputFields, setMultiInputFields] = useState<Array<{ key: string; value: string }>>([{ key: '', value: '' }])
-  const [priceFields, setPriceFields] = useState<Array<{ key: string; value: string; cost?: string; quantity_tiers?: Array<{ min: string; max: string; price: string; cost: string }> }>>([{ key: '', value: '', cost: '' }])
+  const [priceFields, setPriceFields] = useState<Array<{ key: string; value: string; cost?: string; unit?: string; qty?: string; quantity_tiers?: Array<{ min: string; max: string; price: string; cost: string }> }>>([{ key: '', value: '', cost: '' }])
   const [isMultiInputModalOpen, setIsMultiInputModalOpen] = useState(false)
   // quantity_tiers cho per_unit mode
   const [quantityTiers, setQuantityTiers] = useState<Array<{ min: string; max: string; discount: string }>>([])
@@ -872,6 +872,8 @@ return { values: {}, errors: formattedErrors }
                 key: item.key || '',
                 value: item.value || '',
                 cost: item.cost || '',
+                unit: item.unit || '',
+                qty: item.qty != null ? String(item.qty) : '',
                 quantity_tiers: item.quantity_tiers || []
               }))
             : [{ key: '', value: '', cost: '' }]
@@ -1006,10 +1008,13 @@ return { values: {}, errors: formattedErrors }
 
     const formattedPriceFields = priceFields.map((field: any) => {
       const qtyTiers = (field.quantity_tiers || []).filter((t: any) => t.min && (t.price || t.cost))
+      const qtyVal = parseInt(field.qty || '', 10)
       return {
         key: field.key,
         value: field.value,
         cost: field.cost ?? '',
+        ...(field.unit ? { unit: field.unit } : {}),
+        ...(qtyVal > 0 ? { qty: qtyVal } : {}),
         ...(qtyTiers.length > 0 ? { quantity_tiers: qtyTiers } : {})
       }
     })
@@ -2329,7 +2334,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                               {/* Row 1: inputs */}
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-end' }}>
                                 <div style={{ flex: '0 0 auto' }}>
-                                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: 2 }}>Thời gian</div>
+                                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: 2 }}>Tổng ngày</div>
                                   <CustomTextField size='small' select value={field.key} onChange={(e: any) => {
                                     setPriceFields(prev => prev.map((f, i) => i === index ? { ...f, key: e.target.value } : f))
                                   }} slotProps={{ select: { displayEmpty: true } }} sx={{ minWidth: 110 }}>
@@ -2338,6 +2343,26 @@ return <Chip key={val} label={p?.label || val} size='small' />
                                       .filter(o => o.value === field.key || !priceFields.some(f => f.key === o.value))
                                       .map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
                                   </CustomTextField>
+                                </div>
+                                <div style={{ flex: '0 0 auto' }}>
+                                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: 2 }}>Đơn vị</div>
+                                  <CustomTextField size='small' select value={field.unit || ''} onChange={(e: any) => {
+                                    setPriceFields(prev => prev.map((f, i) => i === index ? { ...f, unit: e.target.value } : f))
+                                  }} slotProps={{ select: { displayEmpty: true } }} sx={{ minWidth: 100 }}>
+                                    <MenuItem value=''><em>Auto</em></MenuItem>
+                                    <MenuItem value='half_day'>Nửa ngày</MenuItem>
+                                    <MenuItem value='day'>Ngày</MenuItem>
+                                    <MenuItem value='week'>Tuần</MenuItem>
+                                    <MenuItem value='month'>Tháng</MenuItem>
+                                    <MenuItem value='quarter'>Quý</MenuItem>
+                                    <MenuItem value='year'>Năm</MenuItem>
+                                    <MenuItem value='custom'>Tùy chỉnh</MenuItem>
+                                  </CustomTextField>
+                                </div>
+                                <div style={{ flex: '0 0 70px' }}>
+                                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: 2 }}>Số đơn vị</div>
+                                  <CustomTextField size='small' type='number' placeholder='1' value={field.qty || ''} fullWidth
+                                    onChange={(e: any) => setPriceFields(prev => prev.map((f, i) => i === index ? { ...f, qty: e.target.value } : f))} />
                                 </div>
                                 <div style={{ flex: '0 1 120px', minWidth: 80 }}>
                                   <div style={{ fontSize: '10px', color: '#64748b', marginBottom: 2 }}>Giá bán</div>
