@@ -93,11 +93,24 @@ export interface FetchProxiesConfig {
   last_page_path: string
 }
 
+// Đơn vị thời gian — preset: day(1), week(7), month(30), quarter(90), year(365), half_day(0.5), custom (admin tự nhập days)
+export type DurationUnitKey = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'half_day' | 'custom'
+
+export interface DurationUnitRow {
+  unit_key: DurationUnitKey
+  label: string         // hiển thị: "Ngày", "Tuần", ...
+  days: string          // số ngày tương đương (string để bind input, parse khi submit). VD: "1", "7", "30", "0.5"
+  url: string
+}
+
 export interface ApiConfigBuy {
   enabled: boolean
   method: string
   url: string
+  // LEGACY: array {days, url} — giữ để backward compat
   duration_urls: Array<{ days: string; url: string }>
+  // MỚI Phase 1: array có metadata đơn vị (UI dùng, BE đọc ưu tiên)
+  duration_units: DurationUnitRow[]
   use_url_by_duration: boolean
   auth_type: string
   auth_param: string
@@ -238,6 +251,7 @@ export interface ModalAddProviderProps {
 
 export interface SectionProps {
   control: Control<FormValues>
+  setValue?: any
 }
 
 export interface BuySectionProps extends SectionProps {
@@ -352,6 +366,7 @@ export const defaultBuy: ApiConfigBuy = {
   method: 'GET',
   url: '',
   duration_urls: [],
+  duration_units: [],
   use_url_by_duration: false,
   auth_type: 'query',
   auth_param: 'key',

@@ -2,8 +2,32 @@ import type {
   FormValues, ApiConfigBuy, RenewParamRow, DurationMapRow, InheritParam,
   RenewParamConfig, ParamsMappingEntry, ParamsMappingValueMap,
   ErrorCodeRule, HttpErrorRule, ResponseMappingRule,
+  DurationUnitRow, DurationUnitKey,
 } from './ProviderFormTypes'
 import { defaultBuy, defaultFetchProxies, defaultValues, SYSTEM_VARS, VALUE_MAP } from './ProviderFormTypes'
+
+// ─── Duration unit presets ──────────────────────────
+// Chỉ map "days → preset". Custom = admin tự nhập days.
+
+const UNIT_PRESETS: Record<DurationUnitKey, { label: string; days: number }> = {
+  half_day: { label: 'Nửa ngày', days: 0.5 },
+  day: { label: 'Ngày', days: 1 },
+  week: { label: 'Tuần', days: 7 },
+  month: { label: 'Tháng', days: 30 },
+  quarter: { label: 'Quý', days: 90 },
+  year: { label: 'Năm', days: 365 },
+  custom: { label: 'Tùy chỉnh', days: 0 },
+}
+
+export function detectUnitFromDays(days: number): { unit_key: DurationUnitKey; label: string } {
+  for (const k of ['half_day', 'day', 'week', 'month', 'quarter', 'year'] as DurationUnitKey[]) {
+    if (UNIT_PRESETS[k].days === days) return { unit_key: k, label: UNIT_PRESETS[k].label }
+  }
+
+  return { unit_key: 'custom', label: `${days} ngày` }
+}
+
+export { UNIT_PRESETS }
 
 // ─── Helpers ────────────────────────────────────────
 
@@ -128,15 +152,39 @@ export function parseBuySection(buy: any): ApiConfigBuy {
   const urlByDuration = buy.url_by_duration || {}
   const durationMap = buy.duration_map || {}
 
+  // duration_units: ưu tiên format mới, fallback auto-convert từ legacy url_by_duration
+  let durationUnits: DurationUnitRow[] = []
+
+  if (Array.isArray(buy.duration_units) && buy.duration_units.length > 0) {
+    durationUnits = buy.duration_units.map((u: any) => {
+      const days = parseFloat(u.days)
+      const detected = detectUnitFromDays(days)
+
+      return {
+        unit_key: (u.unit_key as DurationUnitKey) || detected.unit_key,
+        label: u.label || detected.label,
+        days: String(u.days ?? ''),
+        url: String(u.url || ''),
+      }
+    })
+  } else if (Object.keys(urlByDuration).length > 0) {
+    // Legacy auto-convert: {"1":URL, "7":URL, "30":URL} → duration_units rows
+    durationUnits = Object.entries(urlByDuration).map(([d, url]) => {
+      const days = parseFloat(d)
+      const detected = detectUnitFromDays(days)
+
+      return { unit_key: detected.unit_key, label: detected.label, days: String(d), url: String(url || '') }
+    }).sort((a, b) => parseFloat(a.days) - parseFloat(b.days))
+  }
+
   return {
     enabled: true,
     method: buy.method || 'GET',
     url: buy.url || '',
-    // Dynamic duration URLs
-    duration_urls: Object.keys(urlByDuration).length > 0
-      ? Object.entries(urlByDuration).map(([days, url]) => ({ days, url: String(url || '') }))
-      : [],
-    use_url_by_duration: !!buy.url_by_duration,
+    // Legacy: build từ duration_units để các chỗ cũ vẫn đọc
+    duration_urls: durationUnits.map(u => ({ days: u.days, url: u.url })),
+    duration_units: durationUnits,
+    use_url_by_duration: durationUnits.length > 0 || !!buy.url_by_duration,
     auth_type: buy.auth_type || 'query',
     auth_param: buy.auth_param || 'key',
     params_json: buy.params ? JSON.stringify(buy.params) : '',
@@ -302,7 +350,9 @@ export function parseApiConfig(apiConfig: any): Partial<FormValues> {
 export function buildBuySection(buy: ApiConfigBuy): object | null {
   if (!buy.enabled) return null
 
-  const hasDurationUrls = buy.duration_urls?.some((d: any) => d.days && d.url)
+  // Ưu tiên duration_units (mới). Fallback duration_urls (legacy field UI cũ nếu vẫn còn).
+  const validUnits = (buy.duration_units || []).filter(u => u.days && u.url)
+  const hasDurationUrls = validUnits.length > 0 || buy.duration_urls?.some((d: any) => d.days && d.url)
   const hasUrl = buy.url || hasDurationUrls
   if (!hasUrl) return null
 
@@ -313,13 +363,27 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
     quantity_param: buy.quantity_param,
   }
 
-  if (buy.use_url_by_duration && buy.duration_urls) {
+  if (buy.use_url_by_duration && (validUnits.length > 0 || buy.duration_urls?.length)) {
+    // Build cả 2 format song song:
+    // - duration_units: BE đọc ưu tiên (Phase 1+)
+    // - url_by_duration: legacy, BE fallback + site con đọc nếu sync provider config
     result.url_by_duration = {} as any
-    buy.duration_urls.forEach((d: any) => {
-      if (d.days && d.url) {
-        result.url_by_duration[String(d.days)] = d.url
-      }
-    })
+    if (validUnits.length > 0) {
+      result.duration_units = validUnits.map(u => ({
+        unit_key: u.unit_key,
+        label: u.label,
+        days: parseFloat(u.days),
+        url: u.url,
+      }))
+      validUnits.forEach(u => {
+        result.url_by_duration[String(u.days)] = u.url
+      })
+    } else {
+      // Backward fallback nếu form cũ chỉ có duration_urls
+      buy.duration_urls?.forEach((d: any) => {
+        if (d.days && d.url) result.url_by_duration[String(d.days)] = d.url
+      })
+    }
   } else if (buy.url) {
     result.url = buy.url
   }

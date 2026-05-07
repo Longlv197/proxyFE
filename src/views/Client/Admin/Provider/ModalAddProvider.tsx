@@ -173,11 +173,12 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       const section = (data as any)[sectionKey]
 
       if (!section?.enabled || !section?.use_url_by_duration) return true
-      const rows = section.duration_urls || []
+      // Ưu tiên duration_units (mới), fallback duration_urls (legacy)
+      const rows = (section.duration_units?.length ? section.duration_units : section.duration_urls) || []
       const validRows = rows.filter((r: any) => r.days && r.url)
 
       if (validRows.length === 0) {
-        toast.error(`${label}: Đã chọn "URL theo thời hạn" nhưng chưa có URL nào. Vui lòng nhập hoặc chuyển sang "URL chung".`)
+        toast.error(`${label}: Đã chọn "URL theo thời hạn" nhưng chưa có URL/đơn vị nào. Vui lòng nhập hoặc chuyển sang "URL chung".`)
         return false
       }
 
@@ -192,7 +193,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       const dupDays = Object.entries(daysCount).filter(([, c]) => c > 1).map(([d]) => d)
 
       if (dupDays.length > 0) {
-        toast.error(`${label}: Trùng giá trị "Tổng ngày" (${dupDays.join(', ')}). Mỗi giá trị chỉ map được 1 URL.`)
+        toast.error(`${label}: Trùng số ngày (${dupDays.join(', ')}). Mỗi giá trị ngày chỉ map được 1 URL.`)
         return false
       }
 

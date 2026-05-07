@@ -28,30 +28,21 @@ import Alert from '@mui/material/Alert'
 import type { BuySectionProps, ParamsMappingEntry } from '../ProviderFormTypes'
 import { STANDARD_VARIABLES, VARIABLE_FORMAT_OPTIONS, defaultParamsMappingEntry } from '../ProviderFormTypes'
 
-// ─── Duration URL Table (dynamic rows) ──────────────
-function DurationUrlTable({ prefix, control }: { prefix: string; control: any }) {
-  const { fields, append, remove } = useFieldArray({ control, name: `${prefix}.duration_urls` })
+// ─── Duration Units Table (đơn vị thời gian + URL) ──────────────
+const UNIT_OPTIONS = [
+  { key: 'half_day', label: 'Nửa ngày', days: 0.5 },
+  { key: 'day', label: 'Ngày', days: 1 },
+  { key: 'week', label: 'Tuần', days: 7 },
+  { key: 'month', label: 'Tháng', days: 30 },
+  { key: 'quarter', label: 'Quý', days: 90 },
+  { key: 'year', label: 'Năm', days: 365 },
+  { key: 'custom', label: 'Tùy chỉnh', days: 0 },
+]
 
-  const addDefaults = () => append([
-    { days: '1', url: '' },
-    { days: '7', url: '' },
-    { days: '30', url: '' }
-  ])
+function DurationUrlTable({ prefix, control, setValue }: { prefix: string; control: any; setValue?: any }) {
+  const { fields, append, remove } = useFieldArray({ control, name: `${prefix}.duration_units` })
 
-  if (fields.length === 0) {
-    return (
-      <Box sx={{ border: '1px dashed #cbd5e1', borderRadius: 2, p: 2, textAlign: 'center', background: '#f8fafc' }}>
-        <Typography sx={{ fontSize: 12, color: '#64748b', mb: 1 }}>Chưa có URL nào</Typography>
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-          <Button size='small' variant='outlined' onClick={() => append({ days: '', url: '' })}>Thêm 1 dòng</Button>
-          <Button size='small' variant='outlined' onClick={addDefaults}>Tạo mặc định 1/7/30 ngày</Button>
-        </Box>
-      </Box>
-    )
-  }
-
-  // Detect duplicate days values để cảnh báo user
-  const watchedFields = useWatch({ control, name: `${prefix}.duration_urls` }) || []
+  const watchedFields = useWatch({ control, name: `${prefix}.duration_units` }) || []
   const dayCounts: Record<string, number> = {}
 
   watchedFields.forEach((f: any) => {
@@ -60,44 +51,101 @@ function DurationUrlTable({ prefix, control }: { prefix: string; control: any })
     if (d) dayCounts[d] = (dayCounts[d] || 0) + 1
   })
 
+  const addRow = (preset?: typeof UNIT_OPTIONS[0]) => {
+    if (preset && preset.key !== 'custom') {
+      append({ unit_key: preset.key, label: preset.label, days: String(preset.days), url: '' })
+    } else {
+      append({ unit_key: 'custom', label: 'Tùy chỉnh', days: '', url: '' })
+    }
+  }
+
+  const addDefaults = () => append([
+    { unit_key: 'day', label: 'Ngày', days: '1', url: '' },
+    { unit_key: 'week', label: 'Tuần', days: '7', url: '' },
+    { unit_key: 'month', label: 'Tháng', days: '30', url: '' },
+  ])
+
+  // Khi đổi unit_key → auto fill days + label nếu là preset
+  const onUnitChange = (index: number, newKey: string) => {
+    const preset = UNIT_OPTIONS.find(o => o.key === newKey)
+
+    if (!preset || !setValue) return
+    if (preset.key !== 'custom') {
+      setValue(`${prefix}.duration_units.${index}.label`, preset.label)
+      setValue(`${prefix}.duration_units.${index}.days`, String(preset.days))
+    } else {
+      setValue(`${prefix}.duration_units.${index}.label`, 'Tùy chỉnh')
+    }
+  }
+
+  if (fields.length === 0) {
+    return (
+      <Box sx={{ border: '1px dashed #cbd5e1', borderRadius: 2, p: 2, textAlign: 'center', background: '#f8fafc' }}>
+        <Typography sx={{ fontSize: 12, color: '#64748b', mb: 1 }}>Chưa có đơn vị thời gian nào</Typography>
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Button size='small' variant='outlined' onClick={() => addRow()}>Thêm 1 dòng</Button>
+          <Button size='small' variant='outlined' onClick={addDefaults}>Tạo mặc định Ngày/Tuần/Tháng</Button>
+        </Box>
+      </Box>
+    )
+  }
+
   return (
     <Box sx={{ border: '1px solid #e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', px: 1.5, py: 0.75, borderBottom: '1px solid #e2e8f0' }}>
         <Box>
-          <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Quy tắc chọn URL theo thời hạn user mua</Typography>
+          <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Đơn vị thời gian & URL gọi</Typography>
           <Typography sx={{ fontSize: 10, color: '#94a3b8', mt: 0.25 }}>
-            Khi user mua thời hạn nào (theo ngày), hệ thống sẽ gọi URL tương ứng. Mỗi thời hạn map 1 URL duy nhất.
+            Mỗi đơn vị (ngày/tuần/tháng/quý/năm/nửa ngày...) có URL riêng. Quy ra số ngày để hệ thống tính thời hạn order.
           </Typography>
         </Box>
-        <Button size='small' startIcon={<Plus size={13} />} onClick={() => append({ days: '', url: '' })}>Thêm</Button>
+        <Button size='small' startIcon={<Plus size={13} />} onClick={() => addRow()}>Thêm</Button>
       </Box>
       {fields.map((field, index) => {
         const currentDays = String(watchedFields[index]?.days || '').trim()
         const isDuplicate = currentDays && dayCounts[currentDays] > 1
+        const currentUnitKey = watchedFields[index]?.unit_key || 'custom'
+        const isCustom = currentUnitKey === 'custom'
 
         return (
           <Box key={field.id} sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, px: 1.5, py: 0.75, borderBottom: '1px solid #f1f5f9', background: isDuplicate ? '#fef2f2' : 'transparent' }}>
-            <Typography sx={{ fontSize: 12, color: '#475569', fontWeight: 500 }}>Khi user mua</Typography>
-            <Controller name={`${prefix}.duration_urls.${index}.days`} control={control} render={({ field: f }) => (
+            <Typography sx={{ fontSize: 12, color: '#475569', fontWeight: 500, minWidth: 70 }}>Đơn vị:</Typography>
+            <Controller name={`${prefix}.duration_units.${index}.unit_key`} control={control} render={({ field: f }) => (
+              <CustomTextField
+                {...f}
+                select
+                size='small'
+                onChange={(e: any) => { f.onChange(e); onUnitChange(index, e.target.value) }}
+                sx={{ width: 130, '& .MuiSelect-select': { fontSize: 13, py: 0.75 } }}
+              >
+                {UNIT_OPTIONS.map(o => (
+                  <MenuItem key={o.key} value={o.key} sx={{ fontSize: 13 }}>
+                    {o.label}{o.key !== 'custom' ? ` (${o.days}d)` : ''}
+                  </MenuItem>
+                ))}
+              </CustomTextField>
+            )} />
+            <Typography sx={{ fontSize: 12, color: '#64748b' }}>=</Typography>
+            <Controller name={`${prefix}.duration_units.${index}.days`} control={control} render={({ field: f }) => (
               <CustomTextField
                 {...f}
                 size='small'
                 type='number'
                 placeholder='1'
+                disabled={!isCustom}
                 error={!!isDuplicate}
-                helperText={isDuplicate ? 'Trùng giá trị' : ''}
+                helperText={isDuplicate ? 'Trùng' : ''}
+                inputProps={{ step: 0.5 }}
                 sx={{ width: 90, '& input': { fontSize: 13, textAlign: 'center', fontWeight: 600 } }}
               />
             )} />
-            <Typography sx={{ fontSize: 12, color: '#475569', fontWeight: 500 }}>ngày → gọi URL:</Typography>
-            <Controller name={`${prefix}.duration_urls.${index}.url`} control={control} render={({ field: f }) => (
-              <CustomTextField {...f} size='small' placeholder='https://api.provider.com/...' sx={{ flex: 1, minWidth: 250, '& input': { fontSize: 12 } }} />
+            <Typography sx={{ fontSize: 12, color: '#64748b' }}>ngày → URL:</Typography>
+            <Controller name={`${prefix}.duration_units.${index}.url`} control={control} render={({ field: f }) => (
+              <CustomTextField {...f} size='small' placeholder='https://api.provider.com/...' sx={{ flex: 1, minWidth: 230, '& input': { fontSize: 12 } }} />
             )} />
-            {fields.length > 1 ? (
-              <IconButton size='small' color='error' onClick={() => remove(index)} sx={{ p: '2px' }}>
-                <Trash2 size={14} />
-              </IconButton>
-            ) : <span />}
+            <IconButton size='small' color='error' onClick={() => remove(index)} sx={{ p: '2px' }}>
+              <Trash2 size={14} />
+            </IconButton>
           </Box>
         )
       })}
@@ -107,7 +155,7 @@ function DurationUrlTable({ prefix, control }: { prefix: string; control: any })
 
 // ─── Pipeline Step 1: API Call ──────────────────────
 
-function StepApiCall({ prefix, control }: BuySectionProps) {
+function StepApiCall({ prefix, control, setValue }: BuySectionProps) {
   const useUrlByDuration = useWatch({ control, name: `${prefix}.use_url_by_duration` })
   const durationParam = useWatch({ control, name: `${prefix}.duration_param` })
 
@@ -169,7 +217,7 @@ function StepApiCall({ prefix, control }: BuySectionProps) {
           </Grid2>
         ) : (
           <Grid2 size={{ xs: 12 }}>
-            <DurationUrlTable prefix={prefix} control={control} />
+            <DurationUrlTable prefix={prefix} control={control} setValue={setValue} />
           </Grid2>
         )}
 
@@ -1180,7 +1228,7 @@ function BuyConfigSection({ control, setValue }: { control: BuySectionProps['con
             {/* Pipeline Steps */}
             {enabled && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-                <StepApiCall prefix={prefix} control={control} />
+                <StepApiCall prefix={prefix} control={control} setValue={setValue} />
                 <StepSuccessCheck prefix={prefix} control={control} />
                 <StepProxyExtract prefix={prefix} control={control} setValue={setValue} />
                 <StepDataStorage prefix={prefix} control={control} />
