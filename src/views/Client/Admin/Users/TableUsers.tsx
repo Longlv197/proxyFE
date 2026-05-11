@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useCallback, useDeferredValue, memo } from 'react'
+import { useMemo, useState, useCallback, useDeferredValue, memo, useEffect } from 'react'
 
 import Image from 'next/image'
 
@@ -18,7 +18,12 @@ import {
   Search,
   Loader2,
   History,
-  Tags
+  Tags,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Settings2,
+  UserCheck
 } from 'lucide-react'
 
 import {
@@ -27,6 +32,11 @@ import {
   getPaginationRowModel,
   flexRender
 } from '@tanstack/react-table'
+import type { VisibilityState } from '@tanstack/react-table'
+
+import Menu from '@mui/material/Menu'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Checkbox from '@mui/material/Checkbox'
 
 import Chip from '@mui/material/Chip'
 import Pagination from '@mui/material/Pagination'
@@ -114,6 +124,54 @@ export default memo(function TableUsers({ onEditUser, onAdjustBalance, onViewTra
   // Client-side display pagination
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 })
 
+  // Sort state — gửi lên BE để query sort
+  const [sortBy, setSortBy] = useState<string>('created_at')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  // Column visibility — persist localStorage
+  const VISIBILITY_KEY = 'admin_users_column_visibility_v1'
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    if (typeof window === 'undefined') return {}
+
+    try { return JSON.parse(localStorage.getItem(VISIBILITY_KEY) || '{}') } catch { return {} }
+  })
+
+  // Persist visibility
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try { localStorage.setItem(VISIBILITY_KEY, JSON.stringify(columnVisibility)) } catch { /* ignore */ }
+    }
+  }, [columnVisibility])
+
+  // Click header → toggle sort
+  const handleSort = useCallback((field: string) => {
+    if (sortBy === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortBy(field)
+      setSortOrder('desc')
+    }
+  }, [sortBy])
+
+  // Header cell with sort
+  const SortHeader = ({ field, label }: { field: string; label: string }) => {
+    const isActive = sortBy === field
+    const Icon = isActive ? (sortOrder === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown
+
+    return (
+      <span
+        onClick={() => handleSort(field)}
+        style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, userSelect: 'none' }}
+      >
+        {label}
+        <Icon size={12} color={isActive ? '#2563eb' : '#94a3b8'} />
+      </span>
+    )
+  }
+
+  // Column visibility menu
+  const [visAnchor, setVisAnchor] = useState<HTMLElement | null>(null)
+
   const [banDialogOpen, setBanDialogOpen] = useState(false)
   const [userToBan, setUserToBan] = useState<any>(null)
 
@@ -122,7 +180,7 @@ export default memo(function TableUsers({ onEditUser, onAdjustBalance, onViewTra
   const [newPassword, setNewPassword] = useState('')
   const [generatedPassword, setGeneratedPassword] = useState('')
 
-  const { data: response, isLoading, isFetching } = useAdminUsers({ page: 1, per_page: fetchLimit, search })
+  const { data: response, isLoading, isFetching } = useAdminUsers({ page: 1, per_page: fetchLimit, search, sort_by: sortBy, sort_order: sortOrder })
   const { data: stats } = useAdminUserStats()
   const toggleBanMutation = useToggleBan()
   const updateStatusMutation = useUpdateUserStatus()
@@ -216,10 +274,12 @@ export default memo(function TableUsers({ onEditUser, onAdjustBalance, onViewTra
     () => [
       {
         accessorKey: 'id',
-        header: 'ID',
+        id: 'id',
+        header: () => <SortHeader field='id' label='ID' />,
         size: 60
       },
       {
+        id: 'user',
         header: 'User',
         cell: ({ row }: { row: any }) => (
           <div>
@@ -230,28 +290,85 @@ export default memo(function TableUsers({ onEditUser, onAdjustBalance, onViewTra
         size: 250
       },
       {
+        id: 'phone',
         header: 'SĐT',
         cell: ({ row }: { row: any }) => row.original?.phone || '-',
         size: 120
       },
       {
-        header: 'Số dư',
+        id: 'sodu',
+        header: () => <SortHeader field='sodu' label='Số dư' />,
         cell: ({ row }: { row: any }) => (
-          <span className='font-semibold'>{formatVND(row.original?.sodu ?? 0)}</span>
+          <span className='font-semibold' style={{ color: '#059669' }}>{formatVND(row.original?.sodu ?? 0)}</span>
         ),
-        size: 140
+        size: 130
       },
       {
-        header: 'Tổng nạp',
+        id: 'sotiennap',
+        header: () => <SortHeader field='sotiennap' label='Tổng nạp' />,
         cell: ({ row }: { row: any }) => formatVND(row.original?.sotiennap ?? 0),
-        size: 140
+        size: 130
       },
       {
+        id: 'chitieu',
+        header: () => <SortHeader field='chitieu' label='Đã tiêu' />,
+        cell: ({ row }: { row: any }) => formatVND(row.original?.chitieu ?? 0),
+        size: 130
+      },
+      {
+        id: 'affiliate_code',
+        header: 'Mã affiliate',
+        cell: ({ row }: { row: any }) => (
+          row.original?.affiliate_code
+            ? <code style={{ fontSize: 11, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>{row.original.affiliate_code}</code>
+            : <span style={{ color: '#cbd5e1' }}>—</span>
+        ),
+        size: 120
+      },
+      {
+        id: 'affiliate_balance',
+        header: () => <SortHeader field='affiliate_balance' label='Số dư AF' />,
+        cell: ({ row }: { row: any }) => (
+          <span style={{ color: (row.original?.affiliate_balance ?? 0) > 0 ? '#7c3aed' : undefined }}>
+            {formatVND(Number(row.original?.affiliate_balance ?? 0))}
+          </span>
+        ),
+        size: 130
+      },
+      {
+        id: 'affiliate_spent',
+        header: () => <SortHeader field='affiliate_spent' label='Đã tiêu AF' />,
+        cell: ({ row }: { row: any }) => formatVND(Number(row.original?.affiliate_spent ?? 0)),
+        size: 130
+      },
+      {
+        id: 'referrals_count',
+        header: 'Đã giới thiệu',
+        cell: ({ row }: { row: any }) => {
+          const n = row.original?.referrals_count ?? 0
+          return n > 0
+            ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0284c7' }}><UserCheck size={13} />{n}</span>
+            : <span style={{ color: '#cbd5e1' }}>0</span>
+        },
+        size: 110
+      },
+      {
+        id: 'affiliate_percent',
+        header: 'Hoa hồng %',
+        cell: ({ row }: { row: any }) => {
+          const p = row.original?.affiliate_percent
+          return p != null && p > 0 ? `${p}%` : <span style={{ color: '#cbd5e1' }}>mặc định</span>
+        },
+        size: 110
+      },
+      {
+        id: 'orders_count',
         header: 'Đơn hàng',
         cell: ({ row }: { row: any }) => row.original?.orders_count ?? 0,
         size: 90
       },
       {
+        id: 'status',
         header: 'Trạng thái',
         cell: ({ row }: { row: any }) => {
           const status = row.original?.status ?? 1
@@ -267,11 +384,13 @@ export default memo(function TableUsers({ onEditUser, onAdjustBalance, onViewTra
         size: 120
       },
       {
-        header: 'Ngày tạo',
+        id: 'created_at',
+        header: () => <SortHeader field='created_at' label='Ngày tạo' />,
         cell: ({ row }: { row: any }) => formatDate(row.original?.created_at),
         size: 110
       },
       {
+        id: 'actions',
         header: 'Thao tác',
         cell: ({ row }: { row: any }) => {
           const user = row.original
@@ -330,11 +449,31 @@ return (
   const table = useReactTable({
     data: users,
     columns,
-    state: { pagination },
+    state: { pagination, columnVisibility },
     onPaginationChange: setPagination,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel()
   })
+
+  // Label dropdown ẩn/hiện cột
+  const COLUMN_LABELS: Record<string, string> = {
+    id: 'ID',
+    user: 'User',
+    phone: 'SĐT',
+    sodu: 'Số dư',
+    sotiennap: 'Tổng nạp',
+    chitieu: 'Đã tiêu',
+    affiliate_code: 'Mã affiliate',
+    affiliate_balance: 'Số dư affiliate',
+    affiliate_spent: 'Đã tiêu affiliate',
+    referrals_count: 'Đã giới thiệu',
+    affiliate_percent: 'Hoa hồng %',
+    orders_count: 'Đơn hàng',
+    status: 'Trạng thái',
+    created_at: 'Ngày tạo',
+    actions: 'Thao tác',
+  }
 
   const totalRows = users.length
   const { pageIndex, pageSize: displaySize } = pagination
@@ -371,6 +510,35 @@ return (
             </div>
 
             <div className='header-right' style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Tooltip title='Ẩn/hiện cột'>
+                <IconButton size='small' onClick={e => setVisAnchor(e.currentTarget)}>
+                  <Settings2 size={18} />
+                </IconButton>
+              </Tooltip>
+              <Menu
+                anchorEl={visAnchor}
+                open={!!visAnchor}
+                onClose={() => setVisAnchor(null)}
+                PaperProps={{ sx: { maxHeight: 400, p: 1 } }}
+              >
+                <div style={{ padding: '4px 12px 8px', fontSize: 12, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #e2e8f0', marginBottom: 4 }}>
+                  Ẩn / hiện cột
+                </div>
+                {table.getAllLeafColumns().map(col => (
+                  <div key={col.id} style={{ padding: '2px 12px' }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size='small'
+                          checked={col.getIsVisible()}
+                          onChange={col.getToggleVisibilityHandler()}
+                        />
+                      }
+                      label={<span style={{ fontSize: 13 }}>{COLUMN_LABELS[col.id] || col.id}</span>}
+                    />
+                  </div>
+                ))}
+              </Menu>
               <TextField
                 size='small'
                 placeholder='Tìm theo tên, email, SĐT...'

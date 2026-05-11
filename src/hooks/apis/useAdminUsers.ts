@@ -15,6 +15,9 @@ export interface UserStats {
   new_users_this_month: number
   total_balance: number
   total_deposited: number
+  total_spent?: number
+  total_affiliate_balance?: number
+  total_affiliate_spent?: number
 }
 
 export interface AdminUser {
@@ -25,8 +28,12 @@ export interface AdminUser {
   address: string | null
   sodu: number
   sotiennap: number
+  chitieu?: number               // tổng đã chi tiêu
   affiliate_code: string | null
   affiliate_balance: number
+  affiliate_spent?: number       // tổng đã chi affiliate
+  affiliate_percent?: number     // % hoa hồng per-user (nếu có override)
+  referrals_count?: number       // số user đã giới thiệu
   avatar: string | null
   is_banned: boolean
   status: number // 1=active, 2=blocked, 3=banned
