@@ -92,8 +92,42 @@ return res?.data?.data
   })
 }
 
+export interface MatchDeposit {
+  id: number
+  user_id: number
+  user_name: string | null
+  user_email: string | null
+  amount: number
+  transaction_code: string | null
+  status: string
+  created_at: string | null
+  memo_match: boolean
+  match_score: number
+}
+
 /**
- * Cộng tiền thủ công từ giao dịch ngân hàng.
+ * Tìm lệnh nạp (BankAuto) khớp với 1 giao dịch ngân hàng — admin chọn 1.
+ * GET /admin/transaction-bank/{id}/match-deposits
+ */
+export const useMatchDeposits = (transactionId: number | null) => {
+  const axiosAuth = useAxiosAuth()
+
+  return useQuery({
+    queryKey: ['matchDeposits', transactionId],
+    queryFn: async () => {
+      const res = await axiosAuth.get(`/admin/transaction-bank/${transactionId}/match-deposits`)
+
+      return (res?.data?.data ?? []) as MatchDeposit[]
+    },
+    enabled: !!transactionId,
+    staleTime: 0
+  })
+}
+
+/**
+ * Cộng tiền thủ công từ giao dịch ngân hàng — luồng chặt chẽ:
+ * - reason BẮT BUỘC
+ * - chọn bank_auto_id từ list match HOẶC user_id thủ công (cần lý do rõ)
  * POST /admin/transaction-bank/{id}/manual-credit
  */
 export const useManualCredit = () => {
@@ -101,15 +135,16 @@ export const useManualCredit = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, user_id, admin_note }: { id: number; user_id: number; admin_note?: string }) => {
-      const res = await axiosAuth.post(`/admin/transaction-bank/${id}/manual-credit`, { user_id, admin_note })
+    mutationFn: async (payload: { id: number; bank_auto_id?: number; user_id?: number; reason: string }) => {
+      const { id, ...body } = payload
+      const res = await axiosAuth.post(`/admin/transaction-bank/${id}/manual-credit`, body)
 
-      
-return res?.data
+      return res?.data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactionBank'] })
       queryClient.invalidateQueries({ queryKey: ['transactionBankSummary'] })
+      queryClient.invalidateQueries({ queryKey: ['matchDeposits'] })
     }
   })
 }

@@ -9,15 +9,13 @@ import IconButton from '@mui/material/IconButton'
 import CircularProgress from '@mui/material/CircularProgress'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import TextField from '@mui/material/TextField'
-import Autocomplete from '@mui/material/Autocomplete'
 import Divider from '@mui/material/Divider'
-import { X, CheckCircle2, XCircle, Clock, MinusCircle, Lightbulb, HandCoins, Ban, Undo2, Key, Copy, Package, Eye, EyeOff } from 'lucide-react'
+import { X, CheckCircle2, XCircle, Clock, MinusCircle, Lightbulb, HandCoins, Key, Copy, Package, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'react-toastify'
 
-import { useInvestigateFull, useDismissTransaction, useUndismissTransaction } from '@/hooks/apis/useDepositManagement'
-import { useManualCredit } from '@/hooks/apis/useTransactionBank'
-import { useAdminUsers } from '@/hooks/apis/useAdminUsers'
+import { useInvestigateFull } from '@/hooks/apis/useDepositManagement'
+
+import CreditManualDrawer from './CreditManualDrawer'
 
 interface Props {
   open: boolean
@@ -61,85 +59,17 @@ const stepBgColors: Record<string, string> = {
 export default function InvestigationDrawer({ open, onClose, source, sourceId, headerInfo, transactionBankId }: Props) {
   const { data, isLoading } = useInvestigateFull(open ? source : null, open ? sourceId : null)
 
-  const [showManualCredit, setShowManualCredit] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<any>(null)
-  const [adminNote, setAdminNote] = useState('')
-  const [userSearch, setUserSearch] = useState('')
-  const [showDismissForm, setShowDismissForm] = useState(false)
-  const [dismissReason, setDismissReason] = useState('')
   const [showBuyToken, setShowBuyToken] = useState(false)
-
-  const { data: usersData } = useAdminUsers(
-    { search: userSearch, per_page: 10 },
-    userSearch.length >= 2
-  )
-
-  const manualCredit = useManualCredit()
-  const dismiss = useDismissTransaction()
-  const undismiss = useUndismissTransaction()
+  const [creditDrawerOpen, setCreditDrawerOpen] = useState(false)
 
   const txnBankId = transactionBankId || data?.context?.transaction_bank?.id
-  const isDismissed = data?.context?.transaction_bank?.dismissed_at
   const isProcessed = data?.context?.transaction_bank?.is_processed
-  const canManualCredit = txnBankId && !isProcessed && !isDismissed && data?.diagnosis?.overall === 'fail'
-  const canDismiss = txnBankId && !isProcessed && !isDismissed
-  const canUndismiss = txnBankId && isDismissed
-
-  // Auto-suggest user from investigation
-  const suggestedUser = data?.context?.user
-
-  const handleManualCredit = async () => {
-    if (!txnBankId || !selectedUser) return
-
-    try {
-      await manualCredit.mutateAsync({
-        id: txnBankId,
-        user_id: selectedUser.id,
-        admin_note: adminNote || undefined
-      })
-
-      toast.success('Cộng tiền thành công!')
-      setShowManualCredit(false)
-      setSelectedUser(null)
-      setAdminNote('')
-      onClose()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Lỗi cộng tiền')
-    }
-  }
-
-  const handleDismiss = async () => {
-    if (!txnBankId) return
-
-    try {
-      await dismiss.mutateAsync({ id: txnBankId, reason: dismissReason || undefined })
-      toast.success('Đã bỏ qua giao dịch')
-      setShowDismissForm(false)
-      setDismissReason('')
-      onClose()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Lỗi')
-    }
-  }
-
-  const handleUndismiss = async () => {
-    if (!txnBankId) return
-
-    try {
-      await undismiss.mutateAsync(txnBankId)
-      toast.success('Đã hủy bỏ qua')
-      onClose()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Lỗi')
-    }
-  }
+  const canCredit = txnBankId && !isProcessed
+  const txAmount = headerInfo?.amount || data?.context?.transaction_bank?.transfer_amount || 0
+  const txContent = data?.context?.transaction_bank?.content
 
   const handleClose = () => {
-    setShowManualCredit(false)
-    setShowDismissForm(false)
-    setSelectedUser(null)
-    setAdminNote('')
-    setDismissReason('')
+    setCreditDrawerOpen(false)
     onClose()
   }
 
@@ -207,10 +137,10 @@ export default function InvestigationDrawer({ open, onClose, source, sourceId, h
                     </Typography>
 
                     {/* Near matches */}
-                    {step.key === 'content_matched' && step.status === 'fail' && step.data?.near_matches?.length > 0 && (
+                    {step.key === 'content_matched' && step.status === 'fail' && (step.data?.near_matches?.length ?? 0) > 0 && (
                       <Box sx={{ pl: 3.5, mt: 1 }}>
                         <Typography fontSize={11} fontWeight={600} color='text.secondary' mb={0.5}>Gần giống:</Typography>
-                        {step.data.near_matches.map((m: any, i: number) => (
+                        {step.data!.near_matches.map((m: any, i: number) => (
                           <Typography key={i} fontSize={11} color='text.secondary'>
                             • &quot;{m.transfer_content}&quot; — {m.user_name} ({m.user_email})
                           </Typography>
@@ -272,8 +202,10 @@ export default function InvestigationDrawer({ open, onClose, source, sourceId, h
                     <IconButton
                       size='small'
                       onClick={() => {
-                        navigator.clipboard.writeText(data.gem_info.buy_token)
-                        toast.info('Đã copy buy_token')
+                        if (data?.gem_info?.buy_token) {
+                          navigator.clipboard.writeText(data.gem_info.buy_token)
+                          toast.info('Đã copy buy_token')
+                        }
                       }}
                     >
                       <Copy size={14} />
@@ -333,152 +265,38 @@ export default function InvestigationDrawer({ open, onClose, source, sourceId, h
               </Box>
             )}
 
-            {/* Manual Credit Form */}
-            {showManualCredit && canManualCredit && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography fontWeight={600} fontSize={14} mb={1.5}>Cộng tiền thủ công</Typography>
-
-                <Autocomplete
-                  size='small'
-                  options={usersData?.data || []}
-                  getOptionLabel={(o: any) => `${o.name} — ${o.email}`}
-                  value={selectedUser}
-                  onChange={(_, v) => setSelectedUser(v)}
-                  onInputChange={(_, v) => setUserSearch(v)}
-                  renderOption={(props, o: any) => (
-                    <li {...props} key={o.id}>
-                      <Box>
-                        <Typography fontSize={13} fontWeight={500}>{o.name}</Typography>
-                        <Typography fontSize={11} color='text.secondary'>{o.email} — Số dư: {(o.sodu || 0).toLocaleString('vi-VN')}đ</Typography>
-                      </Box>
-                    </li>
-                  )}
-                  renderInput={p => <TextField {...p} label='Chọn user' placeholder='Tìm theo tên hoặc email...' />}
-                  sx={{ mb: 1.5 }}
-                  noOptionsText='Nhập ít nhất 2 ký tự...'
-                />
-
-                {suggestedUser && !selectedUser && (
-                  <Box
-                    onClick={() => setSelectedUser(suggestedUser)}
-                    sx={{ p: 1, bgcolor: '#eff6ff', borderRadius: 1, cursor: 'pointer', mb: 1.5, '&:hover': { bgcolor: '#dbeafe' } }}
-                  >
-                    <Typography fontSize={11} color='info.main'>
-                      Gợi ý: {suggestedUser.name} ({suggestedUser.email}) — click để chọn
-                    </Typography>
-                  </Box>
-                )}
-
-                <Box sx={{ p: 1.5, bgcolor: '#f9fafb', borderRadius: 1, mb: 1.5 }}>
-                  <Typography fontSize={12} color='text.secondary'>
-                    Số tiền: <strong>{(headerInfo?.amount || data.context?.transaction_bank?.transfer_amount || 0).toLocaleString('vi-VN')}đ</strong> (không thể thay đổi)
-                  </Typography>
-                </Box>
-
-                <TextField
-                  size='small'
-                  fullWidth
-                  multiline
-                  rows={2}
-                  label='Ghi chú admin (tùy chọn)'
-                  value={adminNote}
-                  onChange={e => setAdminNote(e.target.value)}
-                  sx={{ mb: 1.5 }}
-                />
-
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant='contained'
-                    color='success'
-                    size='small'
-                    disabled={!selectedUser || manualCredit.isPending}
-                    onClick={handleManualCredit}
-                    startIcon={manualCredit.isPending ? <CircularProgress size={14} /> : <HandCoins size={14} />}
-                  >
-                    Xác nhận cộng tiền
-                  </Button>
-                  <Button variant='outlined' size='small' onClick={() => setShowManualCredit(false)}>Hủy</Button>
-                </Box>
-              </>
-            )}
-
-            {/* Dismiss Form */}
-            {showDismissForm && canDismiss && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography fontWeight={600} fontSize={14} mb={1}>Bỏ qua giao dịch</Typography>
-                <Typography fontSize={12} color='text.secondary' mb={1.5}>
-                  GD này sẽ không còn hiện trong &quot;Chưa xử lý&quot;. Có thể hủy bỏ qua sau.
-                </Typography>
-                <TextField
-                  size='small'
-                  fullWidth
-                  label='Lý do (tùy chọn)'
-                  placeholder='VD: GD spam, chuyển nhầm...'
-                  value={dismissReason}
-                  onChange={e => setDismissReason(e.target.value)}
-                  sx={{ mb: 1.5 }}
-                />
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant='contained'
-                    color='warning'
-                    size='small'
-                    disabled={dismiss.isPending}
-                    onClick={handleDismiss}
-                    startIcon={dismiss.isPending ? <CircularProgress size={14} /> : <Ban size={14} />}
-                  >
-                    Xác nhận bỏ qua
-                  </Button>
-                  <Button variant='outlined' size='small' onClick={() => setShowDismissForm(false)}>Hủy</Button>
-                </Box>
-              </>
-            )}
           </>
         )}
       </Box>
 
       {/* Footer Actions */}
-      {data && !showManualCredit && !showDismissForm && (
-        <Box sx={{ p: 2, borderTop: '1px solid #e5e7eb', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {canManualCredit && (
+      {data && (
+        <Box sx={{ p: 2, borderTop: '1px solid #e5e7eb', display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+          {canCredit && (
             <Button
               variant='contained'
               size='small'
               color='success'
               startIcon={<HandCoins size={14} />}
-              onClick={() => setShowManualCredit(true)}
+              onClick={() => setCreditDrawerOpen(true)}
             >
-              Cộng tiền thủ công
+              Cộng tiền
             </Button>
           )}
-          {canDismiss && (
-            <Button
-              variant='outlined'
-              size='small'
-              color='warning'
-              startIcon={<Ban size={14} />}
-              onClick={() => setShowDismissForm(true)}
-            >
-              Bỏ qua
-            </Button>
-          )}
-          {canUndismiss && (
-            <Button
-              variant='outlined'
-              size='small'
-              color='info'
-              startIcon={<Undo2 size={14} />}
-              onClick={handleUndismiss}
-              disabled={undismiss.isPending}
-            >
-              Hủy bỏ qua
-            </Button>
-          )}
-          <Box sx={{ flex: 1 }} />
           <Button variant='text' size='small' onClick={handleClose}>Đóng</Button>
         </Box>
+      )}
+
+      {/* Credit Manual Drawer — luồng chặt chẽ (match + reason) */}
+      {canCredit && (
+        <CreditManualDrawer
+          mode='transaction'
+          open={creditDrawerOpen}
+          onClose={() => { setCreditDrawerOpen(false); handleClose() }}
+          transactionId={Number(txnBankId)}
+          transactionAmount={Number(txAmount)}
+          transactionContent={txContent}
+        />
       )}
     </Drawer>
   )

@@ -141,25 +141,56 @@ export const useDismissTransaction = () => {
   })
 }
 
+export interface MatchTransaction {
+  id: number
+  gateway: string | null
+  transaction_number: string | null
+  transaction_date: string | null
+  transfer_amount: number
+  content: string | null
+  memo_match: boolean
+  match_score: number
+}
+
+/**
+ * Tìm giao dịch ngân hàng (chưa xử lý) khớp với 1 lệnh nạp.
+ * GET /admin/bank-auto/{id}/match-transactions
+ */
+export const useMatchTransactions = (bankAutoId: number | null) => {
+  const axiosAuth = useAxiosAuth()
+
+  return useQuery({
+    queryKey: ['matchTransactions', bankAutoId],
+    queryFn: async () => {
+      const res = await axiosAuth.get(`/admin/bank-auto/${bankAutoId}/match-transactions`)
+
+      return (res?.data?.data ?? []) as MatchTransaction[]
+    },
+    enabled: !!bankAutoId,
+    staleTime: 0
+  })
+}
+
 /**
  * Admin: Kích hoạt lệnh nạp tiền (expired/pending → success).
  * Cộng tiền cho user + ghi audit.
+ * Reason BẮT BUỘC. Optional transaction_bank_id: nếu có → dùng GD đó, không có → tạo GD mới.
  */
 export const useAdminCreditDeposit = () => {
   const axiosAuth = useAxiosAuth()
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, adminNote }: { id: number; adminNote?: string }) => {
-      const res = await axiosAuth.post(`/admin/bank-auto/${id}/credit`, {
-        admin_note: adminNote,
-      })
+    mutationFn: async (payload: { id: number; reason: string; transaction_bank_id?: number }) => {
+      const { id, ...body } = payload
+      const res = await axiosAuth.post(`/admin/bank-auto/${id}/credit`, body)
 
       return res?.data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminDeposits'] })
       queryClient.invalidateQueries({ queryKey: ['transactionBank'] })
+      queryClient.invalidateQueries({ queryKey: ['matchTransactions'] })
     }
   })
 }
