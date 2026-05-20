@@ -51,6 +51,7 @@
 - [IP Whitelist Sync](project_ip_whitelist_sync.md) — sync site con→mẹ, mode both, flow xoay
 - [Custom Fields](project_custom_fields_architecture.md) — 3 lớp key/provider_value/label, ẩn NCC
 - [Country Flag](project_country_flag_custom_field.md) — admin UX + preview dùng ProxyCard
+- [Gem1 Tool API](project_gem_tool_api.md) — 20/04: GemController /api/buy/proxy + /api/gem-orders, auth code+amount (không JWT), Redis lock chống overspend
 
 ## Bugs
 - [Auth Flash Debug](bug_auth_flash_debug.md) — ĐANG DEBUG: user nói "auth flash" = gửi log
