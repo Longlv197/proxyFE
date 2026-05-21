@@ -29,8 +29,11 @@ export const useApiKeys = (order_id?: string | number, enabled: boolean = true) 
       // MongoDB order_items trước, fallback MySQL api_keys
       const items = res?.data?.data_mongo ?? res?.data?.data ?? []
       // _data_field: tên field chứa dữ liệu sản phẩm chính (default "proxy")
+      // - "proxy"               → static/rotating (1 item = 1 IP)
+      // - "residential_package" → 1 đơn = 1 item chứa metadata gói (port range, traffic)
       // Gắn vào array để backward compat (consumer cũ dùng như array bình thường)
       ;(items as any)._dataField = res?.data?._data_field || 'proxy'
+      ;(items as any)._kind = res?.data?.kind || null
       return items
     },
     enabled: !!order_id && enabled,

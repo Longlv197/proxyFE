@@ -58,6 +58,7 @@ import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 import { usePingProxy } from '@/hooks/apis/usePingProxy'
 import { ROTATION_MODE, ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 import '@/components/checkout-modal/styles.css'
+import ResidentialPackageBox from './ResidentialPackageBox'
 
 const formatVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
 
@@ -97,6 +98,10 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   const canViewRotateLog = isAdmin && !isChild // Chỉ admin site mẹ thấy log xoay
   const updateItemMutation = useUpdateOrderItem()
   const { data: apiKeysData = [], isLoading: isLoadingKeys } = useApiKeys(order?.id, open)
+
+  // Residential: 1 đơn = 1 OrderItem chứa metadata gói (host + port range + traffic)
+  const isResidential = (apiKeysData as any)?._kind === 'residential' || (apiKeysData as any)?._dataField === 'residential_package'
+  const residentialMeta = isResidential ? (apiKeysData[0]?.metadata ?? {}) : null
   const { data: histories = [] } = useOrderHistories(order?.id ?? null, open)
   const pingProxy = usePingProxy()
   const [pingResults, setPingResults] = useState<Record<string, string>>({})
@@ -503,8 +508,26 @@ return row.original?.key || row.original?.api_key || ''
                 {renewals.length > 0 && <Tab label={`Lịch sử gia hạn (${renewals.length})`} />}
               </Tabs>
 
-              {/* Tab: Proxy */}
-              {detailTab === 0 && <Box sx={{ display: 'flex', gap: 0 }}>
+              {/* Tab: Proxy — Residential render box riêng (1 gói 1000 IP) */}
+              {detailTab === 0 && isResidential && (
+                <Box sx={{ p: '16px 20px' }}>
+                  {isLoadingKeys ? (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <CircularProgress size={28} />
+                      <Typography sx={{ fontSize: '13px', color: '#64748b', mt: 1 }}>Đang tải thông tin gói...</Typography>
+                    </Box>
+                  ) : (
+                    <ResidentialPackageBox
+                      meta={residentialMeta || {}}
+                      orderCode={order.order_code}
+                      orderStatus={order.status}
+                    />
+                  )}
+                </Box>
+              )}
+
+              {/* Tab: Proxy — Static/Rotating render table cũ */}
+              {detailTab === 0 && !isResidential && <Box sx={{ display: 'flex', gap: 0 }}>
               <Box sx={{ flex: 1, minWidth: 0, p: '16px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>

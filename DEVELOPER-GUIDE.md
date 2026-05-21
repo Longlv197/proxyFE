@@ -3337,3 +3337,35 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 - BE `admin/update-item` đã trả full item trong `data` → FE patch bằng response, không cần gọi lại.
 
 **Files:** `OrderDetailModal.tsx`, `hooks/apis/useOrderItems.ts`, `hooks/apis/useOrders.ts`
+
+#### 13.N+11 OrderDetail render Residential Package + DownloadProxyModal (20/05/2026)
+
+**Bối cảnh:** NCC Proxyma bán residential proxy theo gói (1 đơn = 1 gói 1000 IP cùng port range 10000-10999, rotate tự động). BE chốt schema "Hybrid": 1 OrderItem chứa metadata gói (host, port range, login, password, traffic, days_left). OrderDetail.tsx hiện chỉ render table proxy (1 row = 1 IP) → không hợp residential.
+
+**Detect kind:**
+- `useApiKeys` hook attach thêm `_kind` (từ response BE `kind` field). Order residential → `_kind='residential'`.
+- OrderDetail: `isResidential = apiKeysData._kind === 'residential' || apiKeysData._dataField === 'residential_package'`.
+- Tab "Proxy" rẽ nhánh: residential render `<ResidentialPackageBox>`, static/rotating giữ table cũ.
+
+**Thêm 2 component:**
+- `ResidentialPackageBox.tsx`:
+  - Card gradient header: tên gói (List #ID), country/region/city + tariff.
+  - 2 box bên cạnh: thanh tiến độ dung lượng (LinearProgress màu theo % — xanh ≤60, vàng ≤80, đỏ >80) + Days left (đỏ nếu ≤3 ngày + chip "Sắp hết hạn").
+  - Box credentials: host + port range (X-Y) + username + password (mask, click reveal). Mỗi field có nút Copy.
+  - Sample proxy 1 dòng `{user}:{pass}@{host}:{port_start}` cho user copy nhanh.
+  - Nút "Tải proxy list" mở `DownloadProxyModal`.
+  - State "đang tạo proxy" khi `list_id` chưa có (stage 2 chưa xong) — hiện warning màu cam.
+
+- `DownloadProxyModal.tsx`:
+  - Format dropdown: 3 preset (`{user}:{pass}@{host}:{port}`, `{host}:{port}:{user}:{pass}`, `{host}:{port}@{user}:{pass}`) + Custom template tự nhập (biến `{host} {port} {user} {pass}`).
+  - Range tabs: Tất cả (1000) / N proxy đầu / Theo port (custom start-end). Validate min/max trong port range gói.
+  - File type radio: .txt (1 dòng/proxy) / .csv (host,port,user,pass).
+  - Preview live 3 dòng đầu + chip "Tổng: N proxy".
+  - Nút Copy tất cả (clipboard) + Tải file (Blob → download). Generate client-side, không tốn API.
+  - Toast info (KHÔNG success — theo feedback no-success-toast).
+
+**Sửa:**
+- `useApiKeys` (`hooks/apis/useOrders.ts`): attach `_kind` từ response BE.
+- `OrderDetail.tsx`: import `ResidentialPackageBox`, tính `isResidential` + `residentialMeta`, rẽ nhánh tab Proxy.
+
+**Files:** `views/Client/HistoryOrder/ResidentialPackageBox.tsx` (mới), `views/Client/HistoryOrder/DownloadProxyModal.tsx` (mới), `views/Client/HistoryOrder/OrderDetail.tsx`, `hooks/apis/useOrders.ts`
