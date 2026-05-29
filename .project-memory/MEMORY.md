@@ -60,6 +60,9 @@
 - [Lộ NCC site con](bug_provider_leak_child_site.md) — ĐÃ FIX 02/04
 - [Đơn deferred thiếu history](../proxybe-memory/bug_missing_buy_history.md) — ĐÃ FIX 08/04
 
+## Pending design (chưa implement)
+- [Typed attributes v2 plan](project_typed_attributes_v2_plan.md) — APPROVED 2026-05-28 nhưng PAUSE (anh chọn làm sau test Proxyma). Mongo `type_service_attributes` 1-1 với MySQL `type_services`, kind def PHP config, KHÔNG đụng orders/API version, helper `ServiceType::attribute($key)` fallback Mongo→metadata.
+
 ## TODO
 - **RÀ SOÁT BẮT BUỘC**: sau mỗi thay đổi logic → grep provider trong files liên quan → đảm bảo !isChild guard
 - [Tier display config](project_tier_display_config.md) — DONE 17/04: price_display_unit tách khỏi time_unit, dropdown mẹ+con, ProxyCard convert × hệ số. Fixed mode + site-level config để sau.

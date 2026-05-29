@@ -7,7 +7,9 @@ import { X, ShoppingCart, Loader, AlertTriangle, Tag, Clock, CheckCircle } from 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+
+import { resolveCountryLabel } from '@/utils/countryI18n'
 
 import QuantityControl from '@components/form/input-quantity/QuantityControl'
 import ProtocolSelector from '@components/form/protocol-selector/ProtocolSelector'
@@ -50,6 +52,8 @@ interface CheckoutModalProps {
   onClose: () => void
   productName: string
   productType: 'static' | 'rotating'
+  /** Discriminator chi tiết hơn productType — vd 'residential' → label "Residential V4". */
+  kind?: string
   serviceTypeId: number
   priceOptions: PriceOption[]
   protocols: string[]
@@ -63,16 +67,23 @@ interface CheckoutModalProps {
   pricePerUnit?: number
   allowCustomAuth?: boolean
   maxIps?: number
+  /** Giới hạn số lượng từ SP (Proxyma residential: min=max=1). */
+  minQuantity?: number
+  maxQuantity?: number
   discountTiers?: Array<{ min: string; max: string; discount: string }>
   quantityTiers?: Array<{ min: string; max: string; discount?: string; price?: string }>
   customFields?: Array<{
-    key: string // key nội bộ (gửi trong custom_fields)
-    param?: string // backward compat
+    key: string
+    param?: string
     label: string
     type: 'select' | 'text' | 'number'
     required?: boolean
-    options?: Array<{ value: string; label: string }>
+    options?: Array<{ key?: string; value?: string; label: string; price?: number; flag?: string }>
     default?: string
+    source?: 'manual' | 'api_tariffs' | 'api_countries' | 'api_regions' | 'api_cities'
+    depends_on?: string
+    // Snapshot subset per parent value (admin cấu hình trước, KHÔNG fetch live)
+    options_by_parent?: Record<string, Array<{ key?: string; value?: string; label: string }>>
   }>
 }
 
@@ -81,6 +92,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onClose,
   productName,
   productType,
+  kind,
   serviceTypeId,
   priceOptions,
   protocols,
@@ -94,6 +106,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   pricePerUnit = 0,
   allowCustomAuth = false,
   maxIps = 1,
+  minQuantity = 1,
+  maxQuantity = 9999,
   discountTiers = [],
   quantityTiers = [],
   customFields
@@ -101,7 +115,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [selectedDuration, setSelectedDuration] = useState(priceOptions[0]?.key || '1')
   const [customDuration, setCustomDuration] = useState(1)
   const [selectedProtocol, setSelectedProtocol] = useState(protocols[0] || 'http')
-  const [quantity, setQuantity] = useState(1)
+  const [quantity, setQuantity] = useState(Math.max(1, minQuantity))
   const [discountCode, setDiscountCode] = useState('')
   const [purchaseSuccess, setPurchaseSuccess] = useState(false)
   const [apiError, setApiError] = useState('')
@@ -111,6 +125,46 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [customPass, setCustomPass] = useState('')
   const [allowIp, setAllowIp] = useState('')
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
+
+  // Cascade reset: khi parent thay đổi → reset child + grandchild values
+  const setFieldValue = (key: string, value: string) => {
+    setCustomFieldValues(prev => {
+      const next = { ...prev, [key]: value }
+      customFields?.forEach(f => {
+        if (f.depends_on === key) {
+          delete next[f.key || f.param || '']
+          customFields?.forEach(g => {
+            if (g.depends_on === (f.key || f.param || '')) {
+              delete next[g.key || g.param || '']
+            }
+          })
+        }
+      })
+      return next
+    })
+  }
+
+  // Search filter local cho mỗi field (region/city) — pill grid với search inline
+  const [fieldSearch, setFieldSearch] = useState<Record<string, string>>({})
+
+  // Locale từ Next.js [lang] dynamic segment (vi/en/ko/ja/cn). Default 'vi'.
+  const params = useParams<{ lang?: string }>()
+  const locale = (params?.lang as string) || 'vi'
+
+  // Resolve label theo locale: nếu opt là country (có flag/key match ISO) → dùng dictionary.
+  // Else fallback opt.label_i18n[locale] (Phase 1b) → opt.label gốc.
+  const resolveLabel = React.useCallback((opt: any, isCountry: boolean): string => {
+    if (isCountry) {
+      const code = (opt.flag || opt.key || opt.value || '').toString()
+
+      return resolveCountryLabel(code, locale, opt.label)
+    }
+    if (opt.label_i18n && typeof opt.label_i18n === 'object') {
+      return opt.label_i18n[locale] || opt.label_i18n.en || opt.label
+    }
+
+    return opt.label
+  }, [locale])
 
   // Hiện auth options nếu sản phẩm hỗ trợ
   const showAuthOptions = authType === 'both'
@@ -208,6 +262,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
       ? Math.round((selectedOption?.price || 0) * (1 - fixedQtyDiscountPct / 100))
       : 0
 
+  // Pricing — dùng cấu trúc chung của hệ thống (price_by_duration / per_unit).
+  // KHÔNG override theo option price (đồng bộ với mọi SP, đơn giản hoá).
   const unitPrice = isPerUnit
     ? priceAfterQtyDiscount * customDuration
     : fixedQtyPrice > 0
@@ -554,49 +610,264 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
           )}
 
           {/* Custom fields (tuỳ chọn mua hàng từ ServiceType) */}
-          {customFields?.map(field => {
+          {customFields?.map((field, fieldIdx) => {
             const fieldKey = field.key || field.param || ''
-            const isCountryFlag = (field as any).display_type === 'country_flag'
+            // Auto-detect country flag: display_type='country_flag' HOẶC source='api_countries'/key='country'
+            const isCountryFlag = (field as any).display_type === 'country_flag' ||
+              field.source === 'api_countries' ||
+              fieldKey === 'country'
+            // Tariff card không còn — đã bỏ pricing per option. Detect chỉ bằng source.
+            // Nếu admin muốn card nổi bật cho tariff, dùng display_type='card' (Phase sau).
+            const isTariffCard = false
+            const isDependent = field.source === 'api_regions' || field.source === 'api_cities'
+            const parentKey = field.depends_on || ''
+            const parentValue = parentKey ? customFieldValues[parentKey] : ''
+            // Dependent → đọc snapshot options_by_parent[parentValue] (admin đã chọn trước)
+            const fieldOptions = isDependent
+              ? (field.options_by_parent?.[parentValue] || [])
+              : (field.options || [])
+            const isLoading = false  // Không còn fetch live — snapshot mode
+            const isLocked = isDependent && !parentValue
+            const parentLabel = customFields?.find(f => (f.key || f.param) === parentKey)?.label || parentKey
+            const stepNum = ['①', '②', '③', '④', '⑤', '⑥'][fieldIdx] || `${fieldIdx + 1}.`
+            const selectedValue = customFieldValues[fieldKey] || field.default
+            const selectedOpt = fieldOptions.find((o: any) => (o.key || o.value) === selectedValue)
 
             return (
-              <div className='checkout-section' key={fieldKey}>
-                <label className='checkout-section-label'>{field.label.toUpperCase()}</label>
-                {(field.type || 'select') === 'select' && field.options ? (
-                  <div className='checkout-duration-options' style={isCountryFlag ? { display: 'flex', flexWrap: 'wrap', gap: 6 } : undefined}>
-                    {field.options.map(opt => {
-                      const optId = (opt as any).key || opt.value
+              <div className='checkout-section' key={fieldKey}
+                style={{ opacity: isLocked ? 0.5 : 1, transition: 'opacity .2s' }}
+              >
+                <label className='checkout-section-label' style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: selectedOpt ? '#10b981' : (isLocked ? '#cbd5e1' : '#6366f1'),
+                    color: '#fff', fontSize: 11, fontWeight: 700
+                  }}>{selectedOpt ? '✓' : stepNum}</span>
+                  {field.label.toUpperCase()}
+                  {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                  {isLoading && <span style={{ fontSize: 11, color: '#64748b', fontWeight: 400 }}>Đang tải…</span>}
+                </label>
+
+                {isLocked ? (
+                  <div style={{ padding: '12px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8, fontSize: 12.5, color: '#64748b', textAlign: 'center' }}>
+                    Chọn <strong style={{ color: '#475569' }}>{parentLabel}</strong> ở bước trên để hiện danh sách
+                  </div>
+                ) : isLoading ? (
+                  <div style={{ padding: '12px', background: '#f1f5f9', borderRadius: 8, fontSize: 12, color: '#64748b', textAlign: 'center' }}>
+                    ⏳ Đang tải danh sách từ NCC…
+                  </div>
+                ) : isDependent && fieldOptions.length === 0 ? (
+                  <div style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, color: '#991b1b' }}>
+                    NCC không có {field.label.toLowerCase()} cho lựa chọn này. {!field.required ? 'Có thể bỏ qua.' : 'Chọn lại field trên.'}
+                  </div>
+                ) : (field.type || 'select') === 'select' && fieldOptions.length ? (
+                  // Hiển thị 3 cách tuỳ data + display_type
+                  isTariffCard && fieldOptions.length <= 12 ? (
+                    // Tariff card — hiển thị tên + traffic + giá nổi bật
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+                      {fieldOptions.map((opt: any) => {
+                        const optId = opt.key || opt.value
+                        const active = selectedValue === optId
+                        const parts = String(opt.label || '').split('—').map(s => s.trim())
+                        const name = parts[0] || opt.label
+                        const detail = parts[1] || ''
+                        return (
+                          <label key={optId}
+                            style={{
+                              display: 'block', padding: '12px 14px', cursor: 'pointer',
+                              borderRadius: 10, position: 'relative',
+                              border: active ? '2px solid #6366f1' : '1px solid #e2e8f0',
+                              background: active ? 'linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%)' : '#fff',
+                              boxShadow: active ? '0 2px 8px rgba(99,102,241,.15)' : 'none',
+                              transition: 'all .15s ease'
+                            }}
+                          >
+                            <input type='radio' value={optId} checked={active} onChange={() => setFieldValue(fieldKey, optId)} style={{ display: 'none' }} />
+                            {active && (
+                              <span style={{ position: 'absolute', top: 8, right: 8, width: 18, height: 18, borderRadius: '50%', background: '#6366f1', color: '#fff', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>✓</span>
+                            )}
+                            <div style={{ fontSize: 13.5, fontWeight: 700, color: active ? '#3730a3' : '#1e293b', marginBottom: 2 }}>{name}</div>
+                            {detail && <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 6 }}>{detail}</div>}
+                            {typeof opt.price === 'number' && opt.price > 0 && (
+                              <div style={{ fontSize: 16, fontWeight: 700, color: active ? '#6366f1' : '#16a34a' }}>
+                                {opt.price.toLocaleString('vi-VN')}đ
+                              </div>
+                            )}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  ) : isCountryFlag && fieldOptions.length <= 30 ? (
+                    // Country card — flag lớn + tên
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+                      {fieldOptions.map((opt: any) => {
+                        const optId = opt.key || opt.value
+                        const active = selectedValue === optId
+                        const flagCode = (opt.flag || opt.key || opt.value || '').toLowerCase()
+                        return (
+                          <label key={optId}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+                              cursor: 'pointer', borderRadius: 8, position: 'relative',
+                              border: active ? '2px solid #6366f1' : '1px solid #e2e8f0',
+                              background: active ? '#eef2ff' : '#fff',
+                              transition: 'all .15s ease'
+                            }}
+                          >
+                            <input type='radio' value={optId} checked={active} onChange={() => setFieldValue(fieldKey, optId)} style={{ display: 'none' }} />
+                            <img src={`https://flagcdn.com/w40/${flagCode}.png`} alt=''
+                              style={{ width: 28, height: 20, objectFit: 'cover', borderRadius: 2, flexShrink: 0, boxShadow: '0 0 0 1px rgba(0,0,0,.05)' }} />
+                            <span style={{ fontSize: 13, fontWeight: active ? 600 : 500, color: active ? '#3730a3' : '#334155' }}>
+                              {resolveLabel(opt, true)}
+                            </span>
+                            {active && (
+                              <span style={{ position: 'absolute', top: 6, right: 6, width: 14, height: 14, borderRadius: '50%', background: '#6366f1', color: '#fff', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>
+                            )}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  ) : fieldOptions.length > 8 ? (
+                    // Nhiều options non-country → pill grid + search inline (UX đẹp hơn datalist HTML5)
+                    (() => {
+                      const searchKey = fieldKey
+                      const query = (fieldSearch[searchKey] || '').toLowerCase().trim()
+                      const filtered = query
+                        ? fieldOptions.filter((o: any) => o.label.toLowerCase().includes(query))
+                        : fieldOptions
+                      const showSearch = fieldOptions.length > 12
 
                       return (
-                      <label
-                        key={optId}
-                        className={`checkout-duration-option ${(customFieldValues[fieldKey] || field.default) === optId ? 'active' : ''}`}
-                        style={isCountryFlag ? { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 10px' } : undefined}
-                      >
-                        <input
-                          type='radio'
-                          value={optId}
-                          checked={(customFieldValues[fieldKey] || field.default) === optId}
-                          onChange={() => setCustomFieldValues(prev => ({ ...prev, [fieldKey]: optId }))}
-                        />
-                        {isCountryFlag && (opt as any).flag && (
-                          <img
-                            src={`https://flagcdn.com/w20/${(opt as any).flag.toLowerCase()}.png`}
-                            alt=''
-                            style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 2 }}
-                          />
-                        )}
-                        <span>{opt.label}</span>
-                      </label>
+                        <div>
+                          {showSearch && (
+                            <div style={{ position: 'relative', marginBottom: 8 }}>
+                              <input
+                                type='text'
+                                className='discount-input'
+                                placeholder={`🔍 Tìm ${field.label.toLowerCase()} trong ${fieldOptions.length} lựa chọn...`}
+                                value={fieldSearch[searchKey] || ''}
+                                onChange={e => setFieldSearch(prev => ({ ...prev, [searchKey]: e.target.value }))}
+                                style={{ width: '100%', fontSize: 12.5, padding: '8px 12px' }}
+                              />
+                              {query && (
+                                <button
+                                  type='button'
+                                  onClick={() => setFieldSearch(prev => ({ ...prev, [searchKey]: '' }))}
+                                  style={{
+                                    position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                                    border: 'none', background: 'transparent', cursor: 'pointer',
+                                    color: '#94a3b8', fontSize: 16, padding: 4, lineHeight: 1
+                                  }}
+                                  title='Xoá tìm'
+                                >×</button>
+                              )}
+                            </div>
+                          )}
+                          {filtered.length === 0 ? (
+                            <div style={{ padding: '14px', textAlign: 'center', fontSize: 12, color: '#64748b', background: '#f8fafc', borderRadius: 8 }}>
+                              Không có {field.label.toLowerCase()} nào khớp "{query}"
+                            </div>
+                          ) : (
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                              gap: 6,
+                              maxHeight: 220, overflowY: 'auto',
+                              padding: '2px',
+                              border: '1px solid #e2e8f0', borderRadius: 8,
+                              background: '#fafbfc'
+                            }}>
+                              {filtered.map((opt: any) => {
+                                const optId = opt.key || opt.value
+                                const active = selectedValue === optId
+
+                                return (
+                                  <label
+                                    key={optId}
+                                    style={{
+                                      display: 'flex', alignItems: 'center', gap: 6,
+                                      padding: '7px 10px', cursor: 'pointer',
+                                      borderRadius: 6, fontSize: 12.5, fontWeight: active ? 600 : 500,
+                                      border: active ? '1.5px solid #6366f1' : '1px solid transparent',
+                                      background: active ? '#eef2ff' : '#fff',
+                                      color: active ? '#3730a3' : '#334155',
+                                      transition: 'all .12s ease',
+                                      position: 'relative'
+                                    }}
+                                  >
+                                    <input
+                                      type='radio' value={optId} checked={active}
+                                      onChange={() => setFieldValue(fieldKey, optId)}
+                                      style={{ display: 'none' }}
+                                    />
+                                    <span style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
+                                      border: active ? '4px solid #6366f1' : '1.5px solid #cbd5e1',
+                                      background: active ? '#fff' : '#fff',
+                                      transition: 'all .12s'
+                                    }} />
+                                    <span style={{
+                                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                    }}>{resolveLabel(opt, isCountryFlag)}</span>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          )}
+                          {selectedValue && selectedOpt && (
+                            <div style={{
+                              marginTop: 8, padding: '8px 12px',
+                              background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8,
+                              fontSize: 12, color: '#065f46',
+                              display: 'flex', alignItems: 'center', gap: 6
+                            }}>
+                              <span style={{ fontSize: 14 }}>✓</span>
+                              <span>Đã chọn:</span>
+                              <strong style={{ color: '#047857' }}>{resolveLabel(selectedOpt, isCountryFlag)}</strong>
+                              <button
+                                type='button'
+                                onClick={() => setFieldValue(fieldKey, '')}
+                                style={{
+                                  marginLeft: 'auto', border: 'none', background: 'transparent',
+                                  color: '#059669', cursor: 'pointer', fontSize: 11.5, fontWeight: 500,
+                                  textDecoration: 'underline'
+                                }}
+                              >Bỏ chọn</button>
+                            </div>
+                          )}
+                        </div>
                       )
-                    })}
-                  </div>
+                    })()
+                  ) : (
+                    // Ít options (≤8) → radio buttons
+                    <div className='checkout-duration-options'>
+                      {fieldOptions.map((opt: any) => {
+                        const optId = opt.key || opt.value
+                        return (
+                        <label
+                          key={optId}
+                          className={`checkout-duration-option ${selectedValue === optId ? 'active' : ''}`}
+                        >
+                          <input
+                            type='radio' value={optId}
+                            checked={selectedValue === optId}
+                            onChange={() => setFieldValue(fieldKey, optId)}
+                          />
+                          <span>{resolveLabel(opt, isCountryFlag)}</span>
+                        </label>
+                        )
+                      })}
+                    </div>
+                  )
                 ) : (
                   <input
                     type={field.type === 'number' ? 'number' : 'text'}
                     className='discount-input'
                     placeholder={field.default || ''}
                     value={customFieldValues[fieldKey] || ''}
-                    onChange={e => setCustomFieldValues(prev => ({ ...prev, [fieldKey]: e.target.value }))}
+                    onChange={e => setFieldValue(fieldKey, e.target.value)}
                     style={{ width: '100%' }}
                   />
                 )}
@@ -784,7 +1055,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 {unitPrice.toLocaleString('vi-VN')}đ
               </span>
               <div className='qty-cell'>
-                <QuantityControl min={1} max={9999} value={quantity} onChange={setQuantity} />
+                {/* Respect SP min/max. Khi min=max (vd Proxyma residential) → control disabled. */}
+                <QuantityControl
+                  min={Math.max(1, minQuantity)}
+                  max={Math.max(minQuantity, maxQuantity)}
+                  value={quantity}
+                  onChange={setQuantity}
+                />
               </div>
               <span className='subtotal-cell'>{total.toLocaleString('vi-VN')}đ</span>
             </div>
@@ -901,7 +1178,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className='summary-row'>
                 <span className='summary-label'>Loại IP:</span>
                 <span className='summary-value'>
-                  {productType === 'rotating' ? 'Rotating' : 'Static'} {ipVersion?.toUpperCase()} {country || ''}
+                  {/* Label derive: kind=residential → Residential; productType=rotating → Rotating; else Static.
+                      Tránh hardcode "Static" sai cho residential. */}
+                  {kind === 'residential'
+                    ? 'Residential'
+                    : productType === 'rotating'
+                      ? 'Rotating'
+                      : 'Static'}
+                  {' '}{ipVersion?.toUpperCase()}{country ? ` · ${country}` : ''}
                 </span>
               </div>
             )}
@@ -913,6 +1197,26 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <span className='summary-label'>Giao thức:</span>
               <span className='summary-value'>{selectedProtocol?.toUpperCase()}</span>
             </div>
+
+            {/* Hiện giá trị các custom field đã chọn (Gói GB, Quốc gia, Khu vực, Thành phố...) —
+                để user verify TRƯỚC khi bấm Thanh Toán, không phải scroll lên. */}
+            {customFields?.map(f => {
+              const key = f.key || f.param || ''
+              const value = customFieldValues[key]
+              if (!value) return null
+              const opt = (f.options || []).find((o: any) => (o.value ?? o.key) === value || (o.provider_value === value))
+              // Detect country field để dùng i18n dictionary
+              const isCountryF = (f as any).display_type === 'country_flag' ||
+                f.source === 'api_countries' || key === 'country'
+              const label = opt ? resolveLabel(opt, isCountryF) : value
+
+              return (
+                <div className='summary-row' key={key}>
+                  <span className='summary-label'>{f.label}:</span>
+                  <span className='summary-value'>{label}</span>
+                </div>
+              )
+            })}
             <div className='summary-row'>
               <span className='summary-label'>Giá:</span>
               <span className='summary-value'>

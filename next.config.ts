@@ -57,10 +57,11 @@ const nextConfig: NextConfig = {
     ]
   },
 
-  // Thêm logging để debug
+  // Logging: tắt fullUrl fetch log để giảm rối console + bớt overhead stdout.
+  // Bật lại khi cần debug API call cụ thể.
   logging: {
     fetches: {
-      fullUrl: true
+      fullUrl: false
     }
   }
 }

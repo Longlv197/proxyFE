@@ -439,7 +439,14 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
           open={checkoutOpen}
           onClose={() => setCheckoutOpen(false)}
           productName={provider?.name ?? provider?.code}
-          productType='static'
+          // productType derive: kind=residential → rotating (residential always rotates),
+          // else dùng product_type column, fallback 'static' nếu legacy NULL.
+          productType={
+            provider?.metadata?.kind === 'residential' || provider?.product_type === 'rotating'
+              ? 'rotating'
+              : 'static'
+          }
+          kind={provider?.metadata?.kind || undefined}
           serviceTypeId={provider.id}
           priceOptions={priceOptions}
           protocols={protocolList}
@@ -455,6 +462,8 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
           quantityTiers={provider.metadata?.quantity_tiers || []}
           customFields={provider.metadata?.custom_fields || undefined}
           maxIps={provider.metadata?.max_ips || 1}
+          minQuantity={provider.min_quantity ?? 1}
+          maxQuantity={provider.max_quantity ?? 9999}
         />
       )}
     </>

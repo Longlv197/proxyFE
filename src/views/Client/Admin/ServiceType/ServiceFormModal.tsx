@@ -41,6 +41,10 @@ import { useServiceType, useCreateServiceType, useUpdateServiceType } from '@/ho
 import MultiInputModal from '@/views/Client/Admin/ServiceType/MultiInputModal'
 // PriceByDurationModal removed — giá theo thời gian giờ inline trong form
 import CollapsibleSection from '@/views/Client/Admin/ServiceType/CollapsibleSection'
+import ResidentialConfigSection from '@/views/Client/Admin/ServiceType/ResidentialConfigSection'
+import NccOptionsPickerModal from '@/views/Client/Admin/ServiceType/NccOptionsPickerModal'
+import LocationTreePickerModal, { EMPTY_VALUE as EMPTY_TREE, type LocationTreeValue } from '@/views/Client/Admin/ServiceType/LocationTreePickerModal'
+import LocationTreeViewer from '@/views/Client/Admin/ServiceType/LocationTreeViewer'
 import { useBranding } from '@/app/contexts/BrandingContext'
 
 import { ROTATION_MODE_LABELS } from '@/constants/rotationMode'
@@ -355,18 +359,112 @@ interface PurchaseOption {
   key: string; param_name: string; label: string
   type: 'select' | 'text' | 'number'; required: boolean; default: string
   display_type?: 'country_flag' | ''
-  options: Array<{ provider_value: string; label: string; key?: string; flag?: string; value?: string }>
+  options: Array<{
+    provider_value: string; label: string
+    key?: string; flag?: string; value?: string
+    // i18n override — admin tự nhập tên hiển thị theo locale. Priority cao hơn dictionary ISO.
+    // VD: { vi: 'Mỹ', en: 'USA', ko: '미국' } để override 'Hợp chúng quốc Hoa Kỳ' (ISO)
+    label_i18n?: Record<string, string>
+  }>
+
+  // Nguồn options. Linh hoạt cho NCC residential (load live từ API) — vẫn backward compat.
+  source?: 'manual' | 'api_tariffs' | 'api_countries' | 'api_regions' | 'api_cities'
+  // depends_on: tên key của field cha (cho regions=country, cities=region). Auto-set theo source.
+  depends_on?: string
+  // Snapshot dependent — admin pre-config: country='us' → 5 regions, country='vn' → 10 regions
+  options_by_parent?: Record<string, Array<{ key?: string; provider_value?: string; label: string }>>
 }
 
+// Locales FE hỗ trợ — đồng bộ với configi18n.ts
+const I18N_LOCALES: Array<{ code: string; label: string; flag: string }> = [
+  { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'ko', label: '한국어', flag: '🇰🇷' },
+  { code: 'ja', label: '日本語', flag: '🇯🇵' },
+  { code: 'cn', label: '中文', flag: '🇨🇳' }
+]
+
 const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
-  options, onChange, control, errors, countries
+  options, onChange, control, errors, countries, providerCode, providerSupportsResidential
 }: {
   options: PurchaseOption[]
   onChange: (options: PurchaseOption[]) => void
   control: any; errors: any; countries?: any[]
+  providerCode?: string | null
+  providerSupportsResidential?: boolean
 }) {
   const update = (idx: number, patch: Partial<PurchaseOption>) => {
     onChange(options.map((o, i) => i === idx ? { ...o, ...patch } : o))
+  }
+
+  // Toggle expand bản dịch i18n per option value row. Key: `${optIdx}-${valIdx}`
+  const [expandedI18n, setExpandedI18n] = useState<Set<string>>(new Set())
+  const toggleI18n = (key: string) => setExpandedI18n(prev => {
+    const n = new Set(prev)
+    n.has(key) ? n.delete(key) : n.add(key)
+
+    return n
+  })
+
+  // Modal picker state — admin chọn multi-select options từ NCC
+  // Dependent (api_regions/api_cities): cần parentCountryCode + parentRegionName + parentLabel
+  const [pickerOpen, setPickerOpen] = useState<{
+    idx: number
+    source: 'api_tariffs' | 'api_countries' | 'api_regions' | 'api_cities'
+    parentValue?: string         // value của parent (vd 'us')
+    parentLabel?: string         // label hiển thị (vd 'Vietnam')
+    parentCountryCode?: string   // cho api_cities: code country (vd 'VN')
+    parentRegionName?: string    // cho api_cities: tên region (vd 'Hanoi')
+  } | null>(null)
+
+  // Di chuyển option lên/xuống — đổi thứ tự field hiển thị trên form mua proxy.
+  const moveOption = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir
+    if (target < 0 || target >= options.length) return
+    const next = [...options]
+    ;[next[idx], next[target]] = [next[target], next[idx]]
+    onChange(next)
+  }
+
+  // Fetch options từ NCC residential endpoint admin. Auto detect endpoint theo source.
+  const fetchFromNcc = async (idx: number, source: string) => {
+    if (!providerCode) {
+      toast.error('Chưa chọn nhà cung cấp')
+      return
+    }
+    const slug = providerCode.split('.')[0]
+    let endpoint = ''
+    if (source === 'api_tariffs') endpoint = 'tariffs'
+    else if (source === 'api_countries') endpoint = 'countries'
+    else { toast.error('Source này không hỗ trợ tải trực tiếp'); return }
+
+    try {
+      const axios = (await import('axios')).default
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('accessToken') || '') : ''
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL as string) || ''
+      const res = await axios.get(`${baseUrl}/admin/${slug}/${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const list = res?.data?.data ?? []
+
+      const newOptions = endpoint === 'tariffs'
+        ? list.map((t: any) => ({
+            key: t.key_suggest || `${t.traffic_gb}gb`,
+            provider_value: String(t.tariff_id),
+            label: `${t.name} — ${t.traffic_label} — ${t.price_label}`
+          }))
+        : list.map((c: any) => ({
+            key: c.code.toLowerCase(),
+            provider_value: c.code,
+            label: c.name,
+            flag: c.code.toLowerCase()
+          }))
+
+      update(idx, { options: newOptions })
+      toast.success(`Đã tải ${newOptions.length} options từ NCC. Tự xoá option không cần và sửa label.`)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e.message || 'Tải từ NCC lỗi')
+    }
   }
 
   return (
@@ -417,7 +515,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
             <span style={{ background: '#c4b5fd', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700, color: '#fff' }}>Lớp 3</span>
             Khách chọn khi mua — hiện trên form checkout
           </div>
-          <Button size='small' variant='outlined'
+          <Button size='small' variant='outlined' type='button'
             onClick={() => onChange([...options, { key: '', param_name: '', label: '', type: 'select', required: true, default: '', display_type: '', options: [{ provider_value: '', label: '' }] }])}>
             + Thêm tuỳ chọn
           </Button>
@@ -429,53 +527,246 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
           </p>
         )}
 
-        {options.map((opt, optIdx) => (
-          <div key={optIdx} style={{ background: '#f8fafc', borderRadius: 8, padding: 12, marginBottom: 12, position: 'relative' }}>
-            <button type='button' onClick={() => onChange(options.filter((_, i) => i !== optIdx))}
-              style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, fontWeight: 700 }}>✕</button>
+        {/* Banner: 3 fields location đã chuyển sang tree picker phía trên */}
+        {providerSupportsResidential && options.some(o => ['country','region','city'].includes(o.key) || ['api_countries','api_regions','api_cities'].includes(o.source || '')) && (
+          <div style={{
+            background: '#ecfdf5', border: '1px dashed #6ee7b7', borderRadius: 8,
+            padding: '8px 12px', marginBottom: 10, fontSize: 12, color: '#065f46',
+            display: 'flex', alignItems: 'center', gap: 8
+          }}>
+            <span style={{ fontSize: 14 }}>🌍</span>
+            <span>
+              <strong>Country / Region / City</strong> đã được cấu hình ở box <em>“Cấu hình vị trí”</em> phía trên — ẩn khỏi đây để tránh trùng lặp.
+              Các tuỳ chọn còn lại (tariff, custom…) hiển thị bên dưới.
+            </span>
+          </div>
+        )}
 
-            <Grid2 container spacing={1.5} sx={{ mb: 1 }}>
-              <Grid2 size={{ xs: 3 }}>
-                <CustomTextField fullWidth size='small' label='Key nội bộ' placeholder='nha_mang' value={opt.key}
-                  onChange={(e: any) => update(optIdx, { key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
-              </Grid2>
-              <Grid2 size={{ xs: 3 }}>
-                <CustomTextField fullWidth size='small' label='Param gốc (ẩn)' placeholder='loaiproxy' value={opt.param_name}
-                  onChange={(e: any) => update(optIdx, { param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
-              </Grid2>
-              <Grid2 size={{ xs: 3 }}>
-                <CustomTextField fullWidth size='small' label='Label hiển thị' placeholder='Nhà mạng' value={opt.label}
-                  onChange={(e: any) => update(optIdx, { label: e.target.value })} />
-              </Grid2>
-              <Grid2 size={{ xs: 1.5 }}>
-                <CustomTextField fullWidth size='small' select label='Loại' value={opt.type || 'select'}
-                  onChange={(e: any) => update(optIdx, { type: e.target.value })}>
-                  <MenuItem value='select'>Select</MenuItem>
-                  <MenuItem value='text'>Text</MenuItem>
-                  <MenuItem value='number'>Number</MenuItem>
-                </CustomTextField>
-              </Grid2>
-              <Grid2 size={{ xs: 1.5 }}>
-                <CustomTextField fullWidth size='small' select label='Bắt buộc' value={opt.required ? 'true' : 'false'}
-                  onChange={(e: any) => update(optIdx, { required: e.target.value === 'true' })}>
-                  <MenuItem value='true'>Có</MenuItem>
-                  <MenuItem value='false'>Không</MenuItem>
-                </CustomTextField>
-              </Grid2>
-            </Grid2>
-            {(opt.type || 'select') === 'select' && (
-              <Grid2 container spacing={1.5} sx={{ mb: 1 }}>
+        {options.map((opt, optIdx) => {
+          const isDependent = opt.source === 'api_regions' || opt.source === 'api_cities'
+          const isPickerSource = opt.source === 'api_tariffs' || opt.source === 'api_countries'
+
+          // Ẩn 3 field location khi provider residential — chúng được tree picker quản lý
+          const isLocationField = ['country','region','city'].includes(opt.key) ||
+            ['api_countries','api_regions','api_cities'].includes(opt.source || '')
+          if (providerSupportsResidential && isLocationField) return null
+
+          return (
+          <div key={optIdx} style={{
+            background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10,
+            marginBottom: 12, overflow: 'hidden'
+          }}>
+            {/* ─── Header bar ─────────────────────────────── */}
+            <div style={{
+              padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
+              background: '#f8fafc', borderBottom: '1px solid #e2e8f0'
+            }}>
+              <span style={{
+                background: '#6366f1', color: '#fff', fontSize: 11, fontWeight: 700,
+                borderRadius: 999, width: 22, height: 22, display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>{optIdx + 1}</span>
+              <button type='button' disabled={optIdx === 0} onClick={() => moveOption(optIdx, -1)} title='Lên trước'
+                style={{ background: 'none', border: 'none', cursor: optIdx === 0 ? 'default' : 'pointer', color: optIdx === 0 ? '#cbd5e1' : '#64748b', padding: 2, lineHeight: 1, fontSize: 14 }}>▲</button>
+              <button type='button' disabled={optIdx === options.length - 1} onClick={() => moveOption(optIdx, 1)} title='Xuống sau'
+                style={{ background: 'none', border: 'none', cursor: optIdx === options.length - 1 ? 'default' : 'pointer', color: optIdx === options.length - 1 ? '#cbd5e1' : '#64748b', padding: 2, lineHeight: 1, fontSize: 14 }}>▼</button>
+              <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                {opt.label || opt.key || 'Tuỳ chọn mới'}
+                {opt.required && <span style={{ color: '#ef4444', marginLeft: 4 }}>*</span>}
+              </span>
+              {opt.source && opt.source !== 'manual' && (() => {
+                const depField = opt.depends_on ? options.find(f => f.key === opt.depends_on) : null
+                return (
+                  <span style={{ fontSize: 10.5, background: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                    {opt.source.replace('api_', 'API: ')}
+                    {opt.depends_on && ` ← ${depField?.label || opt.depends_on}`}
+                  </span>
+                )
+              })()}
+              <div style={{ flexGrow: 1 }} />
+              <button type='button' onClick={() => onChange(options.filter((_, i) => i !== optIdx))} title='Xoá tuỳ chọn'
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 4, borderRadius: 4 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.background = '#fef2f2' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#94a3b8'; (e.currentTarget as HTMLElement).style.background = 'none' }}
+              >✕</button>
+            </div>
+
+            {/* ─── Section 1: Field info ──────────────────── */}
+            <div style={{ padding: 12 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+                Thông tin field
+              </div>
+              <Grid2 container spacing={1.5}>
                 <Grid2 size={{ xs: 3 }}>
-                  <CustomTextField fullWidth size='small' select label='Hiển thị ngoài card' value={opt.display_type || ''}
-                    onChange={(e: any) => update(optIdx, { display_type: e.target.value || '' })}>
-                    <MenuItem value=''>Mặc định (text)</MenuItem>
-                    <MenuItem value='country_flag'>Cờ quốc gia</MenuItem>
+                  <CustomTextField fullWidth size='small' label='Key nội bộ' placeholder='country' value={opt.key}
+                    onChange={(e: any) => update(optIdx, { key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
+                </Grid2>
+                <Grid2 size={{ xs: 3 }}>
+                  <CustomTextField fullWidth size='small' label='Param gửi NCC' placeholder='country_code' value={opt.param_name}
+                    onChange={(e: any) => update(optIdx, { param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
+                </Grid2>
+                <Grid2 size={{ xs: 3 }}>
+                  <CustomTextField fullWidth size='small' label='Label hiển thị' placeholder='Quốc gia' value={opt.label}
+                    onChange={(e: any) => update(optIdx, { label: e.target.value })} />
+                </Grid2>
+                <Grid2 size={{ xs: 1.5 }}>
+                  <CustomTextField fullWidth size='small' select label='Loại' value={opt.type || 'select'}
+                    onChange={(e: any) => update(optIdx, { type: e.target.value })}>
+                    <MenuItem value='select'>Select</MenuItem>
+                    <MenuItem value='text'>Text</MenuItem>
+                    <MenuItem value='number'>Number</MenuItem>
+                  </CustomTextField>
+                </Grid2>
+                <Grid2 size={{ xs: 1.5 }}>
+                  <CustomTextField fullWidth size='small' select label='Bắt buộc' value={opt.required ? 'true' : 'false'}
+                    onChange={(e: any) => update(optIdx, { required: e.target.value === 'true' })}>
+                    <MenuItem value='true'>Có</MenuItem>
+                    <MenuItem value='false'>Không</MenuItem>
                   </CustomTextField>
                 </Grid2>
               </Grid2>
+            </div>
+
+            {/* ─── Section 2: Nguồn dữ liệu (chỉ residential) ── */}
+            {providerSupportsResidential && (opt.type || 'select') === 'select' && (
+              <div style={{ padding: '0 12px 12px', borderTop: '1px dashed #e2e8f0' }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 12, marginBottom: 6 }}>
+                  Nguồn dữ liệu
+                </div>
+                <Grid2 container spacing={1.5} alignItems='center'>
+                  <Grid2 size={{ xs: 5 }}>
+                    <CustomTextField fullWidth size='small' select label='Source' value={opt.source || 'manual'}
+                      onChange={(e: any) => {
+                        const src = e.target.value
+                        const dep = src === 'api_regions' ? 'country' : src === 'api_cities' ? 'region' : ''
+                        const isDep = src === 'api_regions' || src === 'api_cities'
+                        update(optIdx, { source: src, depends_on: dep, options: isDep ? [] : opt.options })
+                      }}>
+                      <MenuItem value='manual'>Tự nhập (admin)</MenuItem>
+                      <MenuItem value='api_tariffs'>API: Tariffs (gói GB)</MenuItem>
+                      <MenuItem value='api_countries'>API: Countries</MenuItem>
+                      <MenuItem value='api_regions'>API: Regions (theo country)</MenuItem>
+                      <MenuItem value='api_cities'>API: Cities (theo region)</MenuItem>
+                    </CustomTextField>
+                  </Grid2>
+                  {isPickerSource && (
+                    <Grid2 size={{ xs: 7 }}>
+                      <Button size='small' variant='contained' fullWidth
+                        onClick={() => setPickerOpen({ idx: optIdx, source: opt.source as 'api_tariffs' | 'api_countries' })}
+                        disabled={!providerCode}
+                        sx={{ height: 38, background: opt.options.length > 0 ? '#6366f1' : '#94a3b8' }}
+                      >
+                        {opt.options.length > 0 ? `Sửa chọn (${opt.options.length} options)` : 'Chọn options từ NCC'}
+                      </Button>
+                    </Grid2>
+                  )}
+                  {isDependent && (
+                    <Grid2 size={{ xs: 7 }}>
+                      <div style={{ padding: '8px 12px', background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 6, fontSize: 12, color: '#4338ca' }}>
+                        Snapshot pre-config theo <code>{opt.depends_on}</code>. Cấu hình bên dưới ↓
+                      </div>
+                    </Grid2>
+                  )}
+                </Grid2>
+              </div>
             )}
 
-            {(opt.type || 'select') === 'select' && (
+            {/* ─── Section 2.5: Per-parent picker (cho dependent) ── */}
+            {isDependent && (() => {
+              const parentField = options.find(f => f.key === opt.depends_on)
+              const parentValues = parentField?.options || []
+              const obp = opt.options_by_parent || {}
+
+              if (parentValues.length === 0) {
+                return (
+                  <div style={{ padding: '12px', borderTop: '1px dashed #e2e8f0' }}>
+                    <div style={{ padding: '12px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 6, fontSize: 12, color: '#92400e' }}>
+                      ⚠ Field cha <strong>{opt.depends_on}</strong> chưa có option. Cấu hình field cha trước (chọn options qua "Chọn options từ NCC").
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <div style={{ padding: '12px', borderTop: '1px dashed #e2e8f0' }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+                    Cấu hình {opt.label || opt.key || 'field này'} cho từng {parentField?.label || parentField?.key || opt.depends_on} ({parentValues.length} parent)
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 6 }}>
+                    {parentValues.map((pv: any) => {
+                      const pkey = pv.key || pv.value || ''
+                      const count = (obp[pkey] || []).length
+                      let parentCountry: string | undefined
+                      let parentRegion: string | undefined
+                      if (opt.source === 'api_regions') {
+                        parentCountry = String(pv.provider_value || pv.key || '').toUpperCase()
+                      } else if (opt.source === 'api_cities') {
+                        const regionField = options.find(f => f.key === opt.depends_on)
+                        const countryField = regionField ? options.find(f => f.key === regionField.depends_on) : null
+                        const obpRegion = regionField?.options_by_parent || {}
+                        for (const [cKey, regions] of Object.entries(obpRegion)) {
+                          if ((regions as any[]).some(r => (r.key || r.label) === pkey)) {
+                            const cOpt = countryField?.options.find(c => (c.key || c.value) === cKey)
+                            parentCountry = String(cOpt?.provider_value || cKey).toUpperCase()
+                            parentRegion = pv.label || pkey
+                            break
+                          }
+                        }
+                      }
+                      return (
+                        <div key={pkey} style={{
+                          padding: '8px 10px', border: count > 0 ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
+                          borderRadius: 6, background: count > 0 ? '#f0fdf4' : '#fff',
+                          display: 'flex', alignItems: 'center', gap: 8, minWidth: 0
+                        }}>
+                          {(pv as any).flag && (
+                            <img src={`https://flagcdn.com/w20/${(pv as any).flag}.png`} style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={pv.label}>
+                              {pv.label}
+                            </div>
+                            <div style={{ fontSize: 10.5, color: count > 0 ? '#10b981' : '#94a3b8' }}>
+                              {count > 0 ? `✓ ${count} đã chọn` : 'Chưa cấu hình'}
+                            </div>
+                          </div>
+                          <Button size='small' variant={count > 0 ? 'outlined' : 'contained'} type='button'
+                            disabled={!providerCode || (opt.source === 'api_cities' && !parentCountry)}
+                            onClick={() => setPickerOpen({
+                              idx: optIdx,
+                              source: opt.source as any,
+                              parentValue: pkey,
+                              parentLabel: pv.label,
+                              parentCountryCode: parentCountry,
+                              parentRegionName: parentRegion
+                            })}
+                            sx={{ fontSize: 11, py: 0.25, px: 1.2, minWidth: 50, flexShrink: 0 }}
+                          >
+                            {count > 0 ? 'Sửa' : 'Tải'}
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* ─── Section 3: Display + Options list (chỉ khi select & non-dependent) ── */}
+            {(opt.type || 'select') === 'select' && !isDependent && (
+              <div style={{ padding: '12px', borderTop: '1px dashed #e2e8f0' }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+                  Hiển thị & Options
+                </div>
+                <Grid2 container spacing={1.5} sx={{ mb: 1.5 }}>
+                  <Grid2 size={{ xs: 4 }}>
+                    <CustomTextField fullWidth size='small' select label='Cách hiển thị' value={opt.display_type || ''}
+                      onChange={(e: any) => update(optIdx, { display_type: e.target.value || '' })}>
+                      <MenuItem value=''>Text (mặc định)</MenuItem>
+                      <MenuItem value='country_flag'>Cờ quốc gia</MenuItem>
+                    </CustomTextField>
+                  </Grid2>
+                </Grid2>
               <>
                 {opt.display_type === 'country_flag' ? (
                   <>
@@ -529,24 +820,71 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 ) : (
                   <>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Giá trị:</div>
-                    {opt.options.map((option, valIdx) => (
-                      <div key={valIdx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
-                        <CustomTextField size='small' placeholder='Provider value' value={(option as any).provider_value || ''} sx={{ flex: 1 }}
-                          onChange={(e: any) => {
-                            const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], provider_value: e.target.value }
-                            if (!newOpts[valIdx].label) newOpts[valIdx].label = e.target.value
-                            update(optIdx, { options: newOpts })
-                          }} />
-                        <CustomTextField size='small' placeholder='Hiển thị (label)' value={option.label} sx={{ flex: 1 }}
-                          onChange={(e: any) => {
-                            const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], label: e.target.value }
-                            update(optIdx, { options: newOpts })
-                          }} />
-                        <button type='button'
-                          onClick={() => { if (opt.options.length <= 1) return; update(optIdx, { options: opt.options.filter((_, i) => i !== valIdx) }) }}
-                          style={{ background: 'none', border: 'none', color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444', cursor: opt.options.length <= 1 ? 'default' : 'pointer', fontSize: 14, padding: '4px 6px' }}>✕</button>
-                      </div>
-                    ))}
+                    {opt.options.map((option, valIdx) => {
+                      const i18nKey = `${optIdx}-${valIdx}`
+                      const expanded = expandedI18n.has(i18nKey)
+                      const hasI18n = option.label_i18n && Object.values(option.label_i18n).some(v => v?.trim())
+
+                      return (
+                        <div key={valIdx} style={{ marginBottom: 4 }}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <CustomTextField size='small' placeholder='Provider value' value={(option as any).provider_value || ''} sx={{ flex: 1 }}
+                              onChange={(e: any) => {
+                                const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], provider_value: e.target.value }
+                                if (!newOpts[valIdx].label) newOpts[valIdx].label = e.target.value
+                                update(optIdx, { options: newOpts })
+                              }} />
+                            <CustomTextField size='small' placeholder='Hiển thị (label mặc định)' value={option.label} sx={{ flex: 1 }}
+                              onChange={(e: any) => {
+                                const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], label: e.target.value }
+                                update(optIdx, { options: newOpts })
+                              }} />
+                            <button type='button'
+                              onClick={() => toggleI18n(i18nKey)}
+                              title={hasI18n ? 'Có bản dịch — click sửa' : 'Thêm bản dịch (vi/en/ko/ja/cn)'}
+                              style={{
+                                background: hasI18n ? '#eef2ff' : 'transparent',
+                                border: hasI18n ? '1px solid #c7d2fe' : '1px solid #e2e8f0',
+                                color: hasI18n ? '#6366f1' : '#94a3b8',
+                                cursor: 'pointer', fontSize: 13, padding: '4px 8px', borderRadius: 6,
+                                display: 'inline-flex', alignItems: 'center', gap: 4
+                              }}>
+                              🌐{hasI18n && <span style={{ fontSize: 10, fontWeight: 600 }}>{Object.values(option.label_i18n || {}).filter(v => v?.trim()).length}</span>}
+                            </button>
+                            <button type='button'
+                              onClick={() => { if (opt.options.length <= 1) return; update(optIdx, { options: opt.options.filter((_, i) => i !== valIdx) }) }}
+                              style={{ background: 'none', border: 'none', color: opt.options.length <= 1 ? '#cbd5e1' : '#ef4444', cursor: opt.options.length <= 1 ? 'default' : 'pointer', fontSize: 14, padding: '4px 6px' }}>✕</button>
+                          </div>
+                          {expanded && (
+                            <div style={{
+                              marginTop: 6, marginLeft: 8, padding: '10px 12px',
+                              background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 6
+                            }}>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>
+                                Override label theo ngôn ngữ user. Để trống = dùng "{option.label}" (hoặc auto dict ISO cho country).
+                              </div>
+                              {I18N_LOCALES.map(loc => (
+                                <div key={loc.code} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                  <span style={{ width: 70, fontSize: 11.5, color: '#475569' }}>{loc.flag} {loc.code.toUpperCase()}:</span>
+                                  <CustomTextField size='small' placeholder={`${loc.label} — vd: ${loc.code === 'vi' ? 'Mỹ' : loc.code === 'en' ? 'USA' : ''}`}
+                                    value={option.label_i18n?.[loc.code] || ''}
+                                    sx={{ flex: 1 }}
+                                    onChange={(e: any) => {
+                                      const newOpts = [...opt.options]
+                                      const cur = newOpts[valIdx].label_i18n || {}
+                                      newOpts[valIdx] = {
+                                        ...newOpts[valIdx],
+                                        label_i18n: { ...cur, [loc.code]: e.target.value }
+                                      }
+                                      update(optIdx, { options: newOpts })
+                                    }} />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </>
                 )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -561,18 +899,68 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                   </CustomTextField>
                 </div>
               </>
+              </div>
             )}
 
             {(opt.type === 'text' || opt.type === 'number') && (
-              <CustomTextField size='small' fullWidth label='Giá trị mặc định'
-                placeholder={opt.type === 'number' ? '300' : 'VD: giá trị mặc định'}
-                type={opt.type} value={opt.default}
-                onChange={(e: any) => update(optIdx, { default: e.target.value })}
-                sx={{ mt: 1 }} />
+              <div style={{ padding: 12, borderTop: '1px dashed #e2e8f0' }}>
+                <CustomTextField size='small' fullWidth label='Giá trị mặc định'
+                  placeholder={opt.type === 'number' ? '300' : 'VD: giá trị mặc định'}
+                  type={opt.type} value={opt.default}
+                  onChange={(e: any) => update(optIdx, { default: e.target.value })} />
+              </div>
             )}
           </div>
-        ))}
+        )})}
       </div>
+
+      {/* Modal picker — admin chọn subset options từ NCC */}
+      {pickerOpen && providerCode && (() => {
+        const isDep = pickerOpen.source === 'api_regions' || pickerOpen.source === 'api_cities'
+        const targetOpt = options[pickerOpen.idx]
+        // Current selection: dependent → đọc từ options_by_parent[parentValue], non-dep → options[]
+        const currentList = isDep
+          ? (targetOpt?.options_by_parent?.[pickerOpen.parentValue || ''] || [])
+          : (targetOpt?.options || [])
+
+        return (
+          <NccOptionsPickerModal
+            open={!!pickerOpen}
+            onClose={() => setPickerOpen(null)}
+            providerCode={providerCode}
+            source={pickerOpen.source}
+            parentCountryCode={pickerOpen.parentCountryCode}
+            parentRegionName={pickerOpen.parentRegionName}
+            parentLabel={pickerOpen.parentLabel}
+            currentSelection={currentList.map((o: any) => ({
+              key: o.key || o.flag || o.label || '',
+              provider_value: o.provider_value || o.value || o.label || '',
+              label: o.label || '',
+              flag: o.flag
+            }))}
+            onSave={(selected) => {
+              if (isDep) {
+                // Lưu vào options_by_parent[parentValue]
+                const newObp = { ...(targetOpt?.options_by_parent || {}) }
+                newObp[pickerOpen.parentValue || ''] = selected.map(s => ({
+                  key: s.key,
+                  label: s.label
+                }))
+                update(pickerOpen.idx, { options_by_parent: newObp })
+              } else {
+                update(pickerOpen.idx, {
+                  options: selected.map(s => ({
+                    key: s.key,
+                    provider_value: String(s.provider_value),
+                    label: s.label,
+                    ...(s.flag ? { flag: s.flag } : {})
+                  }))
+                })
+              }
+            }}
+          />
+        )
+      })()}
     </Grid2>
   )
 })
@@ -729,6 +1117,94 @@ const NccRenewalPreview = memo(function NccRenewalPreview({
   )
 })
 
+// ─── Helpers: convert giữa LocationTree và 3 PurchaseOption (country/region/city) ───
+const LOC_KEYS = ['country', 'region', 'city'] as const
+
+function extractTreeFromOptions(opts: PurchaseOption[]): LocationTreeValue {
+  const country = opts.find(o => o.key === 'country' || o.source === 'api_countries')
+  const region = opts.find(o => o.key === 'region' || o.source === 'api_regions')
+  const city = opts.find(o => o.key === 'city' || o.source === 'api_cities')
+  const countries = (country?.options || []).map(o => ({
+    key: (o as any).key || String(o.provider_value || '').toLowerCase(),
+    label: o.label || String(o.provider_value || ''),
+    flag: (o as any).flag || (o as any).key || '',
+    ...((o as any).label_i18n ? { label_i18n: (o as any).label_i18n } : {})
+  }))
+  const regions: Record<string, any[]> = {}
+  Object.entries(region?.options_by_parent || {}).forEach(([cc, list]) => {
+    regions[cc] = (list || []).map((o: any) => ({
+      key: o.key || o.label,
+      label: o.label,
+      ...(o.label_i18n ? { label_i18n: o.label_i18n } : {})
+    }))
+  })
+  const cities: Record<string, any[]> = {}
+  Object.entries(city?.options_by_parent || {}).forEach(([rn, list]) => {
+    cities[rn] = (list || []).map((o: any) => ({
+      key: o.key || o.label,
+      label: o.label,
+      ...(o.label_i18n ? { label_i18n: o.label_i18n } : {})
+    }))
+  })
+  return { countries, regions, cities }
+}
+
+function applyTreeToOptions(opts: PurchaseOption[], tree: LocationTreeValue): PurchaseOption[] {
+  // Tách non-location options giữ nguyên
+  const nonLocation = opts.filter(o => !LOC_KEYS.includes(o.key as any) && !['api_countries', 'api_regions', 'api_cities'].includes(o.source || ''))
+
+  const baseLocOpt = (key: string, label: string): PurchaseOption => ({
+    key, param_name: key, label,
+    type: 'select', required: true, default: '',
+    options: [], source: 'manual'
+  })
+
+  // Country field
+  const countryOpt: PurchaseOption = {
+    ...(opts.find(o => o.key === 'country') || baseLocOpt('country', 'Quốc gia')),
+    source: 'api_countries',
+    options: tree.countries.map(c => ({
+      provider_value: c.key.toUpperCase(),
+      label: c.label,
+      key: c.key,
+      flag: c.flag || c.key,
+      value: c.key.toUpperCase(),
+      ...(c.label_i18n ? { label_i18n: c.label_i18n } : {})
+    } as any))
+  }
+
+  // Region field — depends on country
+  const regionOpt: PurchaseOption = {
+    ...(opts.find(o => o.key === 'region') || baseLocOpt('region', 'Khu vực')),
+    source: 'api_regions',
+    depends_on: 'country',
+    options: [],
+    options_by_parent: Object.fromEntries(
+      Object.entries(tree.regions).map(([cc, list]) => [cc, list.map(o => ({
+        key: o.key, label: o.label,
+        ...(o.label_i18n ? { label_i18n: o.label_i18n } : {})
+      }))])
+    )
+  }
+
+  // City field — depends on region
+  const cityOpt: PurchaseOption = {
+    ...(opts.find(o => o.key === 'city') || baseLocOpt('city', 'Thành phố')),
+    source: 'api_cities',
+    depends_on: 'region',
+    required: false,
+    options: [],
+    options_by_parent: Object.fromEntries(
+      Object.entries(tree.cities).map(([rn, list]) => [rn, list.map(o => ({
+        key: o.key, label: o.label,
+        ...(o.label_i18n ? { label_i18n: o.label_i18n } : {})
+      }))])
+    )
+  }
+
+  return [...nonLocation, countryOpt, regionOpt, cityOpt]
+}
+
 interface ServiceFormModalProps {
   open: boolean
   onClose: () => void
@@ -834,6 +1310,17 @@ return { values: {}, errors: formattedErrors }
   // Subscribe thay đổi provider_id → cập nhật duration options
   // Dùng useWatch thay vì watch() subscription để chỉ re-render khi field này đổi
   const watchedProviderId = useWatch({ control, name: 'provider_id' })
+  const watchedProxyType = useWatch({ control, name: 'proxy_type' })
+  const isResidential = watchedProxyType === 'residential'
+  const selectedProviderMain = providers?.find((p: any) => String(p.id) === String(watchedProviderId))
+
+  // Residential metadata (kind/proxy_host/tariff_durations/shared_proxy_hosts/custom_fields)
+  // Tách state riêng để không động vào purchaseOptions cũ. Submit merge khi isResidential.
+  const [residentialMeta, setResidentialMeta] = useState<any>({})
+
+  // Tree state cho LocationTreePickerModal (residential country/region/city)
+  const [locationTreeOpen, setLocationTreeOpen] = useState(false)
+  const [locationTree, setLocationTree] = useState<LocationTreeValue>(EMPTY_TREE)
 
   // Load service data when editing
   useEffect(() => {
@@ -942,8 +1429,21 @@ return { values: {}, errors: formattedErrors }
           ? meta.response_mapping.map((r: any) => ({ from: r.from || '', to: r.to || '', store: r.store || 'metadata' }))
           : []
       )
+      // Residential metadata — load nếu kind=residential
+      if (meta.kind === 'residential') {
+        setResidentialMeta({
+          kind: 'residential',
+          proxy_host: meta.proxy_host || '',
+          shared_proxy_hosts: meta.shared_proxy_hosts || [],
+          tariff_durations: meta.tariff_durations || {},
+          custom_fields: meta.custom_fields || []
+        })
+      } else {
+        setResidentialMeta({})
+      }
+
       if (meta.custom_fields && Array.isArray(meta.custom_fields)) {
-        setPurchaseOptions(meta.custom_fields.map((f: any) => ({
+        const loaded = meta.custom_fields.map((f: any) => ({
           key: f.key || f.param || '',
           param_name: f.param_name || f.param || '',
           label: f.label || '',
@@ -955,9 +1455,16 @@ return { values: {}, errors: formattedErrors }
             ...o,
             provider_value: o.provider_value ?? o.value ?? '',
           })),
-        })))
+          source: f.source || 'manual',
+          depends_on: f.depends_on || '',
+          options_by_parent: f.options_by_parent || {},
+        }))
+        setPurchaseOptions(loaded)
+        // Extract tree state nếu SP residential
+        setLocationTree(extractTreeFromOptions(loaded))
       } else {
         setPurchaseOptions([])
+        setLocationTree(EMPTY_TREE)
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -970,6 +1477,7 @@ return { values: {}, errors: formattedErrors }
       setMultiInputFields([{ key: '', value: '' }])
       setPriceFields([{ key: '', value: '', cost: '' }])
       setPurchaseOptions([])
+      setLocationTree(EMPTY_TREE)
       setResponseMappingRows([])
       setAllowCustomAuth(false)
       setRequireIp(false)
@@ -981,6 +1489,7 @@ return { values: {}, errors: formattedErrors }
       setRenewOverrideParams([])
       setDiscountTiers([])
       setQuantityTiers([])
+      setResidentialMeta({})
       setPricingMode('fixed')
       setTimeUnit('day')
       setPricePerUnit('')
@@ -1026,8 +1535,32 @@ return { values: {}, errors: formattedErrors }
     const costs = formattedPriceFields.map((p: any) => parseInt(p.cost) || 0).filter((c: number) => c > 0)
     const autoCostPrice = costs.length > 0 ? Math.min(...costs) : data.cost_price || 0
 
-    // Build metadata từ purchase options
-    const validOptions = purchaseOptions.filter(o => o.key && o.label && (o.type !== 'select' || o.options.some(opt => (opt as any).provider_value)))
+    // Build metadata từ purchase options.
+    // Cho phép field dependent (source=api_regions/api_cities) qua filter dù options[] rỗng.
+    const isDependentSource = (s?: string) => s === 'api_regions' || s === 'api_cities'
+    const validOptions = purchaseOptions.filter(o =>
+      o.key && o.label && (
+        o.type !== 'select' ||
+        isDependentSource(o.source) ||
+        o.options.some(opt => (opt as any).provider_value)
+      )
+    )
+
+    // Validate thứ tự: field có depends_on phải sau parent (parent index < child index)
+    for (let i = 0; i < validOptions.length; i++) {
+      const f = validOptions[i]
+      if (!f.depends_on) continue
+      const parentIdx = validOptions.findIndex(x => x.key === f.depends_on)
+      if (parentIdx < 0) {
+        setFormErrors([`Field "${f.label}" phụ thuộc field "${f.depends_on}" nhưng không có field này. Thêm vào trước.`])
+        return
+      }
+      if (parentIdx >= i) {
+        setFormErrors([`Field "${f.label}" phải nằm SAU field "${f.depends_on}" trong danh sách. Dùng nút ▲▼ để sắp xếp.`])
+        return
+      }
+    }
+
     const metadata = validOptions.length > 0 ? {
       custom_fields: validOptions.map(o => ({
         key: o.key,
@@ -1036,15 +1569,30 @@ return { values: {}, errors: formattedErrors }
         type: o.type || 'select',
         required: o.required,
         default: o.default || (o.type === 'select' ? o.options[0]?.value || '' : ''),
-        ...(o.type === 'select' ? { options: o.options.filter(opt => (opt as any).provider_value).map(opt => {
+        ...(o.type === 'select' && !isDependentSource(o.source) ? { options: o.options.filter(opt => (opt as any).provider_value).map(opt => {
           const entry: any = { provider_value: (opt as any).provider_value, label: opt.label }
 
           entry.key = (opt as any).key || (opt as any).flag || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
           if ((opt as any).flag) entry.flag = (opt as any).flag
 
+          // Preserve label_i18n nếu admin đã nhập (chỉ giữ các locale có giá trị thật)
+          const i18n = (opt as any).label_i18n
+          if (i18n && typeof i18n === 'object') {
+            const filtered: Record<string, string> = {}
+            Object.entries(i18n).forEach(([loc, val]) => {
+              if (typeof val === 'string' && val.trim()) filtered[loc] = val.trim()
+            })
+            if (Object.keys(filtered).length > 0) entry.label_i18n = filtered
+          }
+
           return entry
         }) } : {}),
         ...(o.display_type ? { display_type: o.display_type } : {}),
+        ...(o.source && o.source !== 'manual' ? { source: o.source } : {}),
+        ...(o.depends_on ? { depends_on: o.depends_on } : {}),
+        ...(o.options_by_parent && Object.keys(o.options_by_parent).length > 0
+          ? { options_by_parent: o.options_by_parent }
+          : {}),
       }))
     } : null
 
@@ -1070,6 +1618,14 @@ return { values: {}, errors: formattedErrors }
       provider_max_ips: providerMaxIps || undefined,
     }
 
+    // Residential — chỉ merge các field riêng residential. custom_fields đã dùng từ
+    // PurchaseOptionsSection chung (source=api_* + dependent dropdown), KHÔNG override.
+    if (isResidential) {
+      metadataFinal.kind = 'residential'
+      if (residentialMeta?.proxy_host)          metadataFinal.proxy_host = residentialMeta.proxy_host
+      if (residentialMeta?.shared_proxy_hosts)  metadataFinal.shared_proxy_hosts = residentialMeta.shared_proxy_hosts
+    }
+
     const submitData: any = {
       ...data,
       note: cleanNote,
@@ -1088,6 +1644,26 @@ return { values: {}, errors: formattedErrors }
       cost_per_unit: pricingMode === 'per_unit' ? (parseFloat(costPerUnit) || null) : null,
     }
     delete submitData.metadata_json
+
+    // Validate giá BẮT BUỘC client-side (BE cũng validate ở ServiceTypeController::validatePricingOrFail)
+    // Mục đích: user thấy lỗi NGAY không cần round-trip API + scroll lên đầu form.
+    if (pricingMode === 'per_unit') {
+      const ppu = parseInt(pricePerUnit) || 0
+      if (ppu <= 0) {
+        setFormErrors(['Giá theo đơn vị (đ/ngày) phải lớn hơn 0. Nhập giá ở mục "Giá per_unit" trước khi lưu.'])
+        document.getElementById('service-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+        return
+      }
+    } else {
+      const hasValidPrice = formattedPriceFields.some((p: any) => parseInt(p.value) > 0)
+      if (!hasValidPrice) {
+        setFormErrors(['Phải có ít nhất 1 mức giá bán > 0. Thêm mốc giá ở mục "Giá theo thời gian" trước khi lưu.'])
+        document.getElementById('service-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+        return
+      }
+    }
 
     const mutation = isEditMode ? updateMutation : createMutation
 
@@ -1303,8 +1879,9 @@ return { values: {}, errors: formattedErrors }
                   </div>
                   <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>Thông tin cơ bản</span>
                 </div>
-              <Grid2 container spacing={1}>
-                <Grid2 size={{ xs: 6, sm: 3 }}>
+              <Grid2 container spacing={1.5}>
+                {/* Row 1 — Sản phẩm: Provider | Tên | Mã (4-4-4) */}
+                <Grid2 size={{ xs: 12, sm: 4 }}>
                   <Controller
                     name='provider_id'
                     control={control}
@@ -1327,7 +1904,7 @@ return { values: {}, errors: formattedErrors }
                   />
                 </Grid2>
 
-                <Grid2 size={{ xs: 12, sm: 3 }}>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
                   <Controller
                     name='name'
                     control={control}
@@ -1345,7 +1922,7 @@ return { values: {}, errors: formattedErrors }
                   />
                 </Grid2>
 
-                <Grid2 size={{ xs: 6, sm: 3 }}>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
                   <Controller
                     name='code'
                     control={control}
@@ -1361,7 +1938,8 @@ return { values: {}, errors: formattedErrors }
                   />
                 </Grid2>
 
-                <Grid2 size={{ xs: 6, sm: 2 }}>
+                {/* Row 2 — Phân loại: Loại | Proxy Type | IP Version | Chế độ xoay (3-3-3-3) */}
+                <Grid2 size={{ xs: 6, sm: 3 }}>
                   <Controller
                     name='type'
                     control={control}
@@ -1374,22 +1952,7 @@ return { values: {}, errors: formattedErrors }
                   />
                 </Grid2>
 
-                <Grid2 size={{ xs: 6, sm: 2 }}>
-                  <Controller
-                    name='rotation_mode'
-                    control={control}
-                    render={({ field }) => (
-                      <CustomTextField {...field} fullWidth select label='Chế độ xoay' value={field.value || ''}>
-                        <MenuItem value=''><em>— Mặc định</em></MenuItem>
-                        {Object.entries(ROTATION_MODE_LABELS).map(([value, label]) => (
-                          <MenuItem key={value} value={value}>{label}</MenuItem>
-                        ))}
-                      </CustomTextField>
-                    )}
-                  />
-                </Grid2>
-
-                <Grid2 size={{ xs: 6, sm: 2 }}>
+                <Grid2 size={{ xs: 6, sm: 3 }}>
                   <Controller
                     name='proxy_type'
                     control={control}
@@ -1403,7 +1966,7 @@ return { values: {}, errors: formattedErrors }
                   />
                 </Grid2>
 
-                <Grid2 size={{ xs: 6, sm: 2 }}>
+                <Grid2 size={{ xs: 6, sm: 3 }}>
                   <Controller
                     name='ip_version'
                     control={control}
@@ -1411,6 +1974,21 @@ return { values: {}, errors: formattedErrors }
                       <CustomTextField {...field} fullWidth select label='IP Version'>
                         {IP_VERSION_OPTIONS.map(opt => (
                           <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                        ))}
+                      </CustomTextField>
+                    )}
+                  />
+                </Grid2>
+
+                <Grid2 size={{ xs: 6, sm: 3 }}>
+                  <Controller
+                    name='rotation_mode'
+                    control={control}
+                    render={({ field }) => (
+                      <CustomTextField {...field} fullWidth select label='Chế độ xoay' value={field.value || ''}>
+                        <MenuItem value=''><em>— Mặc định</em></MenuItem>
+                        {Object.entries(ROTATION_MODE_LABELS).map(([value, label]) => (
+                          <MenuItem key={value} value={value}>{label}</MenuItem>
                         ))}
                       </CustomTextField>
                     )}
@@ -1515,8 +2093,15 @@ return <Chip key={val} label={p?.label || val} size='small' />
                 {/* Tags */}
                 <Grid2 size={{ xs: 12, sm: 4 }}>
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: 6 }}>Tag sản phẩm</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      Tag sản phẩm
+                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 400 }}>(nhấn để chọn/bỏ chọn)</span>
+                    </div>
+                    <div style={{
+                      display: 'flex', flexWrap: 'wrap', gap: 6,
+                      maxHeight: 88, overflowY: 'auto', paddingRight: 4,
+                      border: '1px solid #e2e8f0', borderRadius: 6, padding: 6
+                    }}>
                       {PREDEFINED_TAGS.map(preset => {
                         const tags = watchedTag ? watchedTag.split(',').map((t: string) => t.trim()) : []
                         const isActive = tags.includes(preset)
@@ -1538,7 +2123,6 @@ return <Chip key={val} label={p?.label || val} size='small' />
                         )
                       })}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: 4 }}>Nhấn để chọn/bỏ chọn</div>
                   </div>
                 </Grid2>
 
@@ -1679,7 +2263,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
               )}
 
               {/* ========== Section: Thông số sản phẩm ========== */}
-              <CollapsibleSection title='Thông số sản phẩm' icon={Zap} iconColor='#22c55e' iconBg='#f0fdf4'>
+              <CollapsibleSection title='Thông số sản phẩm' icon={Zap} iconColor='#22c55e' iconBg='#f0fdf4' defaultOpen={true}>
               <Grid2 container spacing={1}>
                 <Grid2 size={{ xs: 6, sm: 3 }}>
                   <Controller
@@ -1989,13 +2573,40 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   </Box>
                 </Grid2>
 
+                {/* Location tree viewer — hiện cấu hình Country/Region/City dạng cây phân cấp.
+                    Click "Sửa cấu hình" mở LocationTreePickerModal full picker. */}
+                {selectedProviderMain?.api_config?.kind === 'residential' && (
+                  <Grid2 size={{ xs: 12 }} sx={{ mt: 1 }}>
+                    <LocationTreeViewer
+                      value={locationTree}
+                      onEdit={() => setLocationTreeOpen(true)}
+                      disabled={!selectedProviderMain?.provider_code}
+                    />
+                  </Grid2>
+                )}
+
                 <PurchaseOptionsSection
                   options={purchaseOptions}
                   onChange={setPurchaseOptions}
                   control={control}
                   errors={errors}
                   countries={countries}
+                  providerCode={selectedProviderMain?.provider_code || null}
+                  providerSupportsResidential={selectedProviderMain?.api_config?.kind === 'residential'}
                 />
+
+                {/* Residential extras — balance + proxy_host khi proxy_type=residential.
+                    Custom_fields/options đã dùng PurchaseOptionsSection chung (source=api_*). */}
+                {isResidential && selectedProviderMain && (
+                  <Grid2 size={{ xs: 12 }} sx={{ mt: 1 }}>
+                    <ResidentialConfigSection
+                      providerCode={selectedProviderMain.provider_code}
+                      providerApiConfig={selectedProviderMain.api_config}
+                      value={residentialMeta}
+                      onChange={setResidentialMeta}
+                    />
+                  </Grid2>
+                )}
 
                 {/* Lưu thêm dữ liệu từ nhà cung cấp — per sản phẩm */}
                 <Grid2 size={{ xs: 12 }}>
@@ -2640,6 +3251,20 @@ return <Chip key={val} label={p?.label || val} size='small' />
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Location tree picker modal */}
+      {selectedProviderMain?.provider_code && (
+        <LocationTreePickerModal
+          open={locationTreeOpen}
+          onClose={() => setLocationTreeOpen(false)}
+          providerCode={selectedProviderMain.provider_code}
+          value={locationTree}
+          onSave={(next) => {
+            setLocationTree(next)
+            setPurchaseOptions(prev => applyTreeToOptions(prev, next))
+          }}
+        />
+      )}
 
       {/* Sub-modals */}
       <MultiInputModal

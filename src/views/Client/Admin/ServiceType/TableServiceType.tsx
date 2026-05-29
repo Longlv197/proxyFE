@@ -520,19 +520,32 @@ return result
           let prices: any[] = []
           try { prices = typeof priceData === 'string' ? JSON.parse(priceData) : priceData } catch { return <div style={{ color: '#94a3b8' }}>-</div> }
           if (!Array.isArray(prices) || prices.length === 0) return <div style={{ color: '#94a3b8' }}>-</div>
+
+          // Iterate TẤT CẢ duration thực tế của SP (không chỉ cứng 1/7/30) — Proxyma có duration=30 only,
+          // SP khác có thể có 14/21/60... Trước đây hardcode ['1','7','30'] + strict equality khiến
+          // key=30 (int) ≠ '30' (string) → render trống. Fix: dùng Number() compare + fallback label.
           const durationLabels: Record<string, string> = { '1': 'Ngày', '7': 'Tuần', '30': 'Tháng' }
+
+          // Build sorted unique duration list từ data thật
+          const actualDurations = prices
+            .map((p: any) => Number(p.key ?? p.duration ?? 0))
+            .filter((n: number) => n > 0)
+            .sort((a: number, b: number) => a - b)
+          const uniqueDurations = Array.from(new Set(actualDurations))
 
           return (
             <div style={{ fontSize: '12px', lineHeight: '1.6', whiteSpace: 'normal' }}>
-              {['1', '7', '30'].map(d => {
-                const item = prices.find((p: any) => p.key === d || p.duration === d)
+              {uniqueDurations.map(dNum => {
+                const d = String(dNum)
+                const item = prices.find((p: any) => Number(p.key ?? p.duration) === dNum)
                 if (!item) return null
+                const label = durationLabels[d] || `${d} ngày`
                 const price = new Intl.NumberFormat('vi-VN').format(parseInt(item.value || item.price || '0') || 0)
                 const itemQtyTiers = item.quantity_tiers || []
                 return (
                   <div key={d}>
                     <div style={{ whiteSpace: 'nowrap' }}>
-                      <span style={{ color: '#64748b' }}>{durationLabels[d]}: </span>
+                      <span style={{ color: '#64748b' }}>{label}: </span>
                       <span style={{ fontWeight: 600, color: '#334155' }}>{price}đ</span>
                     </div>
                     {itemQtyTiers.filter((t: any) => t.min && (t.discount || t.price)).map((t: any, i: number) => {

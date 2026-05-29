@@ -207,16 +207,37 @@ export function renderFeatureRow(
               )
             }
 
+            // Display value strategy theo loại field:
+            //   - text/number → default hoặc 'Tự nhập'
+            //   - select dependent (options_by_parent, vd region/city) → "Theo lựa chọn ở trên"
+            //   - select <= 3 options → join all labels
+            //   - select > 3 options → "{count} lựa chọn" (gọn, không dồn text dài)
+            //   - không có options nào → SKIP cả row (đừng hiện label trống lốc)
+            const opts = field.options || []
+            const parentOpts = Object.values(field.options_by_parent || {}).flat()
+            const isInputField = field.type === 'text' || field.type === 'number'
+
+            let displayValue: string | null = null
+
+            if (isInputField) {
+              displayValue = field.default || 'Tự nhập'
+            } else if (opts.length === 0 && parentOpts.length > 0) {
+              displayValue = `${parentOpts.length} lựa chọn (theo lựa chọn ở trên)`
+            } else if (opts.length > 0 && opts.length <= 3) {
+              displayValue = opts.map((o: any) => o.label).join(', ')
+            } else if (opts.length > 3) {
+              displayValue = `${opts.length} lựa chọn`
+            }
+
+            // Không có gì để hiện → ẩn row (vd region/city chưa có data thật)
+            if (!displayValue) return null
+
             return (
               <div className='feature-row' key={field.key || field.param}>
                 <div className='feature-icons'><Zap size={14} color='#8b5cf6' /></div>
                 <div className='feature-content'>
                   <span className='feature-label'>{field.label}:</span>
-                  <span className='feature-value'>
-                    {field.type === 'text' || field.type === 'number'
-                      ? (field.default || 'Tự nhập')
-                      : field.options?.map((o: any) => o.label).join(', ')}
-                  </span>
+                  <span className='feature-value'>{displayValue}</span>
                 </div>
               </div>
             )

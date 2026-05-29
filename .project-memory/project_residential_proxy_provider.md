@@ -7,7 +7,22 @@ metadata:
   originSessionId: ed3d15e1-11b5-4750-a542-4c6855a0e02e
 ---
 
-## Trạng thái: PHASE 1 ĐÃ CODE (20/05/2026) — chưa test e2e thật
+## Trạng thái: PHASE 1 E2E VERIFIED (21/05/2026) — commit BE 14ee858 + FE d713e52
+
+E2E thực tế với NCC thật (token live, balance $100 → $95):
+- Stage 1: 2.2s, package_key=2169373599b4de0cda89 (gói 1GB/30d/$5)
+- Stage 2: 5.68s, list_id=20502189, login=mkt12, pass=PobdWspcfO
+- 4 IP US residential thật khác nhau (Verizon/Comcast/Sonic/Cablevision)
+- Rotate auto verified (cùng port 2 lần → 2 IP khác)
+- sync:proxyma-packages cập nhật traffic 0/1024MB, days_left 29
+
+4 bug đã fix trong quá trình test:
+1. Seeder `rotation_mode` → đổi `rotation_type='auto'` (column rotation_mode không tồn tại trong type_services)
+2. GenericBuyProvider.php: bỏ `rotation_mode` khỏi `Order::create` (bug có sẵn project, block mọi NCC). Commit 1041ab5
+3. ProxymaResidentialProcessor: thêm helper `resolveOptionKeyAndValue` match cả key lẫn provider_value (ResellerController pre-resolve key→value → processor không thể lookup key nữa)
+4. SyncProxymaPackages: NCC trả unit GB (không phải bytes) → `* 1024` thay vì `/ 1024 / 1024`
+
+Bước user CHƯA verify: FE browser (OrderDetail render ResidentialPackageBox + DownloadProxyModal + form mua /products có dropdown tariff/country). FE dev server :3001 đã chạy lúc bàn giao.
 
 ## Kiến trúc 2-stage queue
 

@@ -43,6 +43,7 @@ import {
 import type { FormValues, ModalAddProviderProps } from './ProviderFormTypes'
 import { defaultValues } from './ProviderFormTypes'
 import { parseApiConfig, buildApiConfig } from './ProviderFormSerializer'
+import ResidentialProviderSection from './ResidentialProviderSection'
 
 import BasicInfoSection from './sections/BasicInfoSection'
 import BuyConfigSection from './sections/BuyConfigSection'
@@ -61,6 +62,7 @@ const BASE_TABS = [
   { label: 'Xoay proxy', icon: 'tabler-refresh' },
   { label: 'IP Whitelist', icon: 'tabler-shield-check' },
   { label: 'Gia hạn', icon: 'tabler-clock' },
+  { label: 'Residential', icon: 'tabler-world' },
   { label: 'Liên hệ', icon: 'tabler-address-book' }
 ]
 
@@ -98,6 +100,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     rotateEnabled,
     ipEnabled,
     renewEnabled,
+    providerData?.api_config?.kind === 'residential', // Residential dot xanh khi đã bật flag
     true // Liên hệ luôn cho phép
   ]
 
@@ -348,9 +351,16 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                   </Box>
                 )}
 
-                {/* Tab 5: Liên hệ */}
+                {/* Tab 5: Residential */}
                 {renderedTabs.has(5) && (
                   <Box sx={{ display: activeTab === 5 ? 'block' : 'none' }}>
+                    <ResidentialProviderSection provider={providerData} />
+                  </Box>
+                )}
+
+                {/* Tab 6: Liên hệ */}
+                {renderedTabs.has(6) && (
+                  <Box sx={{ display: activeTab === 6 ? 'block' : 'none' }}>
                     <ContactInfoSection control={control} />
                   </Box>
                 )}
@@ -358,7 +368,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
             </form>
           </Grid2>
 
-          {/* ═══════ BÊN PHẢI: JSON Preview (ẩn khi tab Liên hệ/Thống kê/Hoá đơn) ═══════ */}
+          {/* ═══════ BÊN PHẢI: JSON Preview (ẩn khi tab Residential/Liên hệ) ═══════ */}
           {activeTab <= 4 && (
             <Grid2 size={{ xs: 12, md: 4 }}>
               <JsonPreviewPanel jsonPreview={jsonPreview} />

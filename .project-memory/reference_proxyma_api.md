@@ -77,6 +77,24 @@ metadata:
 }
 ```
 
+## /info/package response — UNIT GB không phải bytes (verified 21/05/2026)
+
+```json
+{"result":{"status":200,"data":{
+  "status":"Active",
+  "created_at":"2026-05-21","expired_at":"2026-06-20","days_left":29,
+  "traffic":{"limit":1,"usage":0}     // GB! Không phải bytes
+}}}
+```
+
+→ Sync command phải `* 1024` thành MB, KHÔNG dùng `/ 1024 / 1024` như bytes.
+
+## Gateway IP (verified 21/05/2026)
+
+- `proxy.proxyma.io` → `103.152.136.82`
+- Curl trực tiếp IP `-x http://user:pass@103.152.136.82:10000` HOẠT ĐỘNG → có thể dùng IP gateway thay domain. Nhưng KHÔNG khuyến nghị vì NCC không cam kết IP static — nếu họ đổi IP, mọi proxy đã bán cho user hỏng đồng loạt không sửa được.
+- Best: admin tự setup CNAME `gw.shop.com → proxy.proxyma.io` (DNS only, không qua Cloudflare proxy cam vì block SOCKS5 port 10000-10999)
+
 ## Đặc điểm chốt
 
 1. **Endpoint format: `user:pass@proxy.proxyma.io:PORT`** — hostname **cố định** `proxy.proxyma.io`, port 10000-10999 (1000 proxy/list)
