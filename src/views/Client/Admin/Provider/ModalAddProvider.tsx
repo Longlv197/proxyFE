@@ -44,6 +44,7 @@ import type { FormValues, ModalAddProviderProps } from './ProviderFormTypes'
 import { defaultValues } from './ProviderFormTypes'
 import { parseApiConfig, buildApiConfig } from './ProviderFormSerializer'
 import ResidentialProviderSection from './ResidentialProviderSection'
+import type { ResidentialBuildRef } from './ResidentialProviderSection'
 
 import BasicInfoSection from './sections/BasicInfoSection'
 import BuyConfigSection from './sections/BuyConfigSection'
@@ -103,6 +104,10 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     providerData?.api_config?.kind === 'residential', // Residential dot xanh khi đã bật flag
     true // Liên hệ luôn cho phép
   ]
+
+  // Tab Residential lưu state cục bộ (KHÔNG nằm trong react-hook-form) — section đẩy build()
+  // qua ref để nút "Cập nhật" footer cũng lưu được tab này (tránh trap 2 nút lưu)
+  const residentialRef = useRef<ResidentialBuildRef | null>(null)
 
   // JSON preview
   const [jsonPreview, setJsonPreview] = useState('// Chưa có cấu hình API')
@@ -226,6 +231,19 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
 
     if (apiConfig) {
       payload.api_config = apiConfig
+    }
+
+    // Merge cấu hình tab Residential (ref chỉ tồn tại khi tab đã mở — chưa mở thì BE giữ nguyên)
+    if (residentialRef.current) {
+      const r = residentialRef.current.build()
+
+      if (!r.ok) {
+        toast.error(`Tab Residential: ${r.error}`)
+        setActiveTab(5)
+        return
+      }
+
+      payload.api_config = { ...(payload.api_config || {}), ...r.config }
     }
 
     const mutation = type === 'create' ? createMutation : updateMutation
@@ -354,7 +372,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                 {/* Tab 5: Residential */}
                 {renderedTabs.has(5) && (
                   <Box sx={{ display: activeTab === 5 ? 'block' : 'none' }}>
-                    <ResidentialProviderSection provider={providerData} />
+                    <ResidentialProviderSection provider={providerData} stateRef={residentialRef} />
                   </Box>
                 )}
 

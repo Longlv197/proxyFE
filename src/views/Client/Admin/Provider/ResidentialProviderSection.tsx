@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { MutableRefObject } from 'react'
 
 import {
   Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Card, CardContent, CardHeader,
@@ -48,9 +49,21 @@ function normalizeHosts(raw: any): string[] {
   return raw.map((x: any) => typeof x === 'string' ? x : (x?.host || '')).filter(h => h !== '')
 }
 
-type Props = { provider: any }
+/** Kết quả build 3 key residential — parent (nút "Cập nhật" footer) gọi qua stateRef. */
+export type ResidentialBuildResult =
+  | { ok: true; config: Record<string, any> }
+  | { ok: false; error: string }
 
-export default function ResidentialProviderSection({ provider }: Props) {
+export type ResidentialBuildRef = { build: () => ResidentialBuildResult }
+
+type Props = {
+  provider: any
+
+  /** Parent truyền ref để nút "Cập nhật" footer cũng lưu được tab này (tránh trap 2 nút lưu) */
+  stateRef?: MutableRefObject<ResidentialBuildRef | null>
+}
+
+export default function ResidentialProviderSection({ provider, stateRef }: Props) {
   const updateMut = useUpdateProvider(provider?.id)
   const cfg = provider?.api_config ?? {}
 
@@ -92,28 +105,51 @@ export default function ResidentialProviderSection({ provider }: Props) {
     setHostOptions(prev => prev.map((h, i) => (i === idx ? value : h)))
   const removeHost = (idx: number) => setHostOptions(prev => prev.filter((_, i) => i !== idx))
 
-  const handleSave = async () => {
-    if (!provider) return
-
+  /** Validate + build 3 key residential để merge vào api_config — dùng chung cho nút trong tab VÀ nút "Cập nhật" footer. */
+  const buildConfig = (): ResidentialBuildResult => {
     const cleaned = hostOptions.map(h => h.trim()).filter(h => h !== '')
     const seen = new Set<string>()
     for (const h of cleaned) {
-      if (seen.has(h)) { toast.error(`Domain "${h}" trùng — mỗi domain chỉ xuất hiện 1 lần`); return }
+      if (seen.has(h)) return { ok: false, error: `Domain "${h}" trùng — mỗi domain chỉ xuất hiện 1 lần` }
       seen.add(h)
     }
 
     if (isResidential) {
       for (const f of ENDPOINT_FIELDS) {
-        if (!endpoints[f.key]) { toast.error(`URL endpoint "${f.label}" chưa nhập`); return }
+        if (!endpoints[f.key]) return { ok: false, error: `URL endpoint "${f.label}" chưa nhập` }
       }
     }
 
+    return {
+      ok: true,
+      config: {
+        // null (KHÔNG dùng undefined): JSON.stringify drop key undefined → BE array_merge giữ giá trị cũ → tắt toggle không lưu được.
+        // Nếu chưa từng bật (kind vốn không tồn tại) → undefined để không tạo diff lịch sử thừa.
+        kind: isResidential ? 'residential' : (provider?.api_config?.kind != null ? null : undefined),
+        proxy_host_options: isResidential ? cleaned : (provider?.api_config?.proxy_host_options ?? []),
+        residential_endpoints: isResidential ? endpoints : (provider?.api_config?.residential_endpoints ?? undefined)
+      }
+    }
+  }
+
+  // Đẩy build function lên parent mỗi render (closure mới nhất). Unmount → clear để không dính state cũ.
+  useEffect(() => {
+    if (stateRef) stateRef.current = provider ? { build: buildConfig } : null
+  })
+  useEffect(() => {
+    return () => { if (stateRef) stateRef.current = null }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleSave = async () => {
+    if (!provider) return
+
+    const result = buildConfig()
+    if (!result.ok) { toast.error(result.error); return }
+
     const mergedConfig = {
       ...(provider.api_config || {}),
-      // null (KHÔNG dùng undefined): JSON.stringify drop key undefined → BE array_merge giữ giá trị cũ → tắt toggle không lưu được
-      kind: isResidential ? 'residential' : null,
-      proxy_host_options: isResidential ? cleaned : (provider.api_config?.proxy_host_options ?? []),
-      residential_endpoints: isResidential ? endpoints : (provider.api_config?.residential_endpoints ?? undefined)
+      ...result.config
     }
 
     try {
