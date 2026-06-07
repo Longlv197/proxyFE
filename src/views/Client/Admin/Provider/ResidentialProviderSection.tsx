@@ -110,7 +110,8 @@ export default function ResidentialProviderSection({ provider }: Props) {
 
     const mergedConfig = {
       ...(provider.api_config || {}),
-      kind: isResidential ? 'residential' : undefined,
+      // null (KHÔNG dùng undefined): JSON.stringify drop key undefined → BE array_merge giữ giá trị cũ → tắt toggle không lưu được
+      kind: isResidential ? 'residential' : null,
       proxy_host_options: isResidential ? cleaned : (provider.api_config?.proxy_host_options ?? []),
       residential_endpoints: isResidential ? endpoints : (provider.api_config?.residential_endpoints ?? undefined)
     }
