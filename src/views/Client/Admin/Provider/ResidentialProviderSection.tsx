@@ -68,6 +68,8 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
   const cfg = provider?.api_config ?? {}
 
   const [isResidential, setIsResidential] = useState<boolean>(cfg.kind === 'residential')
+  // Bắt buộc ẩn host: SP của NCC này PHẢI có domain thay host, thiếu → chặn đơn (chống quên lộ NCC).
+  const [requireHostOverride, setRequireHostOverride] = useState<boolean>(cfg.require_host_override === true)
   const [hostOptions, setHostOptions] = useState<string[]>(normalizeHosts(cfg.proxy_host_options))
   const [endpoints, setEndpoints] = useState<EndpointConfig>({
     balance:   cfg.residential_endpoints?.balance   ?? '',
@@ -89,6 +91,7 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
   useEffect(() => {
     const c = provider?.api_config ?? {}
     setIsResidential((c.kind ?? null) === 'residential')
+    setRequireHostOverride(c.require_host_override === true)
     setHostOptions(normalizeHosts(c.proxy_host_options))
     setEndpoints({
       balance:   c.residential_endpoints?.balance   ?? '',
@@ -126,6 +129,7 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
         // null (KHÔNG dùng undefined): JSON.stringify drop key undefined → BE array_merge giữ giá trị cũ → tắt toggle không lưu được.
         // Nếu chưa từng bật (kind vốn không tồn tại) → undefined để không tạo diff lịch sử thừa.
         kind: isResidential ? 'residential' : (provider?.api_config?.kind != null ? null : undefined),
+        require_host_override: requireHostOverride ? true : (provider?.api_config?.require_host_override != null ? false : undefined),
         proxy_host_options: isResidential ? cleaned : (provider?.api_config?.proxy_host_options ?? []),
         residential_endpoints: isResidential ? endpoints : (provider?.api_config?.residential_endpoints ?? undefined)
       }
@@ -314,6 +318,15 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
               subheader='Domain user thấy thay vì hostname NCC gốc. Setup CNAME ở DNS panel — Cloudflare phải tắt proxy cam (DNS only).'
             />
             <CardContent sx={{ py: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 1.5, p: 1.25, borderRadius: 1.5, background: requireHostOverride ? '#fef2f2' : '#f8fafc', border: `1px solid ${requireHostOverride ? '#fecaca' : '#e2e8f0'}` }}>
+                <Box>
+                  <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: '#1e293b' }}>Bắt buộc ẩn host đối tác</Typography>
+                  <Typography variant='caption' color='text.secondary'>
+                    Bật → sản phẩm của NCC này <strong>phải</strong> chọn "Domain thay host", thiếu sẽ <strong>bị chặn đơn</strong> (chống quên lộ NCC).
+                  </Typography>
+                </Box>
+                <Switch checked={requireHostOverride} onChange={e => setRequireHostOverride(e.target.checked)} />
+              </Box>
               <Grid container spacing={1.5}>
                 {hostOptions.map((h, idx) => (
                   <Grid key={idx} size={{ xs: 12, sm: 6, md: 4 }}>

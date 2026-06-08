@@ -1616,6 +1616,13 @@ return { values: {}, errors: formattedErrors }
 
   const onSubmit = (data: any) => {
     setFormErrors([])
+
+    // NCC bật "bắt buộc ẩn host đối tác" → SP phải chọn "Domain thay host", thiếu → chặn lưu (chống quên lộ NCC).
+    if (selectedProviderMain?.api_config?.require_host_override === true && !residentialMeta?.proxy_host) {
+      setFormErrors(['NCC này bắt buộc ẩn host đối tác — vui lòng chọn "Domain thay host" ở phần cấu hình cơ bản.'])
+      return
+    }
+
     // Normalize country: array → comma-separated string cho BE
     if (Array.isArray(data.country)) {
       data.country = data.country.join(',')
