@@ -34,6 +34,7 @@ export const useApiKeys = (order_id?: string | number, enabled: boolean = true) 
       // Gắn vào array để backward compat (consumer cũ dùng như array bình thường)
       ;(items as any)._dataField = res?.data?._data_field || 'proxy'
       ;(items as any)._kind = res?.data?.kind || null
+      ;(items as any)._packageUsage = res?.data?.package_usage || null
       return items
     },
     enabled: !!order_id && enabled,

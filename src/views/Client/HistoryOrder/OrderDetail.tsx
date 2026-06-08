@@ -103,6 +103,8 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   // KHÔNG dùng package box. Giữ biến = false để code dưới không vỡ; ResidentialPackageBox là dead code (xoá sau).
   const isResidential = false
   const residentialMeta = null
+  // Dung lượng/hạn gói còn lại (gói GB) — command sync:package-usage cập nhật. Null nếu không phải gói.
+  const packageUsage = (apiKeysData as any)?._packageUsage || null
   const { data: histories = [] } = useOrderHistories(order?.id ?? null, open)
   const pingProxy = usePingProxy()
   const [pingResults, setPingResults] = useState<Record<string, string>>({})
@@ -589,6 +591,22 @@ return row.original?.key || row.original?.api_key || ''
                     </button>
                   </div>
                 </div>
+
+                {packageUsage && (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1.5, p: 1, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 1.5 }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#0c4a6e' }}>Gói GB:</Typography>
+                    {packageUsage.limit_mb != null && (
+                      <Typography sx={{ fontSize: 12, color: '#334155' }}>
+                        Dung lượng <strong>{(packageUsage.used_mb / 1024).toFixed(2)}/{(packageUsage.limit_mb / 1024).toFixed(2)} GB</strong>
+                      </Typography>
+                    )}
+                    {packageUsage.days_left != null && (
+                      <Typography sx={{ fontSize: 12, color: packageUsage.days_left <= 3 ? '#dc2626' : '#334155' }}>
+                        · còn <strong>{packageUsage.days_left}</strong> ngày
+                      </Typography>
+                    )}
+                  </Box>
+                )}
 
                 {isLoadingKeys ? (
                   <Box sx={{ textAlign: 'center', py: 4 }}>

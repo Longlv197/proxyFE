@@ -1330,6 +1330,8 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
   const [pricingMode, setPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   // Residential: 'package' = giá cố định theo gói (số lượng KHÔNG nhân) | 'multiply' = × số lượng proxy (mặc định = hành vi cũ).
   const [priceQuantityMode, setPriceQuantityMode] = useState<'multiply' | 'package'>('multiply')
+  // Gói GB: bật → command sync:package-usage gọi info_package_url của NCC cập nhật dung lượng/hạn còn lại.
+  const [trackPackageUsage, setTrackPackageUsage] = useState<boolean>(false)
   const [timeUnit, setTimeUnit] = useState<'day' | 'month'>('day')
   const [priceDisplayUnit, setPriceDisplayUnit] = useState<'' | 'day' | 'month'>('')
   const [pricePerUnit, setPricePerUnit] = useState('')
@@ -1531,6 +1533,7 @@ return { values: {}, errors: formattedErrors }
           : []
       )
       setPriceQuantityMode(meta.price_quantity_mode === 'package' ? 'package' : 'multiply')
+      setTrackPackageUsage(meta.track_package_usage === true)
       // Residential metadata — load nếu kind=residential
       if (meta.kind === 'residential') {
         setResidentialMeta({
@@ -1597,6 +1600,7 @@ return { values: {}, errors: formattedErrors }
       setResidentialMeta({})
       setPricingMode('fixed')
       setPriceQuantityMode('multiply')
+      setTrackPackageUsage(false)
       setTimeUnit('day')
       setPricePerUnit('')
       setCostPerUnit('')
@@ -1724,6 +1728,7 @@ return { values: {}, errors: formattedErrors }
     const metadataFinal = {
       ...(metadata || {}),
       price_quantity_mode: priceQuantityMode === 'package' ? 'package' : undefined, // chỉ lưu khi package, mặc định bỏ → 'multiply'
+      track_package_usage: trackPackageUsage ? true : undefined, // bật → sync:package-usage cập nhật dung lượng còn lại
       allow_custom_auth: allowCustomAuth,
       require_ip: requireIp || undefined,
       max_ips: maxIps > 1 ? maxIps : undefined,
@@ -2876,6 +2881,21 @@ return <Chip key={val} label={p?.label || val} size='small' />
                       >
                         <MenuItem value='multiply'>Tính theo số lượng (× SL)</MenuItem>
                         <MenuItem value='package'>Cố định theo gói (không × SL)</MenuItem>
+                      </CustomTextField>
+                    </Grid2>
+                  )}
+
+                  {isResidential && (
+                    <Grid2 size={{ xs: 12, sm: 4 }}>
+                      <CustomTextField
+                        select fullWidth size='small'
+                        label='Đồng bộ dung lượng gói (GB)'
+                        value={trackPackageUsage ? 'true' : 'false'}
+                        onChange={(e) => setTrackPackageUsage(e.target.value === 'true')}
+                        helperText='Bật → tự cập nhật dung lượng/hạn còn lại (cần "Info package" ở NCC).'
+                      >
+                        <MenuItem value='false'>Không</MenuItem>
+                        <MenuItem value='true'>Có — sync mỗi 30 phút</MenuItem>
                       </CustomTextField>
                     </Grid2>
                   )}

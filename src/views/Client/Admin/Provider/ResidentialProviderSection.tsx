@@ -70,6 +70,8 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
   const [isResidential, setIsResidential] = useState<boolean>(cfg.kind === 'residential')
   // Bắt buộc ẩn host: SP của NCC này PHẢI có domain thay host, thiếu → chặn đơn (chống quên lộ NCC).
   const [requireHostOverride, setRequireHostOverride] = useState<boolean>(cfg.require_host_override === true)
+  // URL lấy dung lượng/hạn gói còn lại — command sync:package-usage gọi GET {url}/{package_key}.
+  const [infoPackageUrl, setInfoPackageUrl] = useState<string>(cfg.info_package_url ?? '')
   const [hostOptions, setHostOptions] = useState<string[]>(normalizeHosts(cfg.proxy_host_options))
   const [endpoints, setEndpoints] = useState<EndpointConfig>({
     balance:   cfg.residential_endpoints?.balance   ?? '',
@@ -92,6 +94,7 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
     const c = provider?.api_config ?? {}
     setIsResidential((c.kind ?? null) === 'residential')
     setRequireHostOverride(c.require_host_override === true)
+    setInfoPackageUrl(c.info_package_url ?? '')
     setHostOptions(normalizeHosts(c.proxy_host_options))
     setEndpoints({
       balance:   c.residential_endpoints?.balance   ?? '',
@@ -130,6 +133,7 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
         // Nếu chưa từng bật (kind vốn không tồn tại) → undefined để không tạo diff lịch sử thừa.
         kind: isResidential ? 'residential' : (provider?.api_config?.kind != null ? null : undefined),
         require_host_override: requireHostOverride ? true : (provider?.api_config?.require_host_override != null ? false : undefined),
+        info_package_url: infoPackageUrl.trim() || undefined,
         proxy_host_options: isResidential ? cleaned : (provider?.api_config?.proxy_host_options ?? []),
         residential_endpoints: isResidential ? endpoints : (provider?.api_config?.residential_endpoints ?? undefined)
       }
@@ -305,6 +309,13 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
                     placeholder={f.placeholder}
                   />
                 ))}
+                <TextField
+                  size='small' fullWidth label='Info package (dung lượng/hạn còn lại)'
+                  value={infoPackageUrl}
+                  onChange={e => setInfoPackageUrl(e.target.value)}
+                  placeholder='https://api.proxyma.io/api/reseller/info/package'
+                  helperText='Command sync:package-usage gọi {url}/{package_key} mỗi 30 phút để cập nhật dung lượng còn lại. Bật "Đồng bộ dung lượng" ở sản phẩm để dùng.'
+                />
               </Stack>
             </AccordionDetails>
           </Accordion>
