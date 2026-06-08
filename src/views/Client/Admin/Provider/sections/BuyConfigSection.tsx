@@ -601,8 +601,15 @@ const NhomKetNoiApi = memo(function NhomKetNoiApi({ prefix, control }: BuySectio
       </Grid2>
       <Grid2 size={{ xs: 12, sm: 6 }}>
         <Controller name={`${prefix}.fetch_proxies.default_params`} control={control} render={({ field }) => (
-          <CustomTextField {...field} fullWidth label='Params mặc định'
-            helperText='JSON — VD: {"sukien":"listproxy"}' placeholder='{"sukien":"listproxy"}'
+          <CustomTextField {...field} fullWidth label='Params body (POST)'
+            helperText='JSON — vào BODY khi POST. VD: {"list_name":"mkt-{order_code}","format":1}' placeholder='{"sukien":"listproxy"}'
+            multiline minRows={1} maxRows={2} />
+        )} />
+      </Grid2>
+      <Grid2 size={{ xs: 12, sm: 6 }}>
+        <Controller name={`${prefix}.fetch_proxies.query_params`} control={control} render={({ field }) => (
+          <CustomTextField {...field} fullWidth label='Query params (URL)'
+            helperText='JSON — vào URL query (cả POST lẫn GET). VD: {"package_key":"{order_code}"}' placeholder='{"package_key":"{order_code}"}'
             multiline minRows={1} maxRows={2} />
         )} />
       </Grid2>

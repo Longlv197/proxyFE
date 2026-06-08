@@ -228,6 +228,7 @@ export function parseBuySection(buy: any): ApiConfigBuy {
         order_code_mode: fp.order_code_param ? 'param' : ((fp.url || '').includes('{') ? 'path' : 'param'),
         order_code_param: fp.order_code_param || '',
         default_params: fp.params ? JSON.stringify(fp.params) : '',
+        query_params: fp.query_params ? JSON.stringify(fp.query_params) : '',
         response_type: fpResp.type || 'object',
         success_field: fpResp.success_field || '',
         success_value: fpResp.success_value != null ? String(fpResp.success_value) : '',
@@ -526,6 +527,14 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
           const parsed = JSON.parse(fp.default_params)
 
           if (typeof parsed === 'object' && parsed !== null) fetchResult.params = parsed
+        } catch { /* ignore invalid JSON */ }
+      }
+
+      if (fp.query_params) {
+        try {
+          const parsed = JSON.parse(fp.query_params)
+
+          if (typeof parsed === 'object' && parsed !== null) fetchResult.query_params = parsed
         } catch { /* ignore invalid JSON */ }
       }
 
