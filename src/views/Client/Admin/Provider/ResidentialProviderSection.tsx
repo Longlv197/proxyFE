@@ -27,20 +27,15 @@ import {
  * Lưu độc lập với form chính qua callback handleSave → useUpdateProvider.
  */
 
+// Đã bỏ countries/regions/cities (dependent dropdown) — location dùng combo nhập tay.
 type EndpointConfig = {
   balance: string
   tariffs: string
-  countries: string
-  regions: string
-  cities: string
 }
 
 const ENDPOINT_FIELDS: Array<{ key: keyof EndpointConfig; label: string; placeholder: string }> = [
   { key: 'balance',   label: 'Balance',   placeholder: 'https://api.proxyma.io/api/reseller/get/balance' },
-  { key: 'tariffs',   label: 'Tariffs',   placeholder: 'https://api.proxyma.io/api/reseller/get/tariffs' },
-  { key: 'countries', label: 'Countries', placeholder: 'https://api.proxyma.io/api/reseller/get/countries' },
-  { key: 'regions',   label: 'Regions',   placeholder: 'https://api.proxyma.io/api/reseller/get/regions' },
-  { key: 'cities',    label: 'Cities',    placeholder: 'https://api.proxyma.io/api/reseller/get/cities' }
+  { key: 'tariffs',   label: 'Tariffs',   placeholder: 'https://api.proxyma.io/api/reseller/get/tariffs' }
 ]
 
 /** Normalize: hỗ trợ cả format cũ [{host}] lẫn format mới [host string]. */
@@ -75,10 +70,7 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
   const [hostOptions, setHostOptions] = useState<string[]>(normalizeHosts(cfg.proxy_host_options))
   const [endpoints, setEndpoints] = useState<EndpointConfig>({
     balance:   cfg.residential_endpoints?.balance   ?? '',
-    tariffs:   cfg.residential_endpoints?.tariffs   ?? '',
-    countries: cfg.residential_endpoints?.countries ?? '',
-    regions:   cfg.residential_endpoints?.regions   ?? '',
-    cities:    cfg.residential_endpoints?.cities    ?? ''
+    tariffs:   cfg.residential_endpoints?.tariffs   ?? ''
   })
 
   const providerCode = provider?.provider_code
@@ -98,10 +90,7 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
     setHostOptions(normalizeHosts(c.proxy_host_options))
     setEndpoints({
       balance:   c.residential_endpoints?.balance   ?? '',
-      tariffs:   c.residential_endpoints?.tariffs   ?? '',
-      countries: c.residential_endpoints?.countries ?? '',
-      regions:   c.residential_endpoints?.regions   ?? '',
-      cities:    c.residential_endpoints?.cities    ?? ''
+      tariffs:   c.residential_endpoints?.tariffs   ?? ''
     })
   }, [provider?.id, provider?.api_config])
 

@@ -737,8 +737,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                       <MenuItem value='manual'>Tự nhập (admin)</MenuItem>
                       <MenuItem value='api_tariffs'>API: Tariffs (gói GB)</MenuItem>
                       <MenuItem value='api_countries'>API: Countries</MenuItem>
-                      <MenuItem value='api_regions'>API: Regions (theo country)</MenuItem>
-                      <MenuItem value='api_cities'>API: Cities (theo region)</MenuItem>
+                      {/* Dependent dropdown (api_regions/api_cities) đã bỏ — location dùng field type=combo */}
                     </CustomTextField>
                   </Grid2>
                   {isPickerSource && (
