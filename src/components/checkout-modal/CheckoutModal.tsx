@@ -12,6 +12,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { resolveCountryLabel } from '@/utils/countryI18n'
 
 import QuantityControl from '@components/form/input-quantity/QuantityControl'
+import { FIELD_TYPE_COMBO, PRICE_QUANTITY_MODE } from '@/constants/proxyConfig'
 import ProtocolSelector from '@components/form/protocol-selector/ProtocolSelector'
 import { setBalance } from '@/store/userSlice'
 import type { AppDispatch, RootState } from '@/store'
@@ -279,7 +280,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const activeDuration = isPerUnit ? String(customDuration) : selectedDuration
   // Package mode (residential): giá cố định theo gói, số lượng proxy KHÔNG nhân vào tiền (khớp BE).
-  const total = priceQuantityMode === 'package' ? unitPrice : unitPrice * quantity
+  const total = priceQuantityMode === PRICE_QUANTITY_MODE.PACKAGE ? unitPrice : unitPrice * quantity
 
   const calculateDiscount = (key: string, price: number) => {
     if (priceOptions.length <= 1) return null
@@ -667,7 +668,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <div style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, color: '#991b1b' }}>
                     NCC không có {field.label.toLowerCase()} cho lựa chọn này. {!field.required ? 'Có thể bỏ qua.' : 'Chọn lại field trên.'}
                   </div>
-                ) : field.type === 'combo' ? (
+                ) : field.type === FIELD_TYPE_COMBO ? (
                   // Combo gói vị trí — 1 lưới, mỗi gói = cờ + tên, click chọn key (bên trong tự bung country/region/city)
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 8 }}>
                     {(field.options || []).map((opt: any) => {

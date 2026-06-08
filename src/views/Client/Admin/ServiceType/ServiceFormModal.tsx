@@ -1408,6 +1408,13 @@ return { values: {}, errors: formattedErrors }
   const isResidential = watchedProxyType === 'residential'
   const selectedProviderMain = providers?.find((p: any) => String(p.id) === String(watchedProviderId))
 
+  // Danh sách domain thay host (ẩn đối tác) — lấy từ provider.api_config.proxy_host_options. CHUNG, không gate residential.
+  const hostOverrideOptions: string[] = (() => {
+    const raw = selectedProviderMain?.api_config?.proxy_host_options
+    if (!Array.isArray(raw)) return []
+    return raw.map((x: any) => (typeof x === 'string' ? x : x?.host || '')).filter((h: string) => !!h)
+  })()
+
   // Residential metadata (kind/proxy_host/tariff_durations/shared_proxy_hosts/custom_fields)
   // Tách state riêng để không động vào purchaseOptions cũ. Submit merge khi isResidential.
   const [residentialMeta, setResidentialMeta] = useState<any>({})
@@ -1534,7 +1541,8 @@ return { values: {}, errors: formattedErrors }
           custom_fields: meta.custom_fields || []
         })
       } else {
-        setResidentialMeta({})
+        // Non-residential vẫn có thể có proxy_host (domain thay host chung) → load để hiện lại.
+        setResidentialMeta(meta.proxy_host ? { proxy_host: meta.proxy_host } : {})
       }
 
       if (meta.custom_fields && Array.isArray(meta.custom_fields)) {
@@ -1728,11 +1736,12 @@ return { values: {}, errors: formattedErrors }
       provider_max_ips: providerMaxIps || undefined,
     }
 
-    // Residential — chỉ merge các field riêng residential. custom_fields đã dùng từ
-    // PurchaseOptionsSection chung (source=api_* + dependent dropdown), KHÔNG override.
+    // Domain thay host (ẩn đối tác) — CHUNG, lưu cho MỌI sản phẩm (không gate residential).
+    if (residentialMeta?.proxy_host) metadataFinal.proxy_host = residentialMeta.proxy_host
+
+    // Các field riêng residential.
     if (isResidential) {
       metadataFinal.kind = 'residential'
-      if (residentialMeta?.proxy_host)          metadataFinal.proxy_host = residentialMeta.proxy_host
       if (residentialMeta?.shared_proxy_hosts)  metadataFinal.shared_proxy_hosts = residentialMeta.shared_proxy_hosts
     }
 
@@ -2075,6 +2084,30 @@ return { values: {}, errors: formattedErrors }
                     )}
                   />
                 </Grid2>
+
+                {/* Domain thay host (ẩn đối tác) — CHUNG cho mọi sản phẩm, không gate residential */}
+                {selectedProviderMain && (
+                  <Grid2 size={{ xs: 12 }}>
+                    <Box sx={{ p: 1.5, border: '1px solid #e2e8f0', borderLeft: '3px solid #a855f7', borderRadius: 1.5, background: '#fff' }}>
+                      <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: '#1e293b' }}>Domain thay host (ẩn đối tác)</Typography>
+                      <Typography sx={{ fontSize: 11, color: '#94a3b8', mb: 1 }}>
+                        Có giá trị → mọi proxy lưu sẽ thay host của NCC bằng domain này (CNAME → host NCC). Bỏ trống = giữ host gốc.
+                      </Typography>
+                      {hostOverrideOptions.length > 0 ? (
+                        <CustomTextField select fullWidth size='small' label='Domain hiển thị cho user'
+                          value={residentialMeta?.proxy_host || ''}
+                          onChange={(e: any) => setResidentialMeta({ ...residentialMeta, proxy_host: e.target.value })}>
+                          <MenuItem value=''><em>— Không thay (giữ host NCC)</em></MenuItem>
+                          {hostOverrideOptions.map(h => <MenuItem key={h} value={h}>{h}</MenuItem>)}
+                        </CustomTextField>
+                      ) : (
+                        <Typography sx={{ fontSize: 11.5, color: '#f59e0b' }}>
+                          NCC chưa có domain. Vào <strong>Nhà cung cấp → tab Residential → "Domain trung gian"</strong> để thêm.
+                        </Typography>
+                      )}
+                    </Box>
+                  </Grid2>
+                )}
 
                 <Grid2 size={{ xs: 6, sm: 3 }}>
                   <Controller

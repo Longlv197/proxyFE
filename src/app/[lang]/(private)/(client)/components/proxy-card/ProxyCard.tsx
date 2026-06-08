@@ -9,6 +9,8 @@ import { ShoppingCart } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useTranslation } from 'react-i18next'
 
+import { PRICE_QUANTITY_MODE } from '@/constants/proxyConfig'
+
 import CheckoutModal from '@/components/checkout-modal/CheckoutModal'
 import type { PriceOption } from '@/components/checkout-modal/CheckoutModal'
 import { getTagStyle, shouldHideByTag } from '@/configs/tagConfig'
@@ -464,7 +466,7 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
           maxIps={provider.metadata?.max_ips || 1}
           minQuantity={provider.min_quantity ?? 1}
           maxQuantity={provider.max_quantity ?? 9999}
-          priceQuantityMode={provider.metadata?.price_quantity_mode === 'package' ? 'package' : 'multiply'}
+          priceQuantityMode={provider.metadata?.price_quantity_mode === PRICE_QUANTITY_MODE.PACKAGE ? PRICE_QUANTITY_MODE.PACKAGE : PRICE_QUANTITY_MODE.MULTIPLY}
         />
       )}
     </>

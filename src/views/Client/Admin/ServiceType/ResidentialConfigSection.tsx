@@ -98,32 +98,15 @@ export default function ResidentialConfigSection({ providerCode, providerApiConf
         <CardHeader
           sx={headerSx}
           avatar={<Globe size={14} color='#a855f7' />}
-          title='Domain hiển thị cho user'
-          subheader='Domain user sẽ thấy trong proxy string (snapshot vào đơn khi mua). Quản lý danh sách ở tab Residential của NCC.'
+          title='Domain share cho site con'
+          subheader='Lọc domain cho site con (optional). Domain thay host (ẩn NCC) cấu hình ở card "Domain thay host" phía trên — dùng chung mọi sản phẩm.'
         />
         <CardContent sx={{ py: 1.5 }}>
-          <Grid container spacing={1.5}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth size='small'>
-                <InputLabel>Proxy host *</InputLabel>
-                <Select label='Proxy host *' value={proxyHost} onChange={e => emit({ proxy_host: e.target.value })}>
-                  {proxyHostOptions.length === 0 && (
-                    <MenuItem disabled value=''>Provider chưa có domain — tab Residential của NCC</MenuItem>
-                  )}
-                  {proxyHostOptions.map(host => (
-                    <MenuItem key={host} value={host}>{host}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Autocomplete
-                multiple size='small' options={proxyHostOptions} value={sharedHosts}
-                onChange={(_, newValue) => emit({ shared_proxy_hosts: newValue })}
-                renderInput={(params) => <TextField {...params} label='Domain share cho site con (optional)' />}
-              />
-            </Grid>
-          </Grid>
+          <Autocomplete
+            multiple size='small' options={proxyHostOptions} value={sharedHosts}
+            onChange={(_, newValue) => emit({ shared_proxy_hosts: newValue })}
+            renderInput={(params) => <TextField {...params} label='Domain share cho site con (optional)' />}
+          />
         </CardContent>
       </Card>
     </Box>
