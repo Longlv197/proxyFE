@@ -841,8 +841,28 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
               )
             })()}
 
-            {/* ─── Section 3: Display + Options list (chỉ khi select & non-dependent) ── */}
-            {(opt.type || 'select') === 'select' && !isDependent && (
+            {/* ─── Section 3a: Preview options (khi nguồn = picker NCC) — quản lý 1 chỗ qua nút "Chọn options" ── */}
+            {(opt.type || 'select') === 'select' && !isDependent && isPickerSource && (
+              <div style={{ padding: '12px', borderTop: '1px dashed #e2e8f0' }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+                  Options đã chọn ({opt.options.length}) — sửa qua nút "Chọn options" ở trên
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {opt.options.length === 0 && (
+                    <span style={{ fontSize: 12, color: '#f59e0b' }}>Chưa chọn option nào — bấm "Chọn options từ NCC".</span>
+                  )}
+                  {opt.options.map((o: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: '1px solid #e2e8f0', borderRadius: 16, background: '#f8fafc', fontSize: 12, color: '#1e293b' }}>
+                      {o.flag && <img src={`https://flagcdn.com/w20/${o.flag}.png`} alt='' style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 1 }} />}
+                      <span>{o.label || o.provider_value || '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ─── Section 3: Display + Options list (chỉ khi nguồn = manual) ── */}
+            {(opt.type || 'select') === 'select' && !isDependent && !isPickerSource && (
               <div style={{ padding: '12px', borderTop: '1px dashed #e2e8f0' }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
                   Hiển thị & Options
