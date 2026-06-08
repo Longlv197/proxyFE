@@ -43,8 +43,6 @@ import MultiInputModal from '@/views/Client/Admin/ServiceType/MultiInputModal'
 import CollapsibleSection from '@/views/Client/Admin/ServiceType/CollapsibleSection'
 import ResidentialConfigSection from '@/views/Client/Admin/ServiceType/ResidentialConfigSection'
 import NccOptionsPickerModal from '@/views/Client/Admin/ServiceType/NccOptionsPickerModal'
-import LocationTreePickerModal, { EMPTY_VALUE as EMPTY_TREE, type LocationTreeValue } from '@/views/Client/Admin/ServiceType/LocationTreePickerModal'
-import LocationTreeViewer from '@/views/Client/Admin/ServiceType/LocationTreeViewer'
 import { useBranding } from '@/app/contexts/BrandingContext'
 
 import { ROTATION_MODE_LABELS } from '@/constants/rotationMode'
@@ -1208,93 +1206,7 @@ const NccRenewalPreview = memo(function NccRenewalPreview({
   )
 })
 
-// ─── Helpers: convert giữa LocationTree và 3 PurchaseOption (country/region/city) ───
-const LOC_KEYS = ['country', 'region', 'city'] as const
-
-function extractTreeFromOptions(opts: PurchaseOption[]): LocationTreeValue {
-  const country = opts.find(o => o.key === 'country' || o.source === 'api_countries')
-  const region = opts.find(o => o.key === 'region' || o.source === 'api_regions')
-  const city = opts.find(o => o.key === 'city' || o.source === 'api_cities')
-  const countries = (country?.options || []).map(o => ({
-    key: (o as any).key || String(o.provider_value || '').toLowerCase(),
-    label: o.label || String(o.provider_value || ''),
-    flag: (o as any).flag || (o as any).key || '',
-    ...((o as any).label_i18n ? { label_i18n: (o as any).label_i18n } : {})
-  }))
-  const regions: Record<string, any[]> = {}
-  Object.entries(region?.options_by_parent || {}).forEach(([cc, list]) => {
-    regions[cc] = (list || []).map((o: any) => ({
-      key: o.key || o.label,
-      label: o.label,
-      ...(o.label_i18n ? { label_i18n: o.label_i18n } : {})
-    }))
-  })
-  const cities: Record<string, any[]> = {}
-  Object.entries(city?.options_by_parent || {}).forEach(([rn, list]) => {
-    cities[rn] = (list || []).map((o: any) => ({
-      key: o.key || o.label,
-      label: o.label,
-      ...(o.label_i18n ? { label_i18n: o.label_i18n } : {})
-    }))
-  })
-  return { countries, regions, cities }
-}
-
-function applyTreeToOptions(opts: PurchaseOption[], tree: LocationTreeValue): PurchaseOption[] {
-  // Tách non-location options giữ nguyên
-  const nonLocation = opts.filter(o => !LOC_KEYS.includes(o.key as any) && !['api_countries', 'api_regions', 'api_cities'].includes(o.source || ''))
-
-  const baseLocOpt = (key: string, label: string): PurchaseOption => ({
-    key, param_name: key, label,
-    type: 'select', required: true, default: '',
-    options: [], source: 'manual'
-  })
-
-  // Country field
-  const countryOpt: PurchaseOption = {
-    ...(opts.find(o => o.key === 'country') || baseLocOpt('country', 'Quốc gia')),
-    source: 'api_countries',
-    options: tree.countries.map(c => ({
-      provider_value: c.key.toUpperCase(),
-      label: c.label,
-      key: c.key,
-      flag: c.flag || c.key,
-      value: c.key.toUpperCase(),
-      ...(c.label_i18n ? { label_i18n: c.label_i18n } : {})
-    } as any))
-  }
-
-  // Region field — depends on country
-  const regionOpt: PurchaseOption = {
-    ...(opts.find(o => o.key === 'region') || baseLocOpt('region', 'Khu vực')),
-    source: 'api_regions',
-    depends_on: 'country',
-    options: [],
-    options_by_parent: Object.fromEntries(
-      Object.entries(tree.regions).map(([cc, list]) => [cc, list.map(o => ({
-        key: o.key, label: o.label,
-        ...(o.label_i18n ? { label_i18n: o.label_i18n } : {})
-      }))])
-    )
-  }
-
-  // City field — depends on region
-  const cityOpt: PurchaseOption = {
-    ...(opts.find(o => o.key === 'city') || baseLocOpt('city', 'Thành phố')),
-    source: 'api_cities',
-    depends_on: 'region',
-    required: false,
-    options: [],
-    options_by_parent: Object.fromEntries(
-      Object.entries(tree.cities).map(([rn, list]) => [rn, list.map(o => ({
-        key: o.key, label: o.label,
-        ...(o.label_i18n ? { label_i18n: o.label_i18n } : {})
-      }))])
-    )
-  }
-
-  return [...nonLocation, countryOpt, regionOpt, cityOpt]
-}
+// Helpers LocationTree (dependent dropdown) đã bỏ — location dùng field type=combo.
 
 interface ServiceFormModalProps {
   open: boolean
@@ -1420,9 +1332,6 @@ return { values: {}, errors: formattedErrors }
   // Tách state riêng để không động vào purchaseOptions cũ. Submit merge khi isResidential.
   const [residentialMeta, setResidentialMeta] = useState<any>({})
 
-  // Tree state cho LocationTreePickerModal (residential country/region/city)
-  const [locationTreeOpen, setLocationTreeOpen] = useState(false)
-  const [locationTree, setLocationTree] = useState<LocationTreeValue>(EMPTY_TREE)
 
   // Load service data when editing
   useEffect(() => {
@@ -1567,11 +1476,8 @@ return { values: {}, errors: formattedErrors }
           components: Array.isArray(f.components) ? f.components : undefined,
         }))
         setPurchaseOptions(loaded)
-        // Extract tree state nếu SP residential
-        setLocationTree(extractTreeFromOptions(loaded))
       } else {
         setPurchaseOptions([])
-        setLocationTree(EMPTY_TREE)
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1584,7 +1490,6 @@ return { values: {}, errors: formattedErrors }
       setMultiInputFields([{ key: '', value: '' }])
       setPriceFields([{ key: '', value: '', cost: '' }])
       setPurchaseOptions([])
-      setLocationTree(EMPTY_TREE)
       setResponseMappingRows([])
       setAllowCustomAuth(false)
       setRequireIp(false)
@@ -2727,17 +2632,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   </Box>
                 </Grid2>
 
-                {/* Location tree viewer — hiện cấu hình Country/Region/City dạng cây phân cấp.
-                    Click "Sửa cấu hình" mở LocationTreePickerModal full picker. */}
-                {selectedProviderMain?.api_config?.kind === 'residential' && (
-                  <Grid2 size={{ xs: 12 }} sx={{ mt: 1 }}>
-                    <LocationTreeViewer
-                      value={locationTree}
-                      onEdit={() => setLocationTreeOpen(true)}
-                      disabled={!selectedProviderMain?.provider_code}
-                    />
-                  </Grid2>
-                )}
+                {/* Location tree viewer (dependent dropdown) đã bỏ — location dùng field type=combo */}
 
                 <PurchaseOptionsSection
                   options={purchaseOptions}
@@ -3435,20 +3330,6 @@ return <Chip key={val} label={p?.label || val} size='small' />
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Location tree picker modal */}
-      {selectedProviderMain?.provider_code && (
-        <LocationTreePickerModal
-          open={locationTreeOpen}
-          onClose={() => setLocationTreeOpen(false)}
-          providerCode={selectedProviderMain.provider_code}
-          value={locationTree}
-          onSave={(next) => {
-            setLocationTree(next)
-            setPurchaseOptions(prev => applyTreeToOptions(prev, next))
-          }}
-        />
-      )}
 
       {/* Sub-modals */}
       <MultiInputModal
