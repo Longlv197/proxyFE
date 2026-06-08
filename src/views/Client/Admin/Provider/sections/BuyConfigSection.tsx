@@ -628,7 +628,7 @@ const NhomKiemTraResponse = memo(function NhomKiemTraResponse({ prefix, control 
       </Grid2>
       <Grid2 size={{ xs: 7, sm: 4 }}>
         <Controller name={`${prefix}.fetch_proxies.success_field`} control={control} render={({ field }) => (
-          <CustomTextField {...field} fullWidth label='Field kiểm tra thành công' helperText='Bỏ trống nếu không cần' placeholder='maloi' />
+          <CustomTextField {...field} fullWidth label='Field kiểm tra thành công' helperText='Field hoặc đường dẫn lồng (vd: maloi, result.status). Bỏ trống nếu không cần.' placeholder='result.status' />
         )} />
       </Grid2>
       <Grid2 size={{ xs: 5, sm: 3 }}>
