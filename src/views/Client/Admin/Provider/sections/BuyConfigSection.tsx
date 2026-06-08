@@ -658,6 +658,7 @@ const NhomTrichXuat = memo(function NhomTrichXuat({ prefix, control }: BuySectio
           <CustomTextField {...field} fullWidth select label='Format proxy'>
             <MenuItem value='key'>1 field key (proxy xoay)</MenuItem>
             <MenuItem value='string'>Chuỗi ip:port:user:pass</MenuItem>
+            <MenuItem value='auth_string'>Chuỗi user:pass@host:port (residential)</MenuItem>
             <MenuItem value='fields'>Nhiều field riêng (ip, port, user, pass)</MenuItem>
           </CustomTextField>
         )} />

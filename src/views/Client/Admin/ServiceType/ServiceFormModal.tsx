@@ -357,7 +357,7 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
 // ─── Purchase Options Section (cô lập state khỏi form chính) ───
 interface PurchaseOption {
   key: string; param_name: string; label: string
-  type: 'select' | 'text' | 'number'; required: boolean; default: string
+  type: 'select' | 'text' | 'number' | 'combo'; required: boolean; default: string
   display_type?: 'country_flag' | ''
   options: Array<{
     provider_value: string; label: string
@@ -365,7 +365,11 @@ interface PurchaseOption {
     // i18n override — admin tự nhập tên hiển thị theo locale. Priority cao hơn dictionary ISO.
     // VD: { vi: 'Mỹ', en: 'USA', ko: '미국' } để override 'Hợp chúng quốc Hoa Kỳ' (ISO)
     label_i18n?: Record<string, string>
+    // Combo (Phase 2): mỗi option gói sẵn nhiều giá trị {component_key: value}, vd {country:'US', region:'California', city:'LA'}
+    values?: Record<string, string>
   }>
+  // Combo: khai báo thành phần — mỗi cái map key nội bộ → param gửi NCC (country→country_code...)
+  components?: Array<{ key: string; param_name: string }>
 
   // Nguồn options. Linh hoạt cho NCC residential (load live từ API) — vẫn backward compat.
   source?: 'manual' | 'api_tariffs' | 'api_countries' | 'api_regions' | 'api_cities'
@@ -373,6 +377,9 @@ interface PurchaseOption {
   depends_on?: string
   // Snapshot dependent — admin pre-config: country='us' → 5 regions, country='vn' → 10 regions
   options_by_parent?: Record<string, Array<{ key?: string; provider_value?: string; label: string }>>
+  // Bước dùng field (NCC 2-stage như residential): 'buy' = gửi khi mua | 'fetch' = gửi khi tạo proxy.
+  // Mặc định (không set) = 'buy' → hành vi cũ. Chỉ residential cần phân biệt.
+  stage?: 'buy' | 'fetch'
 }
 
 // Locales FE hỗ trợ — đồng bộ với configi18n.ts
@@ -611,10 +618,24 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 </Grid2>
                 <Grid2 size={{ xs: 1.5 }}>
                   <CustomTextField fullWidth size='small' select label='Loại' value={opt.type || 'select'}
-                    onChange={(e: any) => update(optIdx, { type: e.target.value })}>
+                    onChange={(e: any) => {
+                      const t = e.target.value
+                      const patch: any = { type: t }
+                      // Chọn combo lần đầu → tự khai báo 3 thành phần + đặt bước = lấy proxy (đỡ thao tác)
+                      if (t === 'combo' && (!opt.components || opt.components.length === 0)) {
+                        patch.components = [
+                          { key: 'country', param_name: 'country_code' },
+                          { key: 'region', param_name: 'region_name' },
+                          { key: 'city', param_name: 'city' },
+                        ]
+                        patch.stage = 'fetch'
+                      }
+                      update(optIdx, patch)
+                    }}>
                     <MenuItem value='select'>Select</MenuItem>
                     <MenuItem value='text'>Text</MenuItem>
                     <MenuItem value='number'>Number</MenuItem>
+                    {providerSupportsResidential && <MenuItem value='combo'>Combo (gói vị trí)</MenuItem>}
                   </CustomTextField>
                 </Grid2>
                 <Grid2 size={{ xs: 1.5 }}>
@@ -624,8 +645,79 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                     <MenuItem value='false'>Không</MenuItem>
                   </CustomTextField>
                 </Grid2>
+                {providerSupportsResidential && (
+                  <Grid2 size={{ xs: 3 }}>
+                    <CustomTextField fullWidth size='small' select label='Bước dùng' value={opt.stage || 'buy'}
+                      onChange={(e: any) => update(optIdx, { stage: e.target.value })}>
+                      <MenuItem value='buy'>Bước mua (gửi khi mua gói)</MenuItem>
+                      <MenuItem value='fetch'>Bước lấy proxy (gửi khi tạo proxy)</MenuItem>
+                    </CustomTextField>
+                  </Grid2>
+                )}
               </Grid2>
             </div>
+
+            {/* ─── Section Combo: gói vị trí (country+region+city gói làm 1) ── */}
+            {opt.type === 'combo' && (
+              <div style={{ padding: '0 12px 12px', borderTop: '1px dashed #e2e8f0' }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 12, marginBottom: 6 }}>
+                  Thành phần gói → param gửi NCC
+                </div>
+                <Grid2 container spacing={1}>
+                  {(opt.components || []).map((comp, ci) => (
+                    <Grid2 key={ci} size={{ xs: 4 }}>
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <CustomTextField fullWidth size='small' label='Key' value={comp.key}
+                          onChange={(e: any) => {
+                            const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps })
+                          }} />
+                        <span style={{ color: '#94a3b8' }}>→</span>
+                        <CustomTextField fullWidth size='small' label='Param NCC' value={comp.param_name}
+                          onChange={(e: any) => {
+                            const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps })
+                          }} />
+                      </div>
+                    </Grid2>
+                  ))}
+                </Grid2>
+
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 14, marginBottom: 6 }}>
+                  Danh sách gói ({(opt.options || []).length}) — mỗi gói = 1 lựa chọn user thấy
+                </div>
+                {(opt.options || []).map((cb, ci) => (
+                  <div key={ci} style={{ display: 'flex', gap: 6, marginBottom: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {(opt.components || []).map((comp) => (
+                      <CustomTextField key={comp.key} size='small' label={comp.key} sx={{ width: 130 }}
+                        value={(cb as any).values?.[comp.key] || ''}
+                        onChange={(e: any) => {
+                          const opts = [...(opt.options || [])]
+                          const values = { ...((opts[ci] as any).values || {}), [comp.key]: e.target.value }
+                          opts[ci] = { ...opts[ci], values } as any
+                          update(optIdx, { options: opts })
+                        }} />
+                    ))}
+                    <CustomTextField size='small' label='Cờ (us)' sx={{ width: 80 }} value={(cb as any).flag || ''}
+                      onChange={(e: any) => { const opts = [...(opt.options || [])]; opts[ci] = { ...opts[ci], flag: e.target.value.toLowerCase().replace(/[^a-z]/g, '') } as any; update(optIdx, { options: opts }) }} />
+                    <CustomTextField size='small' label='Tên hiển thị' sx={{ minWidth: 200, flex: 1 }} value={cb.label}
+                      onChange={(e: any) => { const opts = [...(opt.options || [])]; opts[ci] = { ...opts[ci], label: e.target.value } as any; update(optIdx, { options: opts }) }} />
+                    <Button size='small' color='error' sx={{ minWidth: 32 }}
+                      onClick={() => update(optIdx, { options: (opt.options || []).filter((_, i) => i !== ci) })}>
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                ))}
+                <Button size='small' variant='outlined' startIcon={<Plus size={14} />} sx={{ mt: 0.5 }}
+                  onClick={() => {
+                    const values: Record<string, string> = {}; (opt.components || []).forEach(c => { values[c.key] = '' })
+                    update(optIdx, { options: [...(opt.options || []), { provider_value: '', label: '', key: '', flag: '', values } as any] })
+                  }}>
+                  Thêm gói
+                </Button>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>
+                  Điền giá trị NCC thật cho từng thành phần (vd country=US, region=California). Key gói tự sinh từ tên hiển thị khi lưu.
+                </div>
+              </div>
+            )}
 
             {/* ─── Section 2: Nguồn dữ liệu (chỉ residential) ── */}
             {providerSupportsResidential && (opt.type || 'select') === 'select' && (
@@ -1236,6 +1328,8 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
   const [quantityTiers, setQuantityTiers] = useState<Array<{ min: string; max: string; discount: string }>>([])
 
   const [pricingMode, setPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
+  // Residential: 'package' = giá cố định theo gói (số lượng KHÔNG nhân) | 'multiply' = × số lượng proxy (mặc định = hành vi cũ).
+  const [priceQuantityMode, setPriceQuantityMode] = useState<'multiply' | 'package'>('multiply')
   const [timeUnit, setTimeUnit] = useState<'day' | 'month'>('day')
   const [priceDisplayUnit, setPriceDisplayUnit] = useState<'' | 'day' | 'month'>('')
   const [pricePerUnit, setPricePerUnit] = useState('')
@@ -1429,6 +1523,7 @@ return { values: {}, errors: formattedErrors }
           ? meta.response_mapping.map((r: any) => ({ from: r.from || '', to: r.to || '', store: r.store || 'metadata' }))
           : []
       )
+      setPriceQuantityMode(meta.price_quantity_mode === 'package' ? 'package' : 'multiply')
       // Residential metadata — load nếu kind=residential
       if (meta.kind === 'residential') {
         setResidentialMeta({
@@ -1458,6 +1553,8 @@ return { values: {}, errors: formattedErrors }
           source: f.source || 'manual',
           depends_on: f.depends_on || '',
           options_by_parent: f.options_by_parent || {},
+          stage: f.stage === 'fetch' ? 'fetch' : 'buy',
+          components: Array.isArray(f.components) ? f.components : undefined,
         }))
         setPurchaseOptions(loaded)
         // Extract tree state nếu SP residential
@@ -1491,6 +1588,7 @@ return { values: {}, errors: formattedErrors }
       setQuantityTiers([])
       setResidentialMeta({})
       setPricingMode('fixed')
+      setPriceQuantityMode('multiply')
       setTimeUnit('day')
       setPricePerUnit('')
       setCostPerUnit('')
@@ -1593,12 +1691,24 @@ return { values: {}, errors: formattedErrors }
         ...(o.options_by_parent && Object.keys(o.options_by_parent).length > 0
           ? { options_by_parent: o.options_by_parent }
           : {}),
+        ...(o.stage === 'fetch' ? { stage: 'fetch' } : {}),
+        // Combo: lưu components (map param NCC) + options gói (key tự sinh từ label + values)
+        ...(o.type === 'combo' ? {
+          components: (o.components || []).filter(c => c.key && c.param_name),
+          options: (o.options || []).filter(opt => opt.label).map(opt => {
+            const key = (opt as any).key || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
+            const entry: any = { key, label: opt.label, values: (opt as any).values || {} }
+            if ((opt as any).flag) entry.flag = (opt as any).flag
+            return entry
+          }),
+        } : {}),
       }))
     } : null
 
     // Merge allow_custom_auth vào metadata
     const metadataFinal = {
       ...(metadata || {}),
+      price_quantity_mode: priceQuantityMode === 'package' ? 'package' : undefined, // chỉ lưu khi package, mặc định bỏ → 'multiply'
       allow_custom_auth: allowCustomAuth,
       require_ip: requireIp || undefined,
       max_ips: maxIps > 1 ? maxIps : undefined,
@@ -2714,6 +2824,21 @@ return <Chip key={val} label={p?.label || val} size='small' />
                       <MenuItem value='per_unit'>Nhập tự do (per unit)</MenuItem>
                     </CustomTextField>
                   </Grid2>
+
+                  {isResidential && (
+                    <Grid2 size={{ xs: 12, sm: 4 }}>
+                      <CustomTextField
+                        select fullWidth size='small'
+                        label='Giá theo số lượng'
+                        value={priceQuantityMode}
+                        onChange={(e) => setPriceQuantityMode(e.target.value as 'multiply' | 'package')}
+                        helperText={priceQuantityMode === 'package' ? 'Mua bao nhiêu proxy cũng 1× giá gói' : 'Giá × số lượng proxy'}
+                      >
+                        <MenuItem value='multiply'>Tính theo số lượng (× SL)</MenuItem>
+                        <MenuItem value='package'>Cố định theo gói (không × SL)</MenuItem>
+                      </CustomTextField>
+                    </Grid2>
+                  )}
 
                   <Grid2 size={{ xs: 12 }}>
                     {(() => {

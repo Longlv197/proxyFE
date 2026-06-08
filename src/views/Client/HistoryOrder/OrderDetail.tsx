@@ -99,9 +99,10 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   const updateItemMutation = useUpdateOrderItem()
   const { data: apiKeysData = [], isLoading: isLoadingKeys } = useApiKeys(order?.id, open)
 
-  // Residential: 1 đơn = 1 OrderItem chứa metadata gói (host + port range + traffic)
-  const isResidential = (apiKeysData as any)?._kind === 'residential' || (apiKeysData as any)?._dataField === 'residential_package'
-  const residentialMeta = isResidential ? (apiKeysData[0]?.metadata ?? {}) : null
+  // Residential giờ chạy config-driven (proxy rotating-shaped, mỗi proxy 1 dòng) → render NHƯ rotating,
+  // KHÔNG dùng package box. Giữ biến = false để code dưới không vỡ; ResidentialPackageBox là dead code (xoá sau).
+  const isResidential = false
+  const residentialMeta = null
   const { data: histories = [] } = useOrderHistories(order?.id ?? null, open)
   const pingProxy = usePingProxy()
   const [pingResults, setPingResults] = useState<Record<string, string>>({})

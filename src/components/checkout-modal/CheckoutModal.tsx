@@ -70,20 +70,24 @@ interface CheckoutModalProps {
   /** Giới hạn số lượng từ SP (Proxyma residential: min=max=1). */
   minQuantity?: number
   maxQuantity?: number
+  /** Residential: 'package' = giá cố định theo gói (total KHÔNG nhân số lượng). Mặc định 'multiply'. */
+  priceQuantityMode?: 'multiply' | 'package'
   discountTiers?: Array<{ min: string; max: string; discount: string }>
   quantityTiers?: Array<{ min: string; max: string; discount?: string; price?: string }>
   customFields?: Array<{
     key: string
     param?: string
     label: string
-    type: 'select' | 'text' | 'number'
+    type: 'select' | 'text' | 'number' | 'combo'
     required?: boolean
-    options?: Array<{ key?: string; value?: string; label: string; price?: number; flag?: string }>
+    options?: Array<{ key?: string; value?: string; label: string; price?: number; flag?: string; values?: Record<string, string> }>
     default?: string
     source?: 'manual' | 'api_tariffs' | 'api_countries' | 'api_regions' | 'api_cities'
     depends_on?: string
     // Snapshot subset per parent value (admin cấu hình trước, KHÔNG fetch live)
     options_by_parent?: Record<string, Array<{ key?: string; value?: string; label: string }>>
+    // Combo (Phase 2): components map sang param NCC
+    components?: Array<{ key: string; param_name: string }>
   }>
 }
 
@@ -108,6 +112,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   maxIps = 1,
   minQuantity = 1,
   maxQuantity = 9999,
+  priceQuantityMode = 'multiply',
   discountTiers = [],
   quantityTiers = [],
   customFields
@@ -273,7 +278,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const hasQtyDiscount = unitPrice < baseUnitPrice
 
   const activeDuration = isPerUnit ? String(customDuration) : selectedDuration
-  const total = unitPrice * quantity
+  // Package mode (residential): giá cố định theo gói, số lượng proxy KHÔNG nhân vào tiền (khớp BE).
+  const total = priceQuantityMode === 'package' ? unitPrice : unitPrice * quantity
 
   const calculateDiscount = (key: string, price: number) => {
     if (priceOptions.length <= 1) return null
@@ -660,6 +666,26 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 ) : isDependent && fieldOptions.length === 0 ? (
                   <div style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, color: '#991b1b' }}>
                     NCC không có {field.label.toLowerCase()} cho lựa chọn này. {!field.required ? 'Có thể bỏ qua.' : 'Chọn lại field trên.'}
+                  </div>
+                ) : field.type === 'combo' ? (
+                  // Combo gói vị trí — 1 lưới, mỗi gói = cờ + tên, click chọn key (bên trong tự bung country/region/city)
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 8 }}>
+                    {(field.options || []).map((opt: any) => {
+                      const ok = opt.key
+                      const selected = selectedValue === ok
+                      return (
+                        <div key={ok} onClick={() => setFieldValue(fieldKey, ok)}
+                          style={{
+                            cursor: 'pointer', padding: '10px 12px', borderRadius: 8,
+                            border: selected ? '2px solid #6366f1' : '1px solid #e2e8f0',
+                            background: selected ? '#eef2ff' : '#fff',
+                            display: 'flex', alignItems: 'center', gap: 8, transition: 'all .15s'
+                          }}>
+                          {opt.flag && <img src={`https://flagcdn.com/w20/${opt.flag}.png`} alt='' style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }} />}
+                          <span style={{ fontSize: 13, fontWeight: selected ? 600 : 400 }}>{opt.label}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 ) : (field.type || 'select') === 'select' && fieldOptions.length ? (
                   // Hiển thị 3 cách tuỳ data + display_type

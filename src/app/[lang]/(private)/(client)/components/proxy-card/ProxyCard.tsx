@@ -464,6 +464,7 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
           maxIps={provider.metadata?.max_ips || 1}
           minQuantity={provider.min_quantity ?? 1}
           maxQuantity={provider.max_quantity ?? 9999}
+          priceQuantityMode={provider.metadata?.price_quantity_mode === 'package' ? 'package' : 'multiply'}
         />
       )}
     </>
