@@ -562,7 +562,8 @@ const BoxAmount = ({
 }) => {
   const numericValue = amount.replace(/\D/g, '')
   const num = Number(numericValue)
-  const label = num >= 1_000_000 ? `${num / 1_000_000}tr` : `${num / 1_000}k`
+  // Hiện ĐẦY ĐỦ số tiền (khớp admin) — tránh viết tắt "100k" gây hiểu nhầm thành 100đ
+  const label = `${num.toLocaleString('vi-VN')}đ`
 
   return (
     <Box
