@@ -194,20 +194,17 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
 
             {/* Nút xoay/lấy proxy thủ công — mặc định cho xoay tay; chỉ ẩn khi SP tắt allow_manual */}
             {(!rot || rot.allow_manual) && (
-              <Button fullWidth variant='contained' disableElevation
-                startIcon={rotating ? <CircularProgress size={16} color='inherit' /> : <RefreshCw size={16} />}
-                disabled={rotating || countdown > 0}
-                onClick={handleRotate}
-                sx={{
-                  mb: 1.5, py: 1.1, fontWeight: 700, fontSize: 14, borderRadius: 2, textTransform: 'none',
-                  background: '#6366f1', boxShadow: '0 2px 6px rgba(99,102,241,0.35)',
-                  '&:hover': { background: '#4f46e5' },
-                  '&.Mui-disabled': { background: '#e2e8f0', color: '#94a3b8', boxShadow: 'none' }
-                }}>
-                {rotating ? 'Đang xoay...'
-                  : countdown > 0 ? `Có thể xoay sau ${countdown}s`
-                  : proxyValue ? 'Xoay IP ngay' : 'Lấy proxy'}
-              </Button>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.5 }}>
+                <Button variant='contained' color='primary' disableElevation
+                  startIcon={rotating ? <CircularProgress size={16} color='inherit' /> : <RefreshCw size={16} />}
+                  disabled={rotating || countdown > 0}
+                  onClick={handleRotate}
+                  sx={{ px: 3.5, py: 1, fontWeight: 700, fontSize: 14, borderRadius: 2, textTransform: 'none', minWidth: 190 }}>
+                  {rotating ? 'Đang xoay...'
+                    : countdown > 0 ? `Có thể xoay sau ${countdown}s`
+                    : proxyValue ? 'Xoay IP ngay' : 'Lấy proxy'}
+                </Button>
+              </Box>
             )}
 
             {/* Đang tải cấu hình tự động (chưa biết allow_auto/min) */}

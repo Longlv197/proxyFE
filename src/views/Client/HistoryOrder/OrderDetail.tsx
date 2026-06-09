@@ -285,11 +285,11 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px',
                 borderRadius: 8, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit',
-                border: 'none', background: '#6366f1', color: '#fff',
-                boxShadow: '0 1px 3px rgba(99,102,241,0.35)', transition: 'background .15s'
+                border: 'none', background: 'var(--primary-color)', color: 'var(--primary-contrast, #fff)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.18)', transition: 'background .15s'
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#4f46e5' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#6366f1' }}>
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--primary-hover)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--primary-color)' }}>
               <RefreshCw size={13} /> Xoay / Cài đặt
             </button>
           )
