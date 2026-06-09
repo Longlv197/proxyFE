@@ -51,7 +51,7 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Lấy Proxy Xoay Mới',
     method: 'GET',
     endpoint: `${PROXY_BASE}/proxies/new`,
-    description: 'Lấy proxy xoay hiện tại từ cache. Trả kèm field second = số giây trước lần xoay tự động kế tiếp.',
+    description: 'Lấy proxy hiện tại từ cache (CHỈ ĐỌC, không gọi NCC). second = số giây tới lần xoay kế (cooldown hoặc nhịp auto). real_ip = IP gốc NCC trả (nếu có cấu hình). Đơn mới chưa kích hoạt → trả NO_PROXY_DATA; gọi /proxies/rotate-ip để lấy proxy lần đầu.',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
@@ -65,14 +65,15 @@ export const apiEndpoints: ApiEndpoint[] = [
   "status": "SUCCESS",
   "second": 45,
   "data": {
-    "realIpAddress": "27.66.201.201",
-    "http": "27.66.201.201:20814:khljtiNj3Kd:fdkm3nbjg45d",
-    "socks5": "27.66.201.201:30814:khljtiNj3Kd:fdkm3nbjg45d",
-    "httpPort": "20814",
-    "socks5Port": "30814",
-    "host": "27.66.201.201",
-    "user": "khljtiNj3Kd",
-    "pass": "fdkm3nbjg45d"
+    "value": "27.66.201.201:20814:user:pass",
+    "protocol": "http",
+    "ip": "27.66.201.201",
+    "port": "20814",
+    "user": "user",
+    "pass": "pass",
+    "real_ip": "27.66.201.201",
+    "http": "27.66.201.201:20814:user:pass",
+    "socks5": "27.66.201.201:20814:user:pass"
   }
 }`,
       '404 ERROR': `{
@@ -96,7 +97,7 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Lấy Proxy Hiện Tại',
     method: 'GET',
     endpoint: `${PROXY_BASE}/proxies/current`,
-    description: 'Lấy proxy hiện tại (alias của /proxies/new). Trả kèm second = số giây trước lần xoay tự động kế tiếp.',
+    description: 'Lấy proxy hiện tại (alias của /proxies/new, CHỈ ĐỌC). second = số giây tới lần xoay kế. real_ip = IP gốc NCC trả (nếu có cấu hình).',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
@@ -109,14 +110,15 @@ export const apiEndpoints: ApiEndpoint[] = [
   "status": "SUCCESS",
   "second": 45,
   "data": {
-    "realIpAddress": "42.119.124.219",
-    "http": "42.119.124.219:16847:kh1jtlNj3Kd:rdkm3hbjq45d",
-    "socks5": "42.119.124.219:26847:kh1jtlNj3Kd:rdkm3hbjq45d",
-    "httpPort": "16847",
-    "socks5Port": "26847",
-    "host": "42.119.124.219",
-    "user": "kh1jtlNj3Kd",
-    "pass": "rdkm3hbjq45d"
+    "value": "42.119.124.219:16847:user:pass",
+    "protocol": "http",
+    "ip": "42.119.124.219",
+    "port": "16847",
+    "user": "user",
+    "pass": "pass",
+    "real_ip": "42.119.124.219",
+    "http": "42.119.124.219:16847:user:pass",
+    "socks5": "42.119.124.219:16847:user:pass"
   }
 }`,
       '404 ERROR': `{
@@ -138,44 +140,49 @@ export const apiEndpoints: ApiEndpoint[] = [
   {
     id: 'rotate-ip',
     title: 'Xoay IP Proxy',
-    method: 'GET',
+    method: 'POST',
     endpoint: `${PROXY_BASE}/proxies/rotate-ip`,
-    description: 'Xoay IP proxy ngay lập tức. Cooldown 60 giây giữa các lần xoay.',
+    description: 'Xoay IP ngay — gọi sang nhà cung cấp lấy IP mới. Có cooldown tối thiểu theo sản phẩm (mặc định 60 giây); trong cooldown trả về proxy HIỆN TẠI kèm second = số giây còn lại (không gọi NCC). Field real_ip = IP gốc (exit) NCC trả về, chỉ có khi NCC được cấu hình field này.',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
-      { name: 'api_key', type: 'string', required: true, description: 'API Key của đơn hàng proxy', example: 'G5aTZVGtrHPRL1YUhBUSfPx' }
+      { name: 'key', type: 'string', required: true, description: 'API Key (key đơn hàng proxy xoay). Có thể gửi qua body hoặc query.', example: 'G5aTZVGtrHPRL1YUhBUSfPx' }
     ],
     responses: {
       '200 OK': `{
   "success": true,
   "code": 200,
   "status": "SUCCESS",
+  "second": 60,
+  "message": "Đã xoay IP",
   "data": {
-    "realIpAddress": "103.45.67.89",
-    "http": "103.45.67.89:20814:khljtiNj3Kd:fdkm3nbjg45d",
-    "socks5": "103.45.67.89:30814:khljtiNj3Kd:fdkm3nbjg45d",
-    "httpPort": "20814",
-    "socks5Port": "30814",
-    "host": "103.45.67.89"
-  },
-  "message": "Xoay IP thành công",
-  "seconds": 60
-}`,
-      '400 ERROR': `{
-  "success": false,
-  "code": 40000001,
-  "message": "Vui lòng chờ 45 giây nữa để xoay IP",
-  "status": "FAIL"
+    "value": "103.45.67.89:20814:user:pass",
+    "protocol": "http",
+    "ip": "103.45.67.89",
+    "port": "20814",
+    "user": "user",
+    "pass": "pass",
+    "real_ip": "27.66.201.201",
+    "rotated_at": "2026-06-09 15:32:55",
+    "http": "103.45.67.89:20814:user:pass",
+    "socks5": "103.45.67.89:20814:user:pass"
+  }
 }`,
       '404 ERROR': `{
   "success": false,
-  "code": 40400006,
   "message": "Key not found",
-  "status": "FAIL"
+  "status": "FAIL",
+  "error": "KEY_NOT_FOUND"
+}`,
+      '502 ERROR': `{
+  "success": false,
+  "message": "Lỗi khi gọi nhà cung cấp",
+  "status": "FAIL",
+  "error": "ROTATE_FAILED",
+  "seconds": 60
 }`
     },
-    statusCodes: ['200 OK', '400 ERROR', '404 ERROR']
+    statusCodes: ['200 OK', '404 ERROR', '502 ERROR']
   },
 
   {
