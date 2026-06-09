@@ -92,6 +92,44 @@ interface CheckoutModalProps {
   }>
 }
 
+// Dropdown tuỳ biến cho combo nhiều gói (hiển thị cờ + tên trong list, cuộn được, đóng khi click ngoài)
+function ComboDropdown({ options, value, onSelect }: {
+  options: Array<{ key?: string; label: string; flag?: string }>
+  value: string
+  onSelect: (key: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const sel = options.find(o => (o.key || '') === value)
+  return (
+    <div style={{ position: 'relative' }}>
+      <div onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', border: '1px solid #cbd5e1', borderRadius: 8, padding: '9px 12px', background: '#fff' }}>
+        {sel?.flag && <img src={`https://flagcdn.com/w20/${sel.flag}.png`} alt='' style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }} />}
+        <span style={{ fontSize: 13, color: sel ? '#1e293b' : '#94a3b8' }}>{sel?.label || 'Chọn...'}</span>
+        <span style={{ marginLeft: 'auto', color: '#94a3b8', fontSize: 12 }}>▾</span>
+      </div>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 11, maxHeight: 240, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+            {options.map((o) => {
+              const k = o.key || ''
+              const active = k === value
+              return (
+                <div key={k} onClick={() => { onSelect(k); setOpen(false) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', background: active ? '#eef2ff' : '#fff', fontSize: 13, fontWeight: active ? 600 : 400 }}>
+                  {o.flag && <img src={`https://flagcdn.com/w20/${o.flag}.png`} alt='' style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }} />}
+                  <span>{o.label}</span>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 const CheckoutModal: React.FC<CheckoutModalProps> = ({
   open,
   onClose,
@@ -669,7 +707,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     NCC không có {field.label.toLowerCase()} cho lựa chọn này. {!field.required ? 'Có thể bỏ qua.' : 'Chọn lại field trên.'}
                   </div>
                 ) : field.type === FIELD_TYPE_COMBO ? (
-                  // Combo gói vị trí — 1 lưới, mỗi gói = cờ + tên, click chọn key (bên trong tự bung country/region/city)
+                  (field as any).display_type === 'dropdown' ? (
+                    // Combo nhiều gói → dropdown gọn (cờ + tên trong list)
+                    <ComboDropdown options={field.options || []} value={selectedValue} onSelect={(k) => setFieldValue(fieldKey, k)} />
+                  ) : (
+                  // Combo gói vị trí — lưới thẻ cờ, mỗi gói = cờ + tên, click chọn key (bên trong tự bung country/region/city)
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 8 }}>
                     {(field.options || []).map((opt: any) => {
                       const ok = opt.key
@@ -688,6 +730,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       )
                     })}
                   </div>
+                  )
                 ) : (field.type || 'select') === 'select' && fieldOptions.length ? (
                   // Hiển thị 3 cách tuỳ data + display_type
                   isTariffCard && fieldOptions.length <= 12 ? (

@@ -616,6 +616,17 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                   <strong>Combo</strong> = khách chọn <strong>1 gói</strong> → hệ thống bung thành <strong>nhiều params</strong> gửi NCC. Cài field NCC ở <strong>Bước 1</strong>, tạo gói ở <strong>Bước 2</strong>. <span style={{ color: '#a78bda' }}>(Mã field ở trên không gửi NCC.)</span>
                 </div>
 
+                {/* Cách hiển thị cho khách trên form mua: thẻ cờ (ít gói) hoặc dropdown (nhiều gói) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>Hiển thị cho khách:</span>
+                  <CustomTextField select size='small' value={opt.display_type === 'dropdown' ? 'dropdown' : 'card'}
+                    onChange={(e: any) => update(optIdx, { display_type: e.target.value === 'dropdown' ? 'dropdown' : '' })}
+                    sx={{ width: 220 }}>
+                    <MenuItem value='card'>Thẻ cờ (ít gói, trực quan)</MenuItem>
+                    <MenuItem value='dropdown'>Dropdown (nhiều gói, gọn)</MenuItem>
+                  </CustomTextField>
+                </div>
+
                 {/* Bước 1 — định nghĩa các field gửi NCC (components). Linh hoạt: thêm/bớt tuỳ NCC. */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#6d28d9' }}>Bước 1 · Field gửi NCC</div>
