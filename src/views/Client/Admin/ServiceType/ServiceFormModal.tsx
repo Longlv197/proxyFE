@@ -343,7 +343,15 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
       allow_custom_auth: allowCustomAuth,
       custom_fields: purchaseOptions?.filter(o => o.key && o.label).map(o => ({
         ...o,
-        options: o.options?.filter(opt => (opt as any).provider_value)
+        // Combo: GIỮ gói (flag/label/values) — combo không có provider_value, nếu lọc sẽ mất sạch.
+        //   Sinh key tạm từ label để preview chọn được (giống lúc serialize).
+        // Select: lọc option có provider_value như cũ.
+        options: o.type === 'combo'
+          ? (o.options || []).map((opt: any) => ({
+              ...opt,
+              key: opt.key || (opt.label || '').toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
+            }))
+          : (o.options?.filter((opt: any) => (opt as any).provider_value) || [])
       })) || [],
     },
   }), [previewObj, serviceId, validPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit, priceDisplayUnit])
