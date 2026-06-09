@@ -544,7 +544,9 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
               </div>
               <Grid2 container spacing={1.5}>
                 <Grid2 size={{ xs: 3 }}>
-                  <CustomTextField fullWidth size='small' label='Key (gửi đi)' placeholder='country' value={opt.key}
+                  <CustomTextField fullWidth size='small'
+                    label={opt.type === 'combo' ? 'Mã field (khách chọn)' : 'Key (gửi đi)'}
+                    placeholder={opt.type === 'combo' ? 'location' : 'country'} value={opt.key}
                     onChange={(e: any) => update(optIdx, { key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
                 </Grid2>
                 {opt.type !== 'combo' && (
@@ -601,15 +603,23 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
             {/* ─── Section Combo: gói vị trí (country+region+city gói làm 1) ── */}
             {opt.type === 'combo' && (
               <div style={{ padding: '0 12px 12px', borderTop: '1px dashed #e2e8f0' }}>
-                {/* Thành phần → param NCC: auto-set, ẩn sau toggle cho gọn */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 6, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase' }}>Thành phần → param NCC</div>
+                {/* Giải thích quan hệ: 1 mã field (khách chọn) → bung thành NHÓM params gửi NCC */}
+                <div style={{ fontSize: 11, color: '#6d28d9', marginTop: 12, marginBottom: 8, background: '#faf5ff', border: '1px solid #f0e6ff', borderRadius: 6, padding: '8px 10px', lineHeight: 1.7 }}>
+                  Khách chọn <strong>1 gói</strong> (gửi qua mã field <code>{opt.key || 'location'}</code>) → hệ thống <strong>bung</strong> thành{' '}
+                  <strong>nhóm {(opt.components || []).length} params</strong> gửi NCC:{' '}
+                  <strong>{(opt.components || []).map(c => c.param_name).filter(Boolean).join(', ') || '...'}</strong>.
+                  <br />Tức combo = 1 lựa chọn → nhiều param. "Mã field" ở trên KHÔNG gửi NCC; nhóm dưới đây mới gửi.
+                </div>
+
+                {/* Nhóm key gửi NCC (= components, bung từ gói) — auto-set, ẩn editor sau toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase' }}>Nhóm key gửi NCC</div>
                   <span style={{ fontSize: 11, color: '#94a3b8' }}>
                     {(opt.components || []).map(c => `${c.key}→${c.param_name}`).join(' · ') || '—'}
                   </span>
                   <button type='button' onClick={() => toggleComboParams(optIdx)}
                     style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11, color: '#6366f1', cursor: 'pointer', padding: '2px 8px' }}>
-                    {showComboParams.has(optIdx) ? 'Ẩn' : 'Sửa param'}
+                    {showComboParams.has(optIdx) ? 'Ẩn' : 'Sửa nhóm'}
                   </button>
                 </div>
                 {showComboParams.has(optIdx) && (
@@ -628,9 +638,8 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                   </Grid2>
                 )}
 
-                <div style={{ fontSize: 11, color: '#6d28d9', marginTop: 12, marginBottom: 8, background: '#faf5ff', border: '1px solid #f0e6ff', borderRadius: 6, padding: '8px 10px', lineHeight: 1.7 }}>
-                  Mỗi <strong>dòng = 1 gói</strong> khách thấy (vd "Mỹ — California"). Khách chọn 1 gói → hệ thống tự gửi đủ{' '}
-                  <strong>{(opt.components || []).map(c => c.key).join(' + ') || 'các thành phần'}</strong> cho NCC. Điền giá trị NCC thật cho từng cột.
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 12, marginBottom: 6 }}>
+                  Mỗi <strong>dòng = 1 gói</strong> khách thấy (vd "Mỹ — California"). Điền giá trị NCC thật cho từng cột (cờ + các thành phần + tên hiển thị).
                 </div>
 
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
