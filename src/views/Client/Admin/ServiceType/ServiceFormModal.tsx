@@ -2652,17 +2652,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   </Box>
                 </Grid2>
 
-                {/* Location tree viewer (dependent dropdown) đã bỏ — location dùng field type=combo */}
-
-                <PurchaseOptionsSection
-                  options={purchaseOptions}
-                  onChange={setPurchaseOptions}
-                  control={control}
-                  errors={errors}
-                  countries={countries}
-                  providerCode={selectedProviderMain?.provider_code || null}
-                  providerSupportsResidential={selectedProviderMain?.api_config?.kind === 'residential'}
-                />
+                {/* Tuỳ chọn mua hàng + Location tree đã chuyển ra section riêng bên dưới */}
 
                 {/* Residential extras — balance + proxy_host khi proxy_type=residential.
                     Custom_fields/options đã dùng PurchaseOptionsSection chung (source=api_*). */}
@@ -2730,6 +2720,19 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   </Box>
                 </Grid2>
               </Grid2>
+              </CollapsibleSection>
+
+              {/* ========== Section: Tuỳ chọn mua hàng (custom_fields + combo) ========== */}
+              <CollapsibleSection title='Tuỳ chọn mua hàng' icon={ShoppingCart} iconColor='#6366f1' iconBg='#eef2ff' defaultOpen={true}>
+                <PurchaseOptionsSection
+                  options={purchaseOptions}
+                  onChange={setPurchaseOptions}
+                  control={control}
+                  errors={errors}
+                  countries={countries}
+                  providerCode={selectedProviderMain?.provider_code || null}
+                  providerSupportsResidential={selectedProviderMain?.api_config?.kind === 'residential'}
+                />
               </CollapsibleSection>
 
               {/* ========== Section: Cấu hình API (nhà cung cấp) ========== */}
