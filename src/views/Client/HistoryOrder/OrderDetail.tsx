@@ -59,6 +59,7 @@ import { usePingProxy } from '@/hooks/apis/usePingProxy'
 import { ROTATION_MODE, ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 import '@/components/checkout-modal/styles.css'
 import ResidentialPackageBox from './ResidentialPackageBox'
+import ProxyDetailModal from '@/views/Client/OrderRotatingProxy/ProxyDetailModal'
 
 const formatVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
 
@@ -90,6 +91,8 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   const [, copy] = useCopy()
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [renewOpen, setRenewOpen] = useState(false)
+  // Modal xoay IP / cài tự xoay cho 1 proxy (đơn xoay) — tái dùng ProxyDetailModal
+  const [rotateRow, setRotateRow] = useState<{ key: string; proxy: any } | null>(null)
   const [detailTab, setDetailTab] = useState(0)
   const [viewLogId, setViewLogId] = useState<number | null>(null)
   const [viewItemKey, setViewItemKey] = useState<string | null>(null)
@@ -268,6 +271,26 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
         ),
         size: 80
       },
+      // Đơn xoay (service_type != 0): nút mở modal Xoay IP / cài tự xoay cho từng proxy
+      ...(order?.service_type !== '0' ? [{
+        header: 'Xoay IP',
+        cell: ({ row }: { row: any }) => {
+          const k = row.original?.key || row.original?.api_key || ''
+          if (!k) return <span style={{ color: '#94a3b8', fontSize: 11 }}>-</span>
+          return (
+            <button type='button'
+              onClick={() => setRotateRow({ key: k, proxy: row.original.proxy || row.original.proxys || null })}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px',
+                borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
+                border: '1px solid #fcd34d', background: '#fffbeb', color: '#b45309'
+              }}>
+              <RefreshCw size={12} /> Xoay / Cài đặt
+            </button>
+          )
+        },
+        size: 130
+      }] : []),
       ...(isAdmin ? [{
         header: 'Chế độ xoay',
         cell: ({ row }: { row: any }) => {
@@ -746,6 +769,16 @@ return row.original?.key || row.original?.api_key || ''
           onClose={() => setRenewOpen(false)}
         />,
         document.body
+      )}
+
+      {/* Modal xoay IP / cài tự xoay cho 1 proxy của đơn */}
+      {rotateRow && (
+        <ProxyDetailModal
+          open={!!rotateRow}
+          onClose={() => setRotateRow(null)}
+          proxy={rotateRow.proxy}
+          orderKey={rotateRow.key}
+        />
       )}
     </>
   )
