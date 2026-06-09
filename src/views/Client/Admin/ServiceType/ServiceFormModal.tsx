@@ -473,8 +473,8 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                   key: 'location', param_name: '', label: 'Vị trí', type: 'combo', required: true, default: '', display_type: '',
                   stage: 'fetch',
                   components: [
-                    { key: 'country', param_name: 'country_code' },
-                    { key: 'region', param_name: 'region_name' },
+                    { key: 'country_code', param_name: 'country_code' },
+                    { key: 'region_name', param_name: 'region_name' },
                     { key: 'city', param_name: 'city' },
                   ],
                   options: [],
@@ -567,8 +567,8 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                       // Chọn combo lần đầu → tự khai báo 3 thành phần + đặt bước = lấy proxy (đỡ thao tác)
                       if (t === 'combo' && (!opt.components || opt.components.length === 0)) {
                         patch.components = [
-                          { key: 'country', param_name: 'country_code' },
-                          { key: 'region', param_name: 'region_name' },
+                          { key: 'country_code', param_name: 'country_code' },
+                          { key: 'region_name', param_name: 'region_name' },
                           { key: 'city', param_name: 'city' },
                         ]
                         patch.stage = 'fetch'
@@ -622,20 +622,17 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 {showComboParams.has(optIdx) && (
                   <div style={{ marginBottom: 8 }}>
                     <div style={{ fontSize: 10.5, color: '#94a3b8', marginBottom: 6 }}>
-                      <strong>Key gửi NCC</strong> = key thật sự gửi đối tác. <strong>Mã cột</strong> = nhãn nội bộ (không gửi). <strong>Value</strong> điền theo từng gói ở Bước 2.
+                      <strong>Key gửi NCC</strong> = tên param trong body request gửi đối tác (vd <code>country_code</code>). <strong>Value</strong> của từng key điền theo mỗi gói ở Bước 2.
                     </div>
                     <Grid2 container spacing={1} sx={{ mb: 1 }}>
                       {(opt.components || []).map((comp, ci) => (
                         <Grid2 key={ci} size={{ xs: 6 }}>
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <CustomTextField fullWidth size='small' label='Key gửi NCC' placeholder='country_code' value={comp.param_name}
-                              onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
-                            <span style={{ color: '#94a3b8' }}>·</span>
-                            <CustomTextField fullWidth size='small' label='Mã cột' placeholder='country' value={comp.key}
-                              onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
-                            <button type='button' title='Xoá thành phần'
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <CustomTextField fullWidth size='small' label={`Key gửi NCC #${ci + 1}`} placeholder='country_code' value={comp.param_name}
+                              onChange={(e: any) => { const v = e.target.value.replace(/[^a-zA-Z0-9_]/g, ''); const comps = [...(opt.components || [])]; comps[ci] = { key: v, param_name: v }; update(optIdx, { components: comps }) }} />
+                            <button type='button' title='Xoá key này'
                               onClick={() => update(optIdx, { components: (opt.components || []).filter((_, i) => i !== ci) })}
-                              style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: 14, padding: 2, lineHeight: 1, flexShrink: 0 }}
+                              style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 4, flexShrink: 0 }}
                               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#ef4444' }}
                               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#cbd5e1' }}>✕</button>
                           </div>
@@ -644,7 +641,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                     </Grid2>
                     <Button size='small' variant='text' startIcon={<Plus size={13} />} sx={{ fontSize: 11 }}
                       onClick={() => update(optIdx, { components: [...(opt.components || []), { key: '', param_name: '' }] })}>
-                      Thêm thành phần (field gửi NCC)
+                      Thêm Key gửi NCC
                     </Button>
                   </div>
                 )}
