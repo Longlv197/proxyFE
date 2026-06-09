@@ -603,47 +603,52 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
             {/* ─── Section Combo: gói vị trí (country+region+city gói làm 1) ── */}
             {opt.type === 'combo' && (
               <div style={{ padding: '0 12px 12px', borderTop: '1px dashed #e2e8f0' }}>
-                {/* Giải thích quan hệ: 1 mã field (khách chọn) → bung thành NHÓM params gửi NCC */}
-                <div style={{ fontSize: 11, color: '#6d28d9', marginTop: 12, marginBottom: 8, background: '#faf5ff', border: '1px solid #f0e6ff', borderRadius: 6, padding: '8px 10px', lineHeight: 1.7 }}>
-                  Khách chọn <strong>1 gói</strong> (gửi qua mã field <code>{opt.key || 'location'}</code>) → hệ thống <strong>bung</strong> thành{' '}
-                  <strong>nhóm {(opt.components || []).length} params</strong> gửi NCC:{' '}
-                  <strong>{(opt.components || []).map(c => c.param_name).filter(Boolean).join(', ') || '...'}</strong>.
-                  <br />Tức combo = 1 lựa chọn → nhiều param. "Mã field" ở trên KHÔNG gửi NCC; nhóm dưới đây mới gửi.
+                {/* Banner 1 ý: combo = 1 lựa chọn → nhiều params NCC; làm theo 2 bước */}
+                <div style={{ fontSize: 11, color: '#6d28d9', marginTop: 12, marginBottom: 12, background: '#faf5ff', border: '1px solid #f0e6ff', borderRadius: 6, padding: '8px 10px', lineHeight: 1.6 }}>
+                  <strong>Combo</strong> = khách chọn <strong>1 gói</strong> → hệ thống bung thành <strong>nhiều params</strong> gửi NCC. Cài field NCC ở <strong>Bước 1</strong>, tạo gói ở <strong>Bước 2</strong>. <span style={{ color: '#a78bda' }}>(Mã field ở trên không gửi NCC.)</span>
                 </div>
 
-                {/* Nhóm key gửi NCC (= components, bung từ gói) — auto-set, ẩn editor sau toggle */}
+                {/* Bước 1 — định nghĩa các field gửi NCC (components). Linh hoạt: thêm/bớt tuỳ NCC. */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase' }}>Nhóm key gửi NCC</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#6d28d9' }}>Bước 1 · Field gửi NCC</div>
                   <span style={{ fontSize: 11, color: '#94a3b8' }}>
                     {(opt.components || []).map(c => `${c.key}→${c.param_name}`).join(' · ') || '—'}
                   </span>
                   <button type='button' onClick={() => toggleComboParams(optIdx)}
                     style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11, color: '#6366f1', cursor: 'pointer', padding: '2px 8px' }}>
-                    {showComboParams.has(optIdx) ? 'Ẩn' : 'Sửa nhóm'}
+                    {showComboParams.has(optIdx) ? 'Ẩn' : 'Sửa / Thêm'}
                   </button>
                 </div>
                 {showComboParams.has(optIdx) && (
-                  <Grid2 container spacing={1} sx={{ mb: 1 }}>
-                    {(opt.components || []).map((comp, ci) => (
-                      <Grid2 key={ci} size={{ xs: 4 }}>
-                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                          <CustomTextField fullWidth size='small' label='Key' value={comp.key}
-                            onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
-                          <span style={{ color: '#94a3b8' }}>→</span>
-                          <CustomTextField fullWidth size='small' label='Param NCC' value={comp.param_name}
-                            onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
-                        </div>
-                      </Grid2>
-                    ))}
-                  </Grid2>
+                  <div style={{ marginBottom: 8 }}>
+                    <Grid2 container spacing={1} sx={{ mb: 1 }}>
+                      {(opt.components || []).map((comp, ci) => (
+                        <Grid2 key={ci} size={{ xs: 6 }}>
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <CustomTextField fullWidth size='small' label='Key' placeholder='country' value={comp.key}
+                              onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
+                            <span style={{ color: '#94a3b8' }}>→</span>
+                            <CustomTextField fullWidth size='small' label='Param gửi NCC' placeholder='country_code' value={comp.param_name}
+                              onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
+                            <button type='button' title='Xoá thành phần'
+                              onClick={() => update(optIdx, { components: (opt.components || []).filter((_, i) => i !== ci) })}
+                              style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: 14, padding: 2, lineHeight: 1, flexShrink: 0 }}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#ef4444' }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#cbd5e1' }}>✕</button>
+                          </div>
+                        </Grid2>
+                      ))}
+                    </Grid2>
+                    <Button size='small' variant='text' startIcon={<Plus size={13} />} sx={{ fontSize: 11 }}
+                      onClick={() => update(optIdx, { components: [...(opt.components || []), { key: '', param_name: '' }] })}>
+                      Thêm thành phần (field gửi NCC)
+                    </Button>
+                  </div>
                 )}
 
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 12, marginBottom: 6 }}>
-                  Mỗi <strong>dòng = 1 gói</strong> khách thấy (vd "Mỹ — California"). Điền giá trị NCC thật cho từng cột (cờ + các thành phần + tên hiển thị).
-                </div>
-
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
-                  Danh sách gói ({(opt.options || []).length})
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#6d28d9', marginTop: 16, marginBottom: 6 }}>
+                  Bước 2 · Danh sách gói ({(opt.options || []).length})
+                  <span style={{ fontWeight: 400, color: '#94a3b8' }}> — mỗi dòng 1 gói khách thấy; điền giá trị NCC cho từng field (preview "→ gửi NCC" ở dưới mỗi dòng)</span>
                 </div>
                 {(() => {
                   const comps = opt.components || []
@@ -659,7 +664,8 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                         </div>
                       )}
                       {(opt.options || []).map((cb, ci) => (
-                        <div key={ci} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, marginBottom: 5, alignItems: 'center' }}>
+                        <div key={ci} style={{ marginBottom: 6 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, alignItems: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
                             {(cb as any).flag
                               ? <img src={`https://flagcdn.com/w20/${(cb as any).flag}.png`} alt='' style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
@@ -683,6 +689,12 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                             onClick={() => update(optIdx, { options: (opt.options || []).filter((_, i) => i !== ci) })}>
                             <Trash2 size={14} />
                           </Button>
+                        </div>
+                        {comps.length > 0 && (
+                          <div style={{ fontSize: 10.5, color: '#94a3b8', paddingLeft: 102, marginTop: 2 }}>
+                            → gửi NCC: {comps.map(c => `${c.param_name || c.key}=${(cb as any).values?.[c.key] || '—'}`).join('  ·  ')}
+                          </div>
+                        )}
                         </div>
                       ))}
                     </>
