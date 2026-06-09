@@ -145,6 +145,7 @@ export interface ApiConfigRotate {
   params_json: string
   response_http: string
   response_socks5: string
+  response_real_ip: string
   double_ampersand: boolean
   rotate_params: RotateParamRule[]
 }
@@ -437,6 +438,7 @@ export const defaultValues: FormValues = {
     params_json: '',
     response_http: 'http',
     response_socks5: 'socks5',
+    response_real_ip: '',
     double_ampersand: false,
     rotate_params: [],
   },

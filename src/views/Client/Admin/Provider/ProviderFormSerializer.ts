@@ -307,6 +307,7 @@ export function parseApiConfig(apiConfig: any): Partial<FormValues> {
       params_json: rotate.params ? JSON.stringify(rotate.params) : '',
       response_http: rotate.response?.proxy_fields?.http || 'http',
       response_socks5: rotate.response?.proxy_fields?.socks5 || 'socks5',
+      response_real_ip: rotate.response?.proxy_fields?.real_ip || '',
       double_ampersand: rotate.double_ampersand || false,
       rotate_params: Array.isArray(rotate.rotate_params)
         ? rotate.rotate_params.map((rp: any) => ({
@@ -612,6 +613,8 @@ export function buildApiConfig(form: FormValues): object | null {
         proxy_fields: {
           http: form.rotate.response_http || 'http',
           socks5: form.rotate.response_socks5 || 'socks5',
+          // IP gốc NCC trả về (nếu có) — chỉ lưu khi admin khai báo field
+          ...(form.rotate.response_real_ip ? { real_ip: form.rotate.response_real_ip } : {}),
         }
       },
       ...(form.rotate.rotate_params?.length ? {

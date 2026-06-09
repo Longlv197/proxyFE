@@ -177,6 +177,16 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
           </Box>
         )}
 
+        {/* IP gốc NCC trả về (nếu NCC có cấu hình field) */}
+        {localProxy?.real_ip && (
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant='body2' color='text.secondary'>IP gốc (NCC):</Typography>
+            <Typography sx={{ fontFamily: 'monospace', fontWeight: 600, color: '#059669', fontSize: '0.9rem' }}>{localProxy.real_ip}</Typography>
+            <Button variant='text' size='small' startIcon={<Copy size={13} />} sx={{ minWidth: 0 }}
+              onClick={() => copy(localProxy.real_ip, 'Đã copy IP gốc!')} />
+          </Box>
+        )}
+
         {/* Panel chế độ xoay — hiện khi có orderKey. Nút xoay tay hiện KỂ CẢ khi chưa load được cấu hình (BE lỗi/chưa deploy). */}
         {orderKey && (
           <>

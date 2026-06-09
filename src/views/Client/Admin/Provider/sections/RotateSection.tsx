@@ -195,6 +195,11 @@ function RotateSection({ control }: SectionProps) {
                   )} />
                 </Grid2>
                 <Grid2 size={{ xs: 6, sm: 4 }}>
+                  <Controller name='rotate.response_real_ip' control={control} render={({ field }) => (
+                    <CustomTextField {...field} fullWidth label='Field IP gốc (NCC trả về)' placeholder='realIpAddress' helperText='IP exit thật NCC trả khi xoay. Bỏ trống nếu NCC không có.' />
+                  )} />
+                </Grid2>
+                <Grid2 size={{ xs: 6, sm: 4 }}>
                   <Controller name='rotate.double_ampersand' control={control} render={({ field: { value, onChange, ...field } }) => (
                     <CustomTextField
                       {...field}
