@@ -544,14 +544,16 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
               </div>
               <Grid2 container spacing={1.5}>
                 <Grid2 size={{ xs: 3 }}>
-                  <CustomTextField fullWidth size='small' label='Key nội bộ' placeholder='country' value={opt.key}
+                  <CustomTextField fullWidth size='small' label='Key (gửi đi)' placeholder='country' value={opt.key}
                     onChange={(e: any) => update(optIdx, { key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
                 </Grid2>
-                <Grid2 size={{ xs: 3 }}>
-                  <CustomTextField fullWidth size='small' label='Param gửi NCC' placeholder='country_code' value={opt.param_name}
-                    onChange={(e: any) => update(optIdx, { param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
-                </Grid2>
-                <Grid2 size={{ xs: 3 }}>
+                {opt.type !== 'combo' && (
+                  <Grid2 size={{ xs: 3 }}>
+                    <CustomTextField fullWidth size='small' label='Param gửi NCC' placeholder='country_code' value={opt.param_name}
+                      onChange={(e: any) => update(optIdx, { param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
+                  </Grid2>
+                )}
+                <Grid2 size={{ xs: opt.type === 'combo' ? 6 : 3 }}>
                   <CustomTextField fullWidth size='small' label='Label hiển thị' placeholder='Quốc gia' value={opt.label}
                     onChange={(e: any) => update(optIdx, { label: e.target.value })} />
                 </Grid2>
