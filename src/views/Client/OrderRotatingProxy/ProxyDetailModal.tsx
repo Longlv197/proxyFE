@@ -8,7 +8,6 @@ import {
   Button,
   Typography,
   Box,
-  Chip,
   Switch,
   TextField,
   MenuItem,
@@ -186,15 +185,6 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}><CircularProgress size={22} /></Box>
             ) : rot ? (
               <Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>Chế độ xoay IP</Typography>
-                  <Chip size='small'
-                    label={rot.auto_rotate ? `Tự động · ${fmtInterval(rot.auto_rotate_interval)}` : 'Thủ công'}
-                    sx={{ fontSize: 11, fontWeight: 600,
-                      bgcolor: rot.auto_rotate ? '#ecfdf5' : '#eff6ff',
-                      color: rot.auto_rotate ? '#047857' : '#1d4ed8' }} />
-                </Box>
-
                 {/* Nút xoay/lấy proxy thủ công */}
                 {rot.allow_manual && (
                   <Button fullWidth variant='contained' color='warning' disableElevation
@@ -214,7 +204,7 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                         <Zap size={15} color='#f59e0b' />
-                        <Typography sx={{ fontSize: 13, fontWeight: 600 }}>Tự động xoay</Typography>
+                        <Typography sx={{ fontSize: 13, fontWeight: 600 }}>Tự động đổi IP định kỳ</Typography>
                       </Box>
                       <Switch size='small' color='warning' checked={rot.auto_rotate} disabled={savingMode}
                         onChange={e => saveMode(e.target.checked)} />
@@ -230,8 +220,8 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
                     )}
                     <Typography sx={{ fontSize: 11, color: '#94a3b8', mt: 0.75 }}>
                       {rot.auto_rotate
-                        ? `Hệ thống tự đổi IP mỗi ${fmtInterval(rot.auto_rotate_interval)}.`
-                        : 'Bật để hệ thống tự đổi IP theo chu kỳ (không cần gọi API).'}
+                        ? `Hệ thống tự đổi IP mỗi ${fmtInterval(rot.auto_rotate_interval)} — không cần gọi API.`
+                        : `Bật để hệ thống tự đổi IP định kỳ. Chu kỳ tối thiểu cho sản phẩm này: ${fmtInterval(rot.min_interval)}.`}
                     </Typography>
                   </Box>
                 )}
