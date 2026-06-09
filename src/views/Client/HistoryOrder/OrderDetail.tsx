@@ -198,6 +198,7 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
 
           const proxys = row.original.proxy || row.original.proxys || {}
           const proxyStr = extractProxyValue(proxys)
+          const realIp = (proxys as any)?.real_ip || ''  // IP gốc NCC trả về (nếu cấu hình)
           const apiKey = row.original?.key || row.original?.api_key || ''
           const showProxy = !!proxyStr && proxyStr !== '-'
           // STATIC không cần key, các mode còn lại hiện key nếu có
@@ -231,6 +232,7 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
             <div style={{ fontFamily: 'monospace', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {showProxy && renderRow('PROXY', proxyStr, `proxy-${row.id}`, '#0f172a')}
               {showKey && renderRow('KEY', apiKey, `key-${row.id}`, '#dc2626')}
+              {realIp && renderRow('IP GỐC', realIp, `realip-${row.id}`, '#059669')}
               {!showProxy && !showKey && (
                 <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>Chưa có dữ liệu</span>
               )}
@@ -281,11 +283,14 @@ return days > 0 ? `${days}d ${hours}h` : `${hours}h`
             <button type='button'
               onClick={() => setRotateRow({ key: k, proxy: row.original.proxy || row.original.proxys || null })}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px',
-                borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
-                border: '1px solid #fcd34d', background: '#fffbeb', color: '#b45309'
-              }}>
-              <RefreshCw size={12} /> Xoay / Cài đặt
+                display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px',
+                borderRadius: 8, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit',
+                border: 'none', background: '#6366f1', color: '#fff',
+                boxShadow: '0 1px 3px rgba(99,102,241,0.35)', transition: 'background .15s'
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#4f46e5' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#6366f1' }}>
+              <RefreshCw size={13} /> Xoay / Cài đặt
             </button>
           )
         },
