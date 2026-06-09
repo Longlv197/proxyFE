@@ -77,6 +77,7 @@ export default function OrderRotatingProxyPage() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedProxy, setSelectedProxy] = useState<any | null>(null)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const axiosAuth = useAxiosAuth()
   const queryClient = useQueryClient()
@@ -209,18 +210,22 @@ export default function OrderRotatingProxyPage() {
 
   const handleOpenModal = async (key: string) => {
     setLoadingId(key)
+    setSelectedKey(key)
 
     try {
       const res = await axiosAuth.post('/proxies/new', { key })
 
-      if (res.data.success) {
-        setSelectedProxy(res.data.data)
+      // Có proxy → hiển thị. Chưa có (đơn mới chưa kích hoạt) → vẫn mở modal để khách bấm "Lấy proxy/Xoay IP".
+      setSelectedProxy(res.data?.success ? res.data.data : null)
+      setModalOpen(true)
+    } catch (error: any) {
+      // NO_PROXY_DATA (đơn mới chưa kích hoạt) → mở modal trống cho khách kích hoạt; lỗi khác → toast
+      if (error?.response?.data?.error === 'NO_PROXY_DATA') {
+        setSelectedProxy(null)
         setModalOpen(true)
       } else {
-        toast.error(res.data.message)
+        toast.error(error?.response?.data?.message || 'Có lỗi xảy ra')
       }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Có lỗi xảy ra')
     } finally {
       setLoadingId(null)
     }
@@ -698,8 +703,11 @@ export default function OrderRotatingProxyPage() {
         onClose={() => {
           setModalOpen(false)
           setSelectedProxy(null)
+          setSelectedKey(null)
         }}
         proxy={selectedProxy}
+        orderKey={selectedKey}
+        onProxyChange={(data: any) => setSelectedProxy(data)}
       />
     </>
   )
