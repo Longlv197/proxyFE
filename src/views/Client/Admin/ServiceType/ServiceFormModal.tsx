@@ -1134,6 +1134,8 @@ return { values: {}, errors: formattedErrors }
   // Residential metadata (kind/proxy_host/tariff_durations/shared_proxy_hosts/custom_fields)
   // Tách state riêng để không động vào purchaseOptions cũ. Submit merge khi isResidential.
   const [residentialMeta, setResidentialMeta] = useState<any>({})
+  // Cấu hình chế độ xoay (mode mới): cho xoay tay / cho bật auto / chu kỳ tối thiểu (sàn 60s)
+  const [rotationConfig, setRotationConfig] = useState<{ allow_manual: boolean; allow_auto: boolean; min_interval: number }>({ allow_manual: true, allow_auto: true, min_interval: 60 })
 
 
   // Load service data when editing
@@ -1245,6 +1247,15 @@ return { values: {}, errors: formattedErrors }
       )
       setPriceQuantityMode(meta.price_quantity_mode === 'package' ? 'package' : 'multiply')
       setTrackPackageUsage(meta.track_package_usage === true)
+      // Cấu hình chế độ xoay — default cho cả 2 mode; SP cũ chưa có metadata.rotation thì lấy rotation_interval cũ làm min (sàn 60s)
+      {
+        const rot = meta.rotation || {}
+        setRotationConfig({
+          allow_manual: rot.allow_manual !== false,
+          allow_auto: rot.allow_auto !== false,
+          min_interval: Math.max(parseInt(rot.min_interval) || parseInt(serviceData.rotation_interval) || 60, 60),
+        })
+      }
       // Residential metadata — load nếu kind=residential
       if (meta.kind === 'residential') {
         setResidentialMeta({
@@ -1305,6 +1316,7 @@ return { values: {}, errors: formattedErrors }
       setDiscountTiers([])
       setQuantityTiers([])
       setResidentialMeta({})
+      setRotationConfig({ allow_manual: true, allow_auto: true, min_interval: 60 })
       setPricingMode('fixed')
       setPriceQuantityMode('multiply')
       setTrackPackageUsage(false)
@@ -1441,6 +1453,18 @@ return { values: {}, errors: formattedErrors }
       if (residentialMeta?.shared_proxy_hosts)  metadataFinal.shared_proxy_hosts = residentialMeta.shared_proxy_hosts
     }
 
+    // Cấu hình chế độ xoay — chỉ SP xoay (type=1). min_interval sàn 60s.
+    // Giữ cột rotation_interval = min_interval cho backfill/child-sync fallback (BE đọc khi item thiếu auto_rotate_interval).
+    if (String(data.type) === '1') {
+      const minInt = Math.max(Number(rotationConfig.min_interval) || 60, 60)
+      metadataFinal.rotation = {
+        allow_manual: rotationConfig.allow_manual,
+        allow_auto: rotationConfig.allow_auto,
+        min_interval: minInt,
+      }
+      data.rotation_interval = String(minInt)
+    }
+
     const submitData: any = {
       ...data,
       note: cleanNote,
@@ -1533,9 +1557,9 @@ return { values: {}, errors: formattedErrors }
   const isPending = createMutation.isPending || updateMutation.isPending
 
   // useWatch cô lập re-render — chỉ re-render khi các field này thay đổi
-  const [watchedType, watchedRotationType, watchedTag, watchedStatus, watchedAuthType, watchedRotationInterval] = useWatch({
+  const [watchedType, watchedRotationType, watchedTag, watchedStatus, watchedAuthType] = useWatch({
     control,
-    name: ['type', 'rotation_type', 'tag', 'status', 'auth_type', 'rotation_interval'],
+    name: ['type', 'rotation_type', 'tag', 'status', 'auth_type'],
   })
 
   // Duration options — useMemo thay vì useState+useEffect (tránh infinite loop)
@@ -2034,49 +2058,43 @@ return <Chip key={val} label={p?.label || val} size='small' />
               </Grid2>
               </div>
 
-              {/* ========== Section: Tự động xoay IP (chỉ Rotating) ========== */}
+              {/* ========== Section: Chế độ xoay IP (chỉ Rotating) ========== */}
               {watchedType === '1' && (
-              <CollapsibleSection title='Tự động xoay IP' icon={RefreshCw} iconColor='#f59e0b' iconBg='#fffbeb'>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Switch
-                    checked={!!watchedRotationInterval}
-                    onChange={e => {
-                      const field = control._fields?.rotation_interval
-                      if (e.target.checked) {
-                        setValue('rotation_interval', '60')
-                      } else {
-                        setValue('rotation_interval', '')
-                      }
-                    }}
-                    size='small'
-                    color='warning'
-                  />
-                  {watchedRotationInterval ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Typography sx={{ fontSize: 13, color: '#1e293b' }}>Xoay mỗi</Typography>
-                      <Controller name='rotation_interval' control={control} render={({ field: { value, onChange, ...field } }) => {
-                        const presets = ['30', '60', '120', '300', '600', '1800', '3600']
-                        const strVal = String(value || '60')
-                        const isCustom = strVal && !presets.includes(strVal)
-                        const fmt = (s: number) => s >= 3600 ? (s / 3600) + ' giờ' : s >= 60 ? (s / 60) + ' phút' : s + ' giây'
-                        return (
-                          <CustomTextField {...field} value={strVal} onChange={(e: any) => onChange(e.target.value)} select size='small' sx={{ width: 140 }}>
-                            <MenuItem value='30'>30 giây</MenuItem>
-                            <MenuItem value='60'>1 phút</MenuItem>
-                            <MenuItem value='120'>2 phút</MenuItem>
-                            <MenuItem value='300'>5 phút</MenuItem>
-                            <MenuItem value='600'>10 phút</MenuItem>
-                            <MenuItem value='1800'>30 phút</MenuItem>
-                            <MenuItem value='3600'>1 giờ</MenuItem>
-                            {isCustom && <MenuItem value={strVal}>{fmt(Number(strVal))}</MenuItem>}
-                          </CustomTextField>
-                        )
-                      }} />
-                    </Box>
-                  ) : (
-                    <Typography sx={{ fontSize: 13, color: '#94a3b8' }}>Tắt — hệ thống không tự xoay IP</Typography>
-                  )}
-                </Box>
+              <CollapsibleSection title='Chế độ xoay IP' icon={RefreshCw} iconColor='#f59e0b' iconBg='#fffbeb'>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.7 }}>
+                  Đơn mới <strong>mặc định xoay thủ công</strong> — khách bấm "Xoay IP" mới gọi NCC. Khách có thể tự bật <strong>tự động xoay</strong> ở trang đơn (nếu cho phép) và chọn chu kỳ ≥ mức tối thiểu dưới đây.
+                </div>
+                <Grid2 container spacing={1.5} alignItems='center'>
+                  <Grid2 size={{ xs: 12, sm: 6 }}>
+                    <FormControlLabel
+                      control={<Switch size='small' color='warning' checked={rotationConfig.allow_manual}
+                        onChange={e => setRotationConfig(c => ({ ...c, allow_manual: e.target.checked }))} />}
+                      label={<Typography sx={{ fontSize: 13, fontWeight: 600 }}>Cho khách xoay thủ công</Typography>}
+                      sx={{ ml: 0 }}
+                    />
+                  </Grid2>
+                  <Grid2 size={{ xs: 12, sm: 6 }}>
+                    <FormControlLabel
+                      control={<Switch size='small' color='warning' checked={rotationConfig.allow_auto}
+                        onChange={e => setRotationConfig(c => ({ ...c, allow_auto: e.target.checked }))} />}
+                      label={<Typography sx={{ fontSize: 13, fontWeight: 600 }}>Cho khách bật tự động xoay</Typography>}
+                      sx={{ ml: 0 }}
+                    />
+                  </Grid2>
+                  <Grid2 size={{ xs: 12, sm: 6 }}>
+                    <CustomTextField select fullWidth size='small' label='Chu kỳ tối thiểu'
+                      value={String(rotationConfig.min_interval)}
+                      onChange={(e: any) => setRotationConfig(c => ({ ...c, min_interval: Number(e.target.value) }))}
+                      helperText='Sàn chu kỳ auto + khoảng cách tối thiểu giữa 2 lần xoay tay (chống spam NCC)'>
+                      <MenuItem value='60'>1 phút</MenuItem>
+                      <MenuItem value='120'>2 phút</MenuItem>
+                      <MenuItem value='300'>5 phút</MenuItem>
+                      <MenuItem value='600'>10 phút</MenuItem>
+                      <MenuItem value='1800'>30 phút</MenuItem>
+                      <MenuItem value='3600'>1 giờ</MenuItem>
+                    </CustomTextField>
+                  </Grid2>
+                </Grid2>
               </CollapsibleSection>
               )}
 
