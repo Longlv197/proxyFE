@@ -2654,18 +2654,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
 
                 {/* Tuỳ chọn mua hàng + Location tree đã chuyển ra section riêng bên dưới */}
 
-                {/* Residential extras — balance + proxy_host khi proxy_type=residential.
-                    Custom_fields/options đã dùng PurchaseOptionsSection chung (source=api_*). */}
-                {isResidential && selectedProviderMain && (
-                  <Grid2 size={{ xs: 12 }} sx={{ mt: 1 }}>
-                    <ResidentialConfigSection
-                      providerCode={selectedProviderMain.provider_code}
-                      providerApiConfig={selectedProviderMain.api_config}
-                      value={residentialMeta}
-                      onChange={setResidentialMeta}
-                    />
-                  </Grid2>
-                )}
+                {/* Residential config đã chuyển ra section "Residential / Gói GB" riêng bên dưới */}
 
                 {/* Lưu thêm dữ liệu từ nhà cung cấp — per sản phẩm */}
                 <Grid2 size={{ xs: 12 }}>
@@ -2735,6 +2724,38 @@ return <Chip key={val} label={p?.label || val} size='small' />
                 />
               </CollapsibleSection>
 
+              {/* ========== Section: Residential / Gói GB (chỉ khi proxy_type = Dân cư) ========== */}
+              {isResidential && (
+                <CollapsibleSection title='Residential / Gói GB' icon={Tag} iconColor='#a855f7' iconBg='#faf5ff' defaultOpen={true}>
+                  {selectedProviderMain && (
+                    <ResidentialConfigSection
+                      providerCode={selectedProviderMain.provider_code}
+                      providerApiConfig={selectedProviderMain.api_config}
+                      value={residentialMeta}
+                      onChange={setResidentialMeta}
+                    />
+                  )}
+                  <Grid2 container spacing={1.5} sx={{ mt: 1.5 }}>
+                    <Grid2 size={{ xs: 12, sm: 4 }}>
+                      <CustomTextField select fullWidth size='small' label='Giá theo số lượng' value={priceQuantityMode}
+                        onChange={(e) => setPriceQuantityMode(e.target.value as 'multiply' | 'package')}
+                        helperText={priceQuantityMode === 'package' ? 'Mua bao nhiêu proxy cũng 1× giá gói' : 'Giá × số lượng proxy'}>
+                        <MenuItem value='multiply'>Tính theo số lượng (× SL)</MenuItem>
+                        <MenuItem value='package'>Cố định theo gói (không × SL)</MenuItem>
+                      </CustomTextField>
+                    </Grid2>
+                    <Grid2 size={{ xs: 12, sm: 4 }}>
+                      <CustomTextField select fullWidth size='small' label='Đồng bộ dung lượng gói (GB)' value={trackPackageUsage ? 'true' : 'false'}
+                        onChange={(e) => setTrackPackageUsage(e.target.value === 'true')}
+                        helperText='Bật → tự cập nhật dung lượng/hạn còn lại (cần "Info package" ở NCC).'>
+                        <MenuItem value='false'>Không</MenuItem>
+                        <MenuItem value='true'>Có — sync mỗi 30 phút</MenuItem>
+                      </CustomTextField>
+                    </Grid2>
+                  </Grid2>
+                </CollapsibleSection>
+              )}
+
               {/* ========== Section: Cấu hình API (nhà cung cấp) ========== */}
               <CollapsibleSection title='Cấu hình Provider' icon={Globe} iconColor='#16a34a' iconBg='#f0fdf4'>
                 <Grid2 container spacing={1}>
@@ -2787,35 +2808,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                     </CustomTextField>
                   </Grid2>
 
-                  {isResidential && (
-                    <Grid2 size={{ xs: 12, sm: 4 }}>
-                      <CustomTextField
-                        select fullWidth size='small'
-                        label='Giá theo số lượng'
-                        value={priceQuantityMode}
-                        onChange={(e) => setPriceQuantityMode(e.target.value as 'multiply' | 'package')}
-                        helperText={priceQuantityMode === 'package' ? 'Mua bao nhiêu proxy cũng 1× giá gói' : 'Giá × số lượng proxy'}
-                      >
-                        <MenuItem value='multiply'>Tính theo số lượng (× SL)</MenuItem>
-                        <MenuItem value='package'>Cố định theo gói (không × SL)</MenuItem>
-                      </CustomTextField>
-                    </Grid2>
-                  )}
-
-                  {isResidential && (
-                    <Grid2 size={{ xs: 12, sm: 4 }}>
-                      <CustomTextField
-                        select fullWidth size='small'
-                        label='Đồng bộ dung lượng gói (GB)'
-                        value={trackPackageUsage ? 'true' : 'false'}
-                        onChange={(e) => setTrackPackageUsage(e.target.value === 'true')}
-                        helperText='Bật → tự cập nhật dung lượng/hạn còn lại (cần "Info package" ở NCC).'
-                      >
-                        <MenuItem value='false'>Không</MenuItem>
-                        <MenuItem value='true'>Có — sync mỗi 30 phút</MenuItem>
-                      </CustomTextField>
-                    </Grid2>
-                  )}
+                  {/* Giá theo gói + Đồng bộ dung lượng đã chuyển sang section "Residential / Gói GB" */}
 
                   <Grid2 size={{ xs: 12 }}>
                     {(() => {
