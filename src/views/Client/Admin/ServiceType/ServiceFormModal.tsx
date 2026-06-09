@@ -621,15 +621,18 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 </div>
                 {showComboParams.has(optIdx) && (
                   <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 10.5, color: '#94a3b8', marginBottom: 6 }}>
+                      <strong>Key gửi NCC</strong> = key thật sự gửi đối tác. <strong>Mã cột</strong> = nhãn nội bộ (không gửi). <strong>Value</strong> điền theo từng gói ở Bước 2.
+                    </div>
                     <Grid2 container spacing={1} sx={{ mb: 1 }}>
                       {(opt.components || []).map((comp, ci) => (
                         <Grid2 key={ci} size={{ xs: 6 }}>
                           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <CustomTextField fullWidth size='small' label='Key' placeholder='country' value={comp.key}
-                              onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
-                            <span style={{ color: '#94a3b8' }}>→</span>
-                            <CustomTextField fullWidth size='small' label='Param gửi NCC' placeholder='country_code' value={comp.param_name}
+                            <CustomTextField fullWidth size='small' label='Key gửi NCC' placeholder='country_code' value={comp.param_name}
                               onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
+                            <span style={{ color: '#94a3b8' }}>·</span>
+                            <CustomTextField fullWidth size='small' label='Mã cột' placeholder='country' value={comp.key}
+                              onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
                             <button type='button' title='Xoá thành phần'
                               onClick={() => update(optIdx, { components: (opt.components || []).filter((_, i) => i !== ci) })}
                               style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: 14, padding: 2, lineHeight: 1, flexShrink: 0 }}
@@ -648,7 +651,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
 
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#6d28d9', marginTop: 16, marginBottom: 6 }}>
                   Bước 2 · Danh sách gói ({(opt.options || []).length})
-                  <span style={{ fontWeight: 400, color: '#94a3b8' }}> — mỗi dòng 1 gói khách thấy; điền giá trị NCC cho từng field (preview "→ gửi NCC" ở dưới mỗi dòng)</span>
+                  <span style={{ fontWeight: 400, color: '#94a3b8' }}> — mỗi dòng 1 gói khách thấy. Cột = <strong>Key gửi NCC</strong>, ô nhập = <strong>Value gửi NCC</strong> (preview "→ gửi NCC: key=value" ở dưới mỗi dòng)</span>
                 </div>
                 {(() => {
                   const comps = opt.components || []
@@ -658,7 +661,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                       {(opt.options || []).length > 0 && (
                         <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, padding: '0 2px 4px', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.3 }}>
                           <div>Cờ</div>
-                          {comps.map(c => <div key={c.key} title={`→ ${c.param_name}`}>{c.key}</div>)}
+                          {comps.map(c => <div key={c.key} title={`mã cột: ${c.key}`}>{c.param_name || c.key}</div>)}
                           <div>Tên hiển thị (khách thấy)</div>
                           <div />
                         </div>
@@ -666,15 +669,13 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                       {(opt.options || []).map((cb, ci) => (
                         <div key={ci} style={{ marginBottom: 6 }}>
                         <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, alignItems: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                            {(cb as any).flag
-                              ? <img src={`https://flagcdn.com/w20/${(cb as any).flag}.png`} alt='' style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
-                              : <span style={{ width: 20, height: 14, borderRadius: 1, background: '#f1f5f9', flexShrink: 0 }} />}
-                            <CustomTextField size='small' placeholder='us' value={(cb as any).flag || ''}
-                              onChange={(e: any) => { const opts = [...(opt.options || [])]; opts[ci] = { ...opts[ci], flag: e.target.value.toLowerCase().replace(/[^a-z]/g, '') } as any; update(optIdx, { options: opts }) }} />
-                          </div>
+                          <CustomTextField size='small' fullWidth placeholder='cờ (us)' value={(cb as any).flag || ''}
+                            onChange={(e: any) => { const opts = [...(opt.options || [])]; opts[ci] = { ...opts[ci], flag: e.target.value.toLowerCase().replace(/[^a-z]/g, '') } as any; update(optIdx, { options: opts }) }}
+                            slotProps={{ input: { startAdornment: (cb as any).flag
+                              ? <img src={`https://flagcdn.com/w20/${(cb as any).flag}.png`} alt='' style={{ width: 18, height: 12, objectFit: 'cover', borderRadius: 1, marginRight: 5, flexShrink: 0 }} />
+                              : undefined } }} />
                           {comps.map((comp) => (
-                            <CustomTextField key={comp.key} size='small' placeholder={comp.key}
+                            <CustomTextField key={comp.key} size='small' placeholder={`value ${comp.param_name || comp.key}`}
                               value={(cb as any).values?.[comp.key] || ''}
                               onChange={(e: any) => {
                                 const opts = [...(opt.options || [])]
