@@ -466,10 +466,27 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
             <span style={{ background: '#c4b5fd', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700, color: '#fff' }}>Lớp 3</span>
             Khách chọn khi mua — hiện trên form checkout
           </div>
-          <Button size='small' variant='outlined' type='button'
-            onClick={() => onChange([...options, { key: '', param_name: '', label: '', type: 'select', required: true, default: '', display_type: '', options: [{ provider_value: '', label: '' }] }])}>
-            + Thêm tuỳ chọn
-          </Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {providerSupportsResidential && (
+              <Button size='small' variant='contained' type='button' sx={{ background: '#7c3aed', '&:hover': { background: '#6d28d9' } }}
+                onClick={() => onChange([...options, {
+                  key: 'location', param_name: '', label: 'Vị trí', type: 'combo', required: true, default: '', display_type: '',
+                  stage: 'fetch',
+                  components: [
+                    { key: 'country', param_name: 'country_code' },
+                    { key: 'region', param_name: 'region_name' },
+                    { key: 'city', param_name: 'city' },
+                  ],
+                  options: [],
+                }])}>
+                + Gói vị trí (Combo)
+              </Button>
+            )}
+            <Button size='small' variant='outlined' type='button'
+              onClick={() => onChange([...options, { key: '', param_name: '', label: '', type: 'select', required: true, default: '', display_type: '', options: [{ provider_value: '', label: '' }] }])}>
+              + Thêm tuỳ chọn
+            </Button>
+          </div>
         </div>
 
         {options.length === 0 && (
@@ -609,31 +626,60 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                   </Grid2>
                 )}
 
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 14, marginBottom: 6 }}>
-                  Danh sách gói ({(opt.options || []).length}) — mỗi gói = 1 lựa chọn user thấy
+                <div style={{ fontSize: 11, color: '#6d28d9', marginTop: 12, marginBottom: 8, background: '#faf5ff', border: '1px solid #f0e6ff', borderRadius: 6, padding: '8px 10px', lineHeight: 1.7 }}>
+                  Mỗi <strong>dòng = 1 gói</strong> khách thấy (vd "Mỹ — California"). Khách chọn 1 gói → hệ thống tự gửi đủ{' '}
+                  <strong>{(opt.components || []).map(c => c.key).join(' + ') || 'các thành phần'}</strong> cho NCC. Điền giá trị NCC thật cho từng cột.
                 </div>
-                {(opt.options || []).map((cb, ci) => (
-                  <div key={ci} style={{ display: 'flex', gap: 6, marginBottom: 5, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {(opt.components || []).map((comp) => (
-                      <CustomTextField key={comp.key} size='small' label={comp.key} sx={{ width: 130 }}
-                        value={(cb as any).values?.[comp.key] || ''}
-                        onChange={(e: any) => {
-                          const opts = [...(opt.options || [])]
-                          const values = { ...((opts[ci] as any).values || {}), [comp.key]: e.target.value }
-                          opts[ci] = { ...opts[ci], values } as any
-                          update(optIdx, { options: opts })
-                        }} />
-                    ))}
-                    <CustomTextField size='small' label='Cờ (us)' sx={{ width: 80 }} value={(cb as any).flag || ''}
-                      onChange={(e: any) => { const opts = [...(opt.options || [])]; opts[ci] = { ...opts[ci], flag: e.target.value.toLowerCase().replace(/[^a-z]/g, '') } as any; update(optIdx, { options: opts }) }} />
-                    <CustomTextField size='small' label='Tên hiển thị' sx={{ minWidth: 200, flex: 1 }} value={cb.label}
-                      onChange={(e: any) => { const opts = [...(opt.options || [])]; opts[ci] = { ...opts[ci], label: e.target.value } as any; update(optIdx, { options: opts }) }} />
-                    <Button size='small' color='error' sx={{ minWidth: 32 }}
-                      onClick={() => update(optIdx, { options: (opt.options || []).filter((_, i) => i !== ci) })}>
-                      <Trash2 size={14} />
-                    </Button>
-                  </div>
-                ))}
+
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+                  Danh sách gói ({(opt.options || []).length})
+                </div>
+                {(() => {
+                  const comps = opt.components || []
+                  const gridCols = `96px ${comps.map(() => 'minmax(88px,1fr)').join(' ')} minmax(150px,1.4fr) 32px`
+                  return (
+                    <>
+                      {(opt.options || []).length > 0 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, padding: '0 2px 4px', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                          <div>Cờ</div>
+                          {comps.map(c => <div key={c.key} title={`→ ${c.param_name}`}>{c.key}</div>)}
+                          <div>Tên hiển thị (khách thấy)</div>
+                          <div />
+                        </div>
+                      )}
+                      {(opt.options || []).map((cb, ci) => (
+                        <div key={ci} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, marginBottom: 5, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                            {(cb as any).flag
+                              ? <img src={`https://flagcdn.com/w20/${(cb as any).flag}.png`} alt='' style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
+                              : <span style={{ width: 20, height: 14, borderRadius: 1, background: '#f1f5f9', flexShrink: 0 }} />}
+                            <CustomTextField size='small' placeholder='us' value={(cb as any).flag || ''}
+                              onChange={(e: any) => { const opts = [...(opt.options || [])]; opts[ci] = { ...opts[ci], flag: e.target.value.toLowerCase().replace(/[^a-z]/g, '') } as any; update(optIdx, { options: opts }) }} />
+                          </div>
+                          {comps.map((comp) => (
+                            <CustomTextField key={comp.key} size='small' placeholder={comp.key}
+                              value={(cb as any).values?.[comp.key] || ''}
+                              onChange={(e: any) => {
+                                const opts = [...(opt.options || [])]
+                                const values = { ...((opts[ci] as any).values || {}), [comp.key]: e.target.value }
+                                opts[ci] = { ...opts[ci], values } as any
+                                update(optIdx, { options: opts })
+                              }} />
+                          ))}
+                          <CustomTextField size='small' placeholder='vd: Mỹ — California' value={cb.label}
+                            onChange={(e: any) => { const opts = [...(opt.options || [])]; opts[ci] = { ...opts[ci], label: e.target.value } as any; update(optIdx, { options: opts }) }} />
+                          <Button size='small' color='error' sx={{ minWidth: 32, px: 0 }}
+                            onClick={() => update(optIdx, { options: (opt.options || []).filter((_, i) => i !== ci) })}>
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      ))}
+                    </>
+                  )
+                })()}
+                {(opt.options || []).length === 0 && (
+                  <p style={{ fontSize: 12, color: '#94a3b8', padding: '4px 0 8px' }}>Chưa có gói nào — bấm "Thêm gói" để tạo lựa chọn đầu tiên.</p>
+                )}
                 <Button size='small' variant='outlined' startIcon={<Plus size={14} />} sx={{ mt: 0.5 }}
                   onClick={() => {
                     const values: Record<string, string> = {}; (opt.components || []).forEach(c => { values[c.key] = '' })
@@ -641,9 +687,6 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                   }}>
                   Thêm gói
                 </Button>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>
-                  Điền giá trị NCC thật cho từng thành phần (vd country=US, region=California). Key gói tự sinh từ tên hiển thị khi lưu.
-                </div>
               </div>
             )}
 
@@ -1889,7 +1932,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                     </div>
                     <div style={{
                       display: 'flex', flexWrap: 'wrap', gap: 6,
-                      maxHeight: 88, overflowY: 'auto', paddingRight: 4,
+                      maxHeight: 116, overflowY: 'auto', paddingRight: 4,
                       border: '1px solid #e2e8f0', borderRadius: 6, padding: 6
                     }}>
                       {PREDEFINED_TAGS.map(preset => {
@@ -1900,15 +1943,16 @@ return <Chip key={val} label={p?.label || val} size='small' />
                         return (
                           <div key={preset} onClick={() => toggleTag(preset)} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,
-                            padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
-                            fontSize: '12px', fontWeight: 600, transition: 'all 0.15s ease',
+                            height: 28, padding: '0 11px', borderRadius: 6, cursor: 'pointer',
+                            fontSize: '12px', fontWeight: 600, transition: 'background .12s, border-color .12s, box-shadow .12s',
                             background: isActive ? (style.gradient || style.bgColor) : '#f8fafc',
                             color: isActive ? style.textColor : '#64748b',
                             border: isActive ? `1px solid ${style.borderColor}` : '1px solid #e2e8f0',
-                            transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                            boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
                           }}>
                             {style.icon && <span style={{ fontSize: '11px' }}>{style.icon}</span>}
                             {preset}
+                            {isActive && <span style={{ fontSize: '11px', opacity: 0.9 }}>✓</span>}
                           </div>
                         )
                       })}
