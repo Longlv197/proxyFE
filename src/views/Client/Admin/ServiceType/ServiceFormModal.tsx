@@ -42,7 +42,6 @@ import MultiInputModal from '@/views/Client/Admin/ServiceType/MultiInputModal'
 // PriceByDurationModal removed — giá theo thời gian giờ inline trong form
 import CollapsibleSection from '@/views/Client/Admin/ServiceType/CollapsibleSection'
 import ResidentialConfigSection from '@/views/Client/Admin/ServiceType/ResidentialConfigSection'
-import NccOptionsPickerModal from '@/views/Client/Admin/ServiceType/NccOptionsPickerModal'
 import { useBranding } from '@/app/contexts/BrandingContext'
 
 import { ROTATION_MODE_LABELS } from '@/constants/rotationMode'
@@ -369,12 +368,6 @@ interface PurchaseOption {
   // Combo: khai báo thành phần — mỗi cái map key nội bộ → param gửi NCC (country→country_code...)
   components?: Array<{ key: string; param_name: string }>
 
-  // Nguồn options. Linh hoạt cho NCC residential (load live từ API) — vẫn backward compat.
-  source?: 'manual' | 'api_tariffs' | 'api_countries' | 'api_regions' | 'api_cities'
-  // depends_on: tên key của field cha (cho regions=country, cities=region). Auto-set theo source.
-  depends_on?: string
-  // Snapshot dependent — admin pre-config: country='us' → 5 regions, country='vn' → 10 regions
-  options_by_parent?: Record<string, Array<{ key?: string; provider_value?: string; label: string }>>
   // Bước dùng field (NCC 2-stage như residential): 'buy' = gửi khi mua | 'fetch' = gửi khi tạo proxy.
   // Mặc định (không set) = 'buy' → hành vi cũ. Chỉ residential cần phân biệt.
   stage?: 'buy' | 'fetch'
@@ -390,12 +383,11 @@ const I18N_LOCALES: Array<{ code: string; label: string; flag: string }> = [
 ]
 
 const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
-  options, onChange, control, errors, countries, providerCode, providerSupportsResidential
+  options, onChange, control, errors, countries, providerSupportsResidential
 }: {
   options: PurchaseOption[]
   onChange: (options: PurchaseOption[]) => void
   control: any; errors: any; countries?: any[]
-  providerCode?: string | null
   providerSupportsResidential?: boolean
 }) {
   const update = (idx: number, patch: Partial<PurchaseOption>) => {
@@ -417,17 +409,6 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
     const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n
   })
 
-  // Modal picker state — admin chọn multi-select options từ NCC
-  // Dependent (api_regions/api_cities): cần parentCountryCode + parentRegionName + parentLabel
-  const [pickerOpen, setPickerOpen] = useState<{
-    idx: number
-    source: 'api_tariffs' | 'api_countries' | 'api_regions' | 'api_cities'
-    parentValue?: string         // value của parent (vd 'us')
-    parentLabel?: string         // label hiển thị (vd 'Vietnam')
-    parentCountryCode?: string   // cho api_cities: code country (vd 'VN')
-    parentRegionName?: string    // cho api_cities: tên region (vd 'Hanoi')
-  } | null>(null)
-
   // Di chuyển option lên/xuống — đổi thứ tự field hiển thị trên form mua proxy.
   const moveOption = (idx: number, dir: -1 | 1) => {
     const target = idx + dir
@@ -435,47 +416,6 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
     const next = [...options]
     ;[next[idx], next[target]] = [next[target], next[idx]]
     onChange(next)
-  }
-
-  // Fetch options từ NCC residential endpoint admin. Auto detect endpoint theo source.
-  const fetchFromNcc = async (idx: number, source: string) => {
-    if (!providerCode) {
-      toast.error('Chưa chọn nhà cung cấp')
-      return
-    }
-    const slug = providerCode.split('.')[0]
-    let endpoint = ''
-    if (source === 'api_tariffs') endpoint = 'tariffs'
-    else if (source === 'api_countries') endpoint = 'countries'
-    else { toast.error('Source này không hỗ trợ tải trực tiếp'); return }
-
-    try {
-      const axios = (await import('axios')).default
-      const token = typeof window !== 'undefined' ? (localStorage.getItem('accessToken') || '') : ''
-      const baseUrl = (process.env.NEXT_PUBLIC_API_URL as string) || ''
-      const res = await axios.get(`${baseUrl}/admin/${slug}/${endpoint}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const list = res?.data?.data ?? []
-
-      const newOptions = endpoint === 'tariffs'
-        ? list.map((t: any) => ({
-            key: t.key_suggest || `${t.traffic_gb}gb`,
-            provider_value: String(t.tariff_id),
-            label: `${t.name} — ${t.traffic_label} — ${t.price_label}`
-          }))
-        : list.map((c: any) => ({
-            key: c.code.toLowerCase(),
-            provider_value: c.code,
-            label: c.name,
-            flag: c.code.toLowerCase()
-          }))
-
-      update(idx, { options: newOptions })
-      toast.success(`Đã tải ${newOptions.length} options từ NCC. Tự xoá option không cần và sửa label.`)
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || e.message || 'Tải từ NCC lỗi')
-    }
   }
 
   return (
@@ -539,9 +479,6 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
         )}
 
         {options.map((opt, optIdx) => {
-          const isDependent = opt.source === 'api_regions' || opt.source === 'api_cities'
-          const isPickerSource = opt.source === 'api_tariffs' || opt.source === 'api_countries'
-
           return (
           <div key={optIdx} style={{
             background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10,
@@ -565,15 +502,16 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 {opt.label || opt.key || 'Tuỳ chọn mới'}
                 {opt.required && <span style={{ color: '#ef4444', marginLeft: 4 }}>*</span>}
               </span>
-              {opt.source && opt.source !== 'manual' && (() => {
-                const depField = opt.depends_on ? options.find(f => f.key === opt.depends_on) : null
-                return (
-                  <span style={{ fontSize: 10.5, background: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
-                    {opt.source.replace('api_', 'API: ')}
-                    {opt.depends_on && ` ← ${depField?.label || opt.depends_on}`}
-                  </span>
-                )
-              })()}
+              {opt.type === 'combo' && (
+                <span style={{ fontSize: 10.5, background: '#ede9fe', color: '#6d28d9', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                  Combo · {(opt.options || []).length} gói
+                </span>
+              )}
+              {opt.stage === 'fetch' && (
+                <span style={{ fontSize: 10.5, background: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                  Bước lấy proxy
+                </span>
+              )}
               <div style={{ flexGrow: 1 }} />
               <button type='button' onClick={() => onChange(options.filter((_, i) => i !== optIdx))} title='Xoá tuỳ chọn'
                 style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 4, borderRadius: 4 }}
@@ -709,155 +647,11 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
               </div>
             )}
 
-            {/* ─── Section 2: Nguồn dữ liệu (chỉ residential) ── */}
-            {providerSupportsResidential && (opt.type || 'select') === 'select' && (
-              <div style={{ padding: '0 12px 12px', borderTop: '1px dashed #e2e8f0' }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 12, marginBottom: 6 }}>
-                  Nguồn dữ liệu
-                </div>
-                <Grid2 container spacing={1.5} alignItems='center'>
-                  <Grid2 size={{ xs: 5 }}>
-                    <CustomTextField fullWidth size='small' select label='Source' value={opt.source || 'manual'}
-                      onChange={(e: any) => {
-                        const src = e.target.value
-                        const dep = src === 'api_regions' ? 'country' : src === 'api_cities' ? 'region' : ''
-                        const isDep = src === 'api_regions' || src === 'api_cities'
-                        update(optIdx, { source: src, depends_on: dep, options: isDep ? [] : opt.options })
-                      }}>
-                      <MenuItem value='manual'>Tự nhập (admin)</MenuItem>
-                      <MenuItem value='api_tariffs'>API: Tariffs (gói GB)</MenuItem>
-                      <MenuItem value='api_countries'>API: Countries</MenuItem>
-                      {/* Dependent dropdown (api_regions/api_cities) đã bỏ — location dùng field type=combo */}
-                    </CustomTextField>
-                  </Grid2>
-                  {isPickerSource && (
-                    <Grid2 size={{ xs: 7 }}>
-                      <Button size='small' variant='contained' fullWidth
-                        onClick={() => setPickerOpen({ idx: optIdx, source: opt.source as 'api_tariffs' | 'api_countries' })}
-                        disabled={!providerCode}
-                        sx={{ height: 38, background: opt.options.length > 0 ? '#6366f1' : '#94a3b8' }}
-                      >
-                        {opt.options.length > 0 ? `Sửa chọn (${opt.options.length} options)` : 'Chọn options từ NCC'}
-                      </Button>
-                    </Grid2>
-                  )}
-                  {isDependent && (
-                    <Grid2 size={{ xs: 7 }}>
-                      <div style={{ padding: '8px 12px', background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 6, fontSize: 12, color: '#4338ca' }}>
-                        Snapshot pre-config theo <code>{opt.depends_on}</code>. Cấu hình bên dưới ↓
-                      </div>
-                    </Grid2>
-                  )}
-                </Grid2>
-              </div>
-            )}
-
-            {/* ─── Section 2.5: Per-parent picker (cho dependent) ── */}
-            {isDependent && (() => {
-              const parentField = options.find(f => f.key === opt.depends_on)
-              const parentValues = parentField?.options || []
-              const obp = opt.options_by_parent || {}
-
-              if (parentValues.length === 0) {
-                return (
-                  <div style={{ padding: '12px', borderTop: '1px dashed #e2e8f0' }}>
-                    <div style={{ padding: '12px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 6, fontSize: 12, color: '#92400e' }}>
-                      ⚠ Field cha <strong>{opt.depends_on}</strong> chưa có option. Cấu hình field cha trước (chọn options qua "Chọn options từ NCC").
-                    </div>
-                  </div>
-                )
-              }
-
-              return (
-                <div style={{ padding: '12px', borderTop: '1px dashed #e2e8f0' }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
-                    Cấu hình {opt.label || opt.key || 'field này'} cho từng {parentField?.label || parentField?.key || opt.depends_on} ({parentValues.length} parent)
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 6 }}>
-                    {parentValues.map((pv: any) => {
-                      const pkey = pv.key || pv.value || ''
-                      const count = (obp[pkey] || []).length
-                      let parentCountry: string | undefined
-                      let parentRegion: string | undefined
-                      if (opt.source === 'api_regions') {
-                        parentCountry = String(pv.provider_value || pv.key || '').toUpperCase()
-                      } else if (opt.source === 'api_cities') {
-                        const regionField = options.find(f => f.key === opt.depends_on)
-                        const countryField = regionField ? options.find(f => f.key === regionField.depends_on) : null
-                        const obpRegion = regionField?.options_by_parent || {}
-                        for (const [cKey, regions] of Object.entries(obpRegion)) {
-                          if ((regions as any[]).some(r => (r.key || r.label) === pkey)) {
-                            const cOpt = countryField?.options.find(c => (c.key || c.value) === cKey)
-                            parentCountry = String(cOpt?.provider_value || cKey).toUpperCase()
-                            parentRegion = pv.label || pkey
-                            break
-                          }
-                        }
-                      }
-                      return (
-                        <div key={pkey} style={{
-                          padding: '8px 10px', border: count > 0 ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
-                          borderRadius: 6, background: count > 0 ? '#f0fdf4' : '#fff',
-                          display: 'flex', alignItems: 'center', gap: 8, minWidth: 0
-                        }}>
-                          {(pv as any).flag && (
-                            <img src={`https://flagcdn.com/w20/${(pv as any).flag}.png`} style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
-                          )}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={pv.label}>
-                              {pv.label}
-                            </div>
-                            <div style={{ fontSize: 10.5, color: count > 0 ? '#10b981' : '#94a3b8' }}>
-                              {count > 0 ? `✓ ${count} đã chọn` : 'Chưa cấu hình'}
-                            </div>
-                          </div>
-                          <Button size='small' variant={count > 0 ? 'outlined' : 'contained'} type='button'
-                            disabled={!providerCode || (opt.source === 'api_cities' && !parentCountry)}
-                            onClick={() => setPickerOpen({
-                              idx: optIdx,
-                              source: opt.source as any,
-                              parentValue: pkey,
-                              parentLabel: pv.label,
-                              parentCountryCode: parentCountry,
-                              parentRegionName: parentRegion
-                            })}
-                            sx={{ fontSize: 11, py: 0.25, px: 1.2, minWidth: 50, flexShrink: 0 }}
-                          >
-                            {count > 0 ? 'Sửa' : 'Tải'}
-                          </Button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })()}
-
-            {/* ─── Section 3a: Preview options (khi nguồn = picker NCC) — quản lý 1 chỗ qua nút "Chọn options" ── */}
-            {(opt.type || 'select') === 'select' && !isDependent && isPickerSource && (
+            {/* ─── Giá trị khách chọn (chỉ select) ── */}
+            {(opt.type || 'select') === 'select' && (
               <div style={{ padding: '12px', borderTop: '1px dashed #e2e8f0' }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
-                  Options đã chọn ({opt.options.length}) — sửa qua nút "Chọn options" ở trên
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {opt.options.length === 0 && (
-                    <span style={{ fontSize: 12, color: '#f59e0b' }}>Chưa chọn option nào — bấm "Chọn options từ NCC".</span>
-                  )}
-                  {opt.options.map((o: any, i: number) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', border: '1px solid #e2e8f0', borderRadius: 16, background: '#f8fafc', fontSize: 12, color: '#1e293b' }}>
-                      {o.flag && <img src={`https://flagcdn.com/w20/${o.flag}.png`} alt='' style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 1 }} />}
-                      <span>{o.label || o.provider_value || '—'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ─── Section 3: Display + Options list (chỉ khi nguồn = manual) ── */}
-            {(opt.type || 'select') === 'select' && !isDependent && !isPickerSource && (
-              <div style={{ padding: '12px', borderTop: '1px dashed #e2e8f0' }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
-                  Hiển thị & Options
+                  Giá trị khách chọn
                 </div>
                 <Grid2 container spacing={1.5} sx={{ mb: 1.5 }}>
                   <Grid2 size={{ xs: 4 }}>
@@ -1014,54 +808,6 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
           </div>
         )})}
       </div>
-
-      {/* Modal picker — admin chọn subset options từ NCC */}
-      {pickerOpen && providerCode && (() => {
-        const isDep = pickerOpen.source === 'api_regions' || pickerOpen.source === 'api_cities'
-        const targetOpt = options[pickerOpen.idx]
-        // Current selection: dependent → đọc từ options_by_parent[parentValue], non-dep → options[]
-        const currentList = isDep
-          ? (targetOpt?.options_by_parent?.[pickerOpen.parentValue || ''] || [])
-          : (targetOpt?.options || [])
-
-        return (
-          <NccOptionsPickerModal
-            open={!!pickerOpen}
-            onClose={() => setPickerOpen(null)}
-            providerCode={providerCode}
-            source={pickerOpen.source}
-            parentCountryCode={pickerOpen.parentCountryCode}
-            parentRegionName={pickerOpen.parentRegionName}
-            parentLabel={pickerOpen.parentLabel}
-            currentSelection={currentList.map((o: any) => ({
-              key: o.key || o.flag || o.label || '',
-              provider_value: o.provider_value || o.value || o.label || '',
-              label: o.label || '',
-              flag: o.flag
-            }))}
-            onSave={(selected) => {
-              if (isDep) {
-                // Lưu vào options_by_parent[parentValue]
-                const newObp = { ...(targetOpt?.options_by_parent || {}) }
-                newObp[pickerOpen.parentValue || ''] = selected.map(s => ({
-                  key: s.key,
-                  label: s.label
-                }))
-                update(pickerOpen.idx, { options_by_parent: newObp })
-              } else {
-                update(pickerOpen.idx, {
-                  options: selected.map(s => ({
-                    key: s.key,
-                    provider_value: String(s.provider_value),
-                    label: s.label,
-                    ...(s.flag ? { flag: s.flag } : {})
-                  }))
-                })
-              }
-            }}
-          />
-        )
-      })()}
     </Grid2>
   )
 })
@@ -1476,14 +1222,14 @@ return { values: {}, errors: formattedErrors }
           type: f.type || 'select',
           required: f.required || false,
           default: f.default || '',
-          display_type: f.display_type || '',
+          // Di trú signal cũ: field country tạo qua picker api_countries có flag nhưng KHÔNG có display_type.
+          // CheckoutModal render cờ cho chúng qua source='api_countries' (nay đã bỏ) → nâng thành country_flag
+          // để re-save không mất cờ (f.source vẫn còn trong JSON cũ dù form mới không ghi nữa).
+          display_type: f.display_type || (f.source === 'api_countries' ? 'country_flag' : ''),
           options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({
             ...o,
             provider_value: o.provider_value ?? o.value ?? '',
           })),
-          source: f.source || 'manual',
-          depends_on: f.depends_on || '',
-          options_by_parent: f.options_by_parent || {},
           stage: f.stage === 'fetch' ? 'fetch' : 'buy',
           components: Array.isArray(f.components) ? f.components : undefined,
         }))
@@ -1569,30 +1315,12 @@ return { values: {}, errors: formattedErrors }
     const autoCostPrice = costs.length > 0 ? Math.min(...costs) : data.cost_price || 0
 
     // Build metadata từ purchase options.
-    // Cho phép field dependent (source=api_regions/api_cities) qua filter dù options[] rỗng.
-    const isDependentSource = (s?: string) => s === 'api_regions' || s === 'api_cities'
     const validOptions = purchaseOptions.filter(o =>
       o.key && o.label && (
         o.type !== 'select' ||
-        isDependentSource(o.source) ||
         o.options.some(opt => (opt as any).provider_value)
       )
     )
-
-    // Validate thứ tự: field có depends_on phải sau parent (parent index < child index)
-    for (let i = 0; i < validOptions.length; i++) {
-      const f = validOptions[i]
-      if (!f.depends_on) continue
-      const parentIdx = validOptions.findIndex(x => x.key === f.depends_on)
-      if (parentIdx < 0) {
-        setFormErrors([`Field "${f.label}" phụ thuộc field "${f.depends_on}" nhưng không có field này. Thêm vào trước.`])
-        return
-      }
-      if (parentIdx >= i) {
-        setFormErrors([`Field "${f.label}" phải nằm SAU field "${f.depends_on}" trong danh sách. Dùng nút ▲▼ để sắp xếp.`])
-        return
-      }
-    }
 
     const metadata = validOptions.length > 0 ? {
       custom_fields: validOptions.map(o => ({
@@ -1602,7 +1330,7 @@ return { values: {}, errors: formattedErrors }
         type: o.type || 'select',
         required: o.required,
         default: o.default || (o.type === 'select' ? o.options[0]?.value || '' : ''),
-        ...(o.type === 'select' && !isDependentSource(o.source) ? { options: o.options.filter(opt => (opt as any).provider_value).map(opt => {
+        ...(o.type === 'select' ? { options: o.options.filter(opt => (opt as any).provider_value).map(opt => {
           const entry: any = { provider_value: (opt as any).provider_value, label: opt.label }
 
           entry.key = (opt as any).key || (opt as any).flag || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
@@ -1621,11 +1349,6 @@ return { values: {}, errors: formattedErrors }
           return entry
         }) } : {}),
         ...(o.display_type ? { display_type: o.display_type } : {}),
-        ...(o.source && o.source !== 'manual' ? { source: o.source } : {}),
-        ...(o.depends_on ? { depends_on: o.depends_on } : {}),
-        ...(o.options_by_parent && Object.keys(o.options_by_parent).length > 0
-          ? { options_by_parent: o.options_by_parent }
-          : {}),
         ...(o.stage === 'fetch' ? { stage: 'fetch' } : {}),
         // Combo: lưu components (map param NCC) + options gói (key tự sinh từ label + values)
         ...(o.type === 'combo' ? {
@@ -2689,7 +2412,6 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   control={control}
                   errors={errors}
                   countries={countries}
-                  providerCode={selectedProviderMain?.provider_code || null}
                   providerSupportsResidential={selectedProviderMain?.api_config?.kind === 'residential'}
                 />
               </CollapsibleSection>

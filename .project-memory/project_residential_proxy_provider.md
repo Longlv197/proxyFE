@@ -7,7 +7,25 @@ metadata:
   originSessionId: ed3d15e1-11b5-4750-a542-4c6855a0e02e
 ---
 
-## Trạng thái: PHASE 1 E2E VERIFIED (21/05/2026) — commit BE 14ee858 + FE d713e52
+## Trạng thái: HƯỚNG A (config-driven) ĐÃ IMPLEMENT 08/06/2026 — code xong, build/lint pass, CHƯA test E2E, CHƯA deploy, CHƯA commit. Standalone Processor giữ phòng hờ (không route tới).
+
+## ⚠️ NEXT: anh tự cấu hình 4b trên UI (provider api_config buy=deferred + fetch_proxies auth_string; SP proxy_host + price_quantity_mode=package + max_quantity>1 + custom_fields tariff stage=buy / combo location type=combo) → test E2E local → deploy → `supervisorctl restart all`. Reversible: bỏ comment 1 dòng ProviderFactory.
+
+## Refactor hướng A — đã làm (Phase 1+2+3, changelog BE 15.46+15.47, FE 13.102+13.103)
+
+**Mô hình mới:** Proxyma = NCC deferred bình thường (KHÔNG còn special-case). Mua = deferred (NCC trả package_key làm mã đơn) → FetchProviderItems tạo proxy (= bước "lấy proxy"). Mỗi proxy 1 OrderItem rotating-shaped (KHÔNG package box). Giá theo gói (quantity không nhân). Combo location gói country+region+city.
+
+**Cơ chế then chốt (đều additive + gated mặc định → NCC cũ 0 ảnh hưởng):**
+- Format `auth_string` (`user:pass@host:port`) + thay host NCC → `SP.metadata.proxy_host` (ẩn NCC). `ProxyFormat::fromAuthAtHost`, `DefaultHandler` mapProxy, `saveGenericDeferredProxies` bơm `_host_override` + bọc chuỗi thô.
+- Nhãn `stage` (buy/fetch) per custom_field: buy skip field fetch (Layer 3), fetch inject field fetch (`injectFetchStagedFields`). Combo (type=combo) bung 1→N param tại đây theo `components` + option `values`.
+- `price_quantity_mode=package`: total/cost KHÔNG ×quantity. Vá cross-module cả immediate (BaseProvider) lẫn deferred (FetchProviderItems finalizeOrder/createBuyHistory). FE CheckoutModal+ProxyCard total đúng.
+- Combo lưu KEY trong đơn (validate ResellerController), bung values lúc fetch (ẩn NCC + tránh drift). Site con strip components+values (AppliesProductPricing).
+- Routing: `ProviderFactory` bỏ hardcode proxyma.io. Buy-side vốn dùng GenericBuyProvider.
+- Hiển thị: `OrderController` _data_field='proxy' luôn; `OrderDetail` isResidential=false → render rotating.
+
+**Pending chưa làm:** site con giá ×quantity (`FetchProviderItems:576`) + gia hạn (`ProxyController:422`) chưa áp package. Dead code chờ xoá: ResidentialPackageBox, DownloadProxyModal, CreateProxymaList/RetryProxymaStage2/SyncProxymaPackages commands, ProxymaResidentialProcessor.
+
+## (Lịch sử) PHASE 2 DEPLOYED prod (01/06/2026) — commits BE 18db999+3302e3f+4614eff, FE 6fd5701. Phase 1 E2E verified 21/05/2026.
 
 E2E thực tế với NCC thật (token live, balance $100 → $95):
 - Stage 1: 2.2s, package_key=2169373599b4de0cda89 (gói 1GB/30d/$5)
@@ -111,11 +129,60 @@ Command sync:proxyma-packages (cron 1 giờ):
 4. Admin sửa `ServiceType.metadata.proxy_host` qua tinker (Phase 2 sẽ có admin UI)
 5. Supervisor thêm worker `php artisan create-proxyma-list` (numprocs=1, autostart=true)
 
-## Phase 2 (chưa làm)
+## Phase 2 (29/05/2026) — ĐÃ DEPLOY prod ✅
 
+### Done
+- Admin Provider UI tab Residential (toggle kind, balance live, sync tariffs, proxy_host_options, residential_endpoints)
+- Admin ServiceType UI residential (ResidentialConfigSection + LocationTreePickerModal 1223 dòng v2 + LocationTreeViewer + NccOptionsPickerModal + dependent dropdown country→region→city + tariff source=api_tariffs)
+- BE admin API `/admin/{slug}/balance|tariffs|countries|regions|cities|sync-tariffs` (generic theo slug, fix sau lần đầu hardcode `proxyma`)
+- BE user API `/services/{code}/regions|cities` (SP code, KHÔNG lộ NCC slug)
+- ProxymaApiClient đọc URL/token từ `provider.api_config.residential_endpoints` (đã dynamic)
+- Custom field `source=api_regions|api_cities` validate qua `options_by_parent` snapshot
+- Security: bỏ `provider_code` khỏi `/api/products` response, xoá dead prop `providerCode` FE
+- Build prod fix: tạo swap 4GB (npm ci OOM trước đó), reinstall next-swc binary corrupt, reinstall framer-motion thiếu file
+- `transaction_bank` MANUAL deposit fix: set partner+partner_transaction_id unique (BankQrController dùng bankAuto.id, AdminUserController dùng microsec+admin_id)
+
+### Pending — quyết định kiến trúc CHƯA chốt (anh sẽ xử lý sau)
+
+**Bối cảnh:** Anh thấy code Proxyma hiện tại (656 dòng standalone Processor) **không nên giữ** — config-driven đã gần đủ pattern. Stage 2 ≈ "lấy proxy từ đơn hàng" (FetchProviderItems hiện có). Mỗi proxy port là 1 OrderItem, không cần concept "package".
+
+**3 hướng đã thảo luận:**
+
+- **A (anh nghiêng về)** — Xoá ProxymaResidentialProcessor, mở rộng Generic+Handler:
+  - `params` templating từ `{{custom_fields.X.provider_value}}`
+  - `fetch_proxies` đọc params từ Order context (không chỉ provider_order_code)
+  - Response mode `expand_port_range` (1 object → N proxy items)
+  - Effort 5-8h. Future NCC residential = chỉ config.
+
+- **B** — Giữ standalone Processor đơn giản:
+  - Stage 2 bulk insert 1000 OrderItem (port 10000-10999)
+  - Xoá SyncProxymaPackages + ResidentialPackageBox + DownloadProxyModal + residential branches BE/FE
+  - Effort 2-3h. An toàn nhất.
+
+- **C** — Hybrid: Processor đọc config từ api_config (URL/params/response), không hardcode. Effort 3-4h.
+
+**Mô hình cuối cùng anh xác nhận (áp dụng cho mọi hướng):**
+- 1 Order = 1 package (tự nhiên)
+- 1 OrderItem = 1 proxy port (1000 rows/đơn) — `{host, port, login, password}` chuẩn proxy
+- KHÔNG lưu package state (traffic_used, days_left) — anh tự check ở admin NCC
+- Tariff/country/region/city = custom_field options khách chọn (đã có pattern)
+- Sau refactor: residential render UI giống rotating (table + summary), KHÔNG có UI riêng package
+
+**Files đề xuất xoá khi refactor:**
+- `SyncProxymaPackages` command + cron `sync:proxyma-packages`
+- BE residential branch trong `OrderController::getApiKeys()._data_field` + `ResellerController::orderDetail`
+- Endpoint `/orders/{code}/proxies`
+- FE `ResidentialPackageBox.tsx` + `DownloadProxyModal.tsx`
+- FE residential branch trong `OrderDetail.tsx` + `_kind` trong `useApiKeys.ts`
+
+**Files giữ:**
+- ProxymaApiClient (dynamic config tốt)
+- CreateProxymaList worker + RetryProxymaStage2 cron
+- Admin UI Phase 2 (provider config, location picker)
+
+### Pending khác (chưa làm)
 - Renewal `POST /update/{key}`
 - Domain custom site con (override host từ site mẹ trả về)
-- Admin UI ServiceType set kind/proxy_host/tariff_durations/shared_proxy_hosts
 - IP whitelist Proxyma (chưa verify NCC có hỗ trợ)
 - Multiple lists per package (1 package nhiều country)
 

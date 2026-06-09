@@ -52,7 +52,7 @@
 - [Custom Fields](project_custom_fields_architecture.md) — 3 lớp key/provider_value/label, ẩn NCC
 - [Country Flag](project_country_flag_custom_field.md) — admin UX + preview dùng ProxyCard
 - [Gem1 Tool API](project_gem_tool_api.md) — 20/04: GemController /api/buy/proxy + /api/gem-orders, auth code+amount (không JWT), Redis lock chống overspend
-- [Proxyma Residential](project_residential_proxy_provider.md) — PHASE 1 ĐÃ CODE 20/05: 2-stage queue, schema lite, domain masking, site con relay mediated mode
+- [Proxyma Residential](project_residential_proxy_provider.md) — PHASE 2 DEPLOYED 01/06. NEXT: anh quyết hướng refactor A/B/C (xoá Processor 656 dòng vs giữ simple bulk insert 1000 OrderItem). Đọc memory TRƯỚC khi code.
 
 ## Bugs
 - [Auth Flash Debug](bug_auth_flash_debug.md) — ĐANG DEBUG: user nói "auth flash" = gửi log
@@ -66,7 +66,7 @@
 ## TODO
 - **RÀ SOÁT BẮT BUỘC**: sau mỗi thay đổi logic → grep provider trong files liên quan → đảm bảo !isChild guard
 - [Tier display config](project_tier_display_config.md) — DONE 17/04: price_display_unit tách khỏi time_unit, dropdown mẹ+con, ProxyCard convert × hệ số. Fixed mode + site-level config để sau.
-- [Residential Proxy Provider](project_residential_proxy_provider.md) — Phase 1 DONE 20/05, Phase 2 còn: renewal, domain custom site con, admin UI ServiceType (kind+proxy_host), IP whitelist Proxyma
+- [Residential Proxy Provider](project_residential_proxy_provider.md) — Phase 1+2 DEPLOYED 01/06. NEXT (chưa làm): refactor architecture A/B/C, renewal `POST /update/{key}`, domain custom site con, IP whitelist Proxyma, multiple lists per package
 - [Naming Refactor](project_naming_refactor.md) — CHƯA: rename supplier→provider variables
 - Params mapping FE admin UI
 
