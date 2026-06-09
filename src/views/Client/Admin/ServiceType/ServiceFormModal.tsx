@@ -532,29 +532,9 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
           </p>
         )}
 
-        {/* Banner: 3 fields location đã chuyển sang tree picker phía trên */}
-        {providerSupportsResidential && options.some(o => ['country','region','city'].includes(o.key) || ['api_countries','api_regions','api_cities'].includes(o.source || '')) && (
-          <div style={{
-            background: '#ecfdf5', border: '1px dashed #6ee7b7', borderRadius: 8,
-            padding: '8px 12px', marginBottom: 10, fontSize: 12, color: '#065f46',
-            display: 'flex', alignItems: 'center', gap: 8
-          }}>
-            <span style={{ fontSize: 14 }}>🌍</span>
-            <span>
-              <strong>Country / Region / City</strong> đã được cấu hình ở box <em>“Cấu hình vị trí”</em> phía trên — ẩn khỏi đây để tránh trùng lặp.
-              Các tuỳ chọn còn lại (tariff, custom…) hiển thị bên dưới.
-            </span>
-          </div>
-        )}
-
         {options.map((opt, optIdx) => {
           const isDependent = opt.source === 'api_regions' || opt.source === 'api_cities'
           const isPickerSource = opt.source === 'api_tariffs' || opt.source === 'api_countries'
-
-          // Ẩn 3 field location khi provider residential — chúng được tree picker quản lý
-          const isLocationField = ['country','region','city'].includes(opt.key) ||
-            ['api_countries','api_regions','api_cities'].includes(opt.source || '')
-          if (providerSupportsResidential && isLocationField) return null
 
           return (
           <div key={optIdx} style={{
