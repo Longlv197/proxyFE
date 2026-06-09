@@ -411,6 +411,12 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
     return n
   })
 
+  // Combo: ẩn/hiện cấu hình "thành phần → param NCC" (auto-set, ít sửa) — gọn UI mặc định
+  const [showComboParams, setShowComboParams] = useState<Set<number>>(new Set())
+  const toggleComboParams = (idx: number) => setShowComboParams(prev => {
+    const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n
+  })
+
   // Modal picker state — admin chọn multi-select options từ NCC
   // Dependent (api_regions/api_cities): cần parentCountryCode + parentRegionName + parentLabel
   const [pickerOpen, setPickerOpen] = useState<{
@@ -638,26 +644,32 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
             {/* ─── Section Combo: gói vị trí (country+region+city gói làm 1) ── */}
             {opt.type === 'combo' && (
               <div style={{ padding: '0 12px 12px', borderTop: '1px dashed #e2e8f0' }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 12, marginBottom: 6 }}>
-                  Thành phần gói → param gửi NCC
+                {/* Thành phần → param NCC: auto-set, ẩn sau toggle cho gọn */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase' }}>Thành phần → param NCC</div>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                    {(opt.components || []).map(c => `${c.key}→${c.param_name}`).join(' · ') || '—'}
+                  </span>
+                  <button type='button' onClick={() => toggleComboParams(optIdx)}
+                    style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11, color: '#6366f1', cursor: 'pointer', padding: '2px 8px' }}>
+                    {showComboParams.has(optIdx) ? 'Ẩn' : 'Sửa param'}
+                  </button>
                 </div>
-                <Grid2 container spacing={1}>
-                  {(opt.components || []).map((comp, ci) => (
-                    <Grid2 key={ci} size={{ xs: 4 }}>
-                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                        <CustomTextField fullWidth size='small' label='Key' value={comp.key}
-                          onChange={(e: any) => {
-                            const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps })
-                          }} />
-                        <span style={{ color: '#94a3b8' }}>→</span>
-                        <CustomTextField fullWidth size='small' label='Param NCC' value={comp.param_name}
-                          onChange={(e: any) => {
-                            const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps })
-                          }} />
-                      </div>
-                    </Grid2>
-                  ))}
-                </Grid2>
+                {showComboParams.has(optIdx) && (
+                  <Grid2 container spacing={1} sx={{ mb: 1 }}>
+                    {(opt.components || []).map((comp, ci) => (
+                      <Grid2 key={ci} size={{ xs: 4 }}>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          <CustomTextField fullWidth size='small' label='Key' value={comp.key}
+                            onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
+                          <span style={{ color: '#94a3b8' }}>→</span>
+                          <CustomTextField fullWidth size='small' label='Param NCC' value={comp.param_name}
+                            onChange={(e: any) => { const comps = [...(opt.components || [])]; comps[ci] = { ...comps[ci], param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }; update(optIdx, { components: comps }) }} />
+                        </div>
+                      </Grid2>
+                    ))}
+                  </Grid2>
+                )}
 
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 14, marginBottom: 6 }}>
                   Danh sách gói ({(opt.options || []).length}) — mỗi gói = 1 lựa chọn user thấy
@@ -2001,27 +2013,23 @@ return { values: {}, errors: formattedErrors }
                   />
                 </Grid2>
 
-                {/* Domain thay host (ẩn đối tác) — CHUNG cho mọi sản phẩm, không gate residential */}
+                {/* Domain thay host (ẩn đối tác) — CHUNG mọi sản phẩm. Dropdown compact, cùng style các field khác. */}
                 {selectedProviderMain && (
-                  <Grid2 size={{ xs: 12 }}>
-                    <Box sx={{ p: 1.5, border: '1px solid #e2e8f0', borderLeft: '3px solid #a855f7', borderRadius: 1.5, background: '#fff' }}>
-                      <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: '#1e293b' }}>Domain thay host (ẩn đối tác)</Typography>
-                      <Typography sx={{ fontSize: 11, color: '#94a3b8', mb: 1 }}>
-                        Có giá trị → mọi proxy lưu sẽ thay host của NCC bằng domain này (CNAME → host NCC). Bỏ trống = giữ host gốc.
-                      </Typography>
-                      {hostOverrideOptions.length > 0 ? (
-                        <CustomTextField select fullWidth size='small' label='Domain hiển thị cho user'
-                          value={residentialMeta?.proxy_host || ''}
-                          onChange={(e: any) => setResidentialMeta({ ...residentialMeta, proxy_host: e.target.value })}>
-                          <MenuItem value=''><em>— Không thay (giữ host NCC)</em></MenuItem>
-                          {hostOverrideOptions.map(h => <MenuItem key={h} value={h}>{h}</MenuItem>)}
-                        </CustomTextField>
-                      ) : (
-                        <Typography sx={{ fontSize: 11.5, color: '#f59e0b' }}>
-                          NCC chưa có domain. Vào <strong>Nhà cung cấp → tab Residential → "Domain trung gian"</strong> để thêm.
-                        </Typography>
-                      )}
-                    </Box>
+                  <Grid2 size={{ xs: 12, sm: 6 }}>
+                    {hostOverrideOptions.length > 0 ? (
+                      <CustomTextField select fullWidth size='small' label='Domain thay host (ẩn đối tác)'
+                        value={residentialMeta?.proxy_host || ''}
+                        onChange={(e: any) => setResidentialMeta({ ...residentialMeta, proxy_host: e.target.value })}
+                        helperText='Thay host NCC bằng domain này (CNAME). Trống = giữ host gốc.'>
+                        <MenuItem value=''><em>— Không thay (giữ host NCC)</em></MenuItem>
+                        {hostOverrideOptions.map(h => <MenuItem key={h} value={h}>{h}</MenuItem>)}
+                      </CustomTextField>
+                    ) : (
+                      <CustomTextField select fullWidth size='small' label='Domain thay host (ẩn đối tác)' value='' disabled
+                        helperText='NCC chưa có domain — thêm ở NCC → tab Residential → "Domain trung gian".'>
+                        <MenuItem value=''>—</MenuItem>
+                      </CustomTextField>
+                    )}
                   </Grid2>
                 )}
 
@@ -2213,42 +2221,24 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   </div>
                 </Grid2>
 
-                {/* Min/Max số lượng proxy */}
-                <Grid2 size={{ xs: 6, sm: 3 }}>
-                  <Controller
-                    name='min_quantity'
-                    control={control}
-                    render={({ field }) => (
-                      <CustomTextField
-                        {...field}
-                        value={field.value ?? 1}
+                {/* Số lượng / lần mua — box compact cùng style với switches → cân nhau */}
+                <Grid2 size={{ xs: 12, sm: 6 }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '8px 14px', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <Typography variant='body2' fontWeight={600} fontSize='12px' sx={{ color: '#475569', whiteSpace: 'nowrap' }}>SL / lần mua</Typography>
+                    <Controller name='min_quantity' control={control} render={({ field }) => (
+                      <CustomTextField {...field} value={field.value ?? 1}
                         onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
-                        fullWidth
-                        type='number'
-                        label='Tối thiểu'
-                        helperText='Số proxy tối thiểu mỗi lần mua'
-                        slotProps={{ input: { inputProps: { min: 1 } } }}
-                      />
-                    )}
-                  />
-                </Grid2>
-                <Grid2 size={{ xs: 6, sm: 3 }}>
-                  <Controller
-                    name='max_quantity'
-                    control={control}
-                    render={({ field }) => (
-                      <CustomTextField
-                        {...field}
-                        value={field.value ?? 100}
+                        type='number' size='small' placeholder='Min' sx={{ width: 80 }}
+                        slotProps={{ input: { inputProps: { min: 1 } } }} />
+                    )} />
+                    <span style={{ color: '#94a3b8', fontWeight: 600 }}>–</span>
+                    <Controller name='max_quantity' control={control} render={({ field }) => (
+                      <CustomTextField {...field} value={field.value ?? 100}
                         onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
-                        fullWidth
-                        type='number'
-                        label='Tối đa'
-                        helperText='Số proxy tối đa mỗi lần mua'
-                        slotProps={{ input: { inputProps: { min: 1 } } }}
-                      />
-                    )}
-                  />
+                        type='number' size='small' placeholder='Max' sx={{ width: 80 }}
+                        slotProps={{ input: { inputProps: { min: 1 } } }} />
+                    )} />
+                  </div>
                 </Grid2>
 
                 {/* Mô tả ngắn */}
