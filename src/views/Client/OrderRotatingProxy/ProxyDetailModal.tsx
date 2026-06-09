@@ -177,56 +177,56 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
           </Box>
         )}
 
-        {/* Panel chế độ xoay */}
-        {orderKey && (rot || loadingRot) && (
+        {/* Panel chế độ xoay — hiện khi có orderKey. Nút xoay tay hiện KỂ CẢ khi chưa load được cấu hình (BE lỗi/chưa deploy). */}
+        {orderKey && (
           <>
             <Divider sx={{ my: 2 }} />
-            {loadingRot && !rot ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}><CircularProgress size={22} /></Box>
-            ) : rot ? (
-              <Box>
-                {/* Nút xoay/lấy proxy thủ công */}
-                {rot.allow_manual && (
-                  <Button fullWidth variant='contained' color='warning' disableElevation
-                    startIcon={rotating ? <CircularProgress size={16} color='inherit' /> : <RefreshCw size={16} />}
-                    disabled={rotating || countdown > 0}
-                    onClick={handleRotate}
-                    sx={{ mb: 1.5, fontWeight: 600 }}>
-                    {rotating ? 'Đang xoay...'
-                      : countdown > 0 ? `Có thể xoay sau ${countdown}s`
-                      : proxyValue ? 'Xoay IP ngay' : 'Lấy proxy'}
-                  </Button>
-                )}
 
-                {/* Toggle tự động xoay */}
-                {rot.allow_auto && (
-                  <Box sx={{ p: 1.5, bgcolor: '#f8fafc', borderRadius: 1.5, border: '1px solid #e2e8f0' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                        <Zap size={15} color='#f59e0b' />
-                        <Typography sx={{ fontSize: 13, fontWeight: 600 }}>Tự động đổi IP định kỳ</Typography>
-                      </Box>
-                      <Switch size='small' color='warning' checked={rot.auto_rotate} disabled={savingMode}
-                        onChange={e => saveMode(e.target.checked)} />
-                    </Box>
-                    {rot.auto_rotate && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                        <Typography sx={{ fontSize: 12, color: '#64748b' }}>Chu kỳ:</Typography>
-                        <TextField select size='small' value={rot.auto_rotate_interval} disabled={savingMode}
-                          onChange={e => saveMode(true, Number(e.target.value))} sx={{ minWidth: 120 }}>
-                          {intervalOptions.map(o => <MenuItem key={o.v} value={o.v}>{o.label}</MenuItem>)}
-                        </TextField>
-                      </Box>
-                    )}
-                    <Typography sx={{ fontSize: 11, color: '#94a3b8', mt: 0.75 }}>
-                      {rot.auto_rotate
-                        ? `Hệ thống tự đổi IP mỗi ${fmtInterval(rot.auto_rotate_interval)} — không cần gọi API.`
-                        : `Bật để hệ thống tự đổi IP định kỳ. Chu kỳ tối thiểu cho sản phẩm này: ${fmtInterval(rot.min_interval)}.`}
-                    </Typography>
+            {/* Nút xoay/lấy proxy thủ công — mặc định cho xoay tay; chỉ ẩn khi SP tắt allow_manual */}
+            {(!rot || rot.allow_manual) && (
+              <Button fullWidth variant='contained' color='warning' disableElevation
+                startIcon={rotating ? <CircularProgress size={16} color='inherit' /> : <RefreshCw size={16} />}
+                disabled={rotating || countdown > 0}
+                onClick={handleRotate}
+                sx={{ mb: 1.5, fontWeight: 600 }}>
+                {rotating ? 'Đang xoay...'
+                  : countdown > 0 ? `Có thể xoay sau ${countdown}s`
+                  : proxyValue ? 'Xoay IP ngay' : 'Lấy proxy'}
+              </Button>
+            )}
+
+            {/* Đang tải cấu hình tự động (chưa biết allow_auto/min) */}
+            {loadingRot && !rot && (
+              <Typography sx={{ fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>Đang tải cấu hình tự động xoay...</Typography>
+            )}
+
+            {/* Toggle tự động xoay — chỉ hiện khi đã load được cấu hình SP (cần min/interval) */}
+            {rot?.allow_auto && (
+              <Box sx={{ p: 1.5, bgcolor: '#f8fafc', borderRadius: 1.5, border: '1px solid #e2e8f0' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <Zap size={15} color='#f59e0b' />
+                    <Typography sx={{ fontSize: 13, fontWeight: 600 }}>Tự động đổi IP định kỳ</Typography>
+                  </Box>
+                  <Switch size='small' color='warning' checked={rot.auto_rotate} disabled={savingMode}
+                    onChange={e => saveMode(e.target.checked)} />
+                </Box>
+                {rot.auto_rotate && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                    <Typography sx={{ fontSize: 12, color: '#64748b' }}>Chu kỳ:</Typography>
+                    <TextField select size='small' value={rot.auto_rotate_interval} disabled={savingMode}
+                      onChange={e => saveMode(true, Number(e.target.value))} sx={{ minWidth: 120 }}>
+                      {intervalOptions.map(o => <MenuItem key={o.v} value={o.v}>{o.label}</MenuItem>)}
+                    </TextField>
                   </Box>
                 )}
+                <Typography sx={{ fontSize: 11, color: '#94a3b8', mt: 0.75 }}>
+                  {rot.auto_rotate
+                    ? `Hệ thống tự đổi IP mỗi ${fmtInterval(rot.auto_rotate_interval)} — không cần gọi API.`
+                    : `Bật để hệ thống tự đổi IP định kỳ. Chu kỳ tối thiểu cho sản phẩm này: ${fmtInterval(rot.min_interval)}.`}
+                </Typography>
               </Box>
-            ) : null}
+            )}
           </>
         )}
       </DialogContent>
