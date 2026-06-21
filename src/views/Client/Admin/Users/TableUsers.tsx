@@ -59,7 +59,7 @@ import {
   Typography
 } from '@mui/material'
 
-import Grid2 from '@mui/material/Grid2'
+import { useBranding } from '@/app/contexts/BrandingContext'
 
 import { toast } from 'react-toastify'
 
@@ -87,13 +87,13 @@ return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '
 
 function StatCard({ title, value, icon: Icon, color }: { title: string; value: string | number; icon: any; color: string }) {
   return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2, '&:last-child': { pb: 2 } }}>
+    <Card sx={{ flex: '1 1 0', minWidth: 150 }}>
+      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1.25, px: 1.5, '&:last-child': { pb: 1.25 } }}>
         <div
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
+            width: 34,
+            height: 34,
+            borderRadius: 9,
             backgroundColor: color + '20',
             display: 'flex',
             alignItems: 'center',
@@ -101,13 +101,13 @@ function StatCard({ title, value, icon: Icon, color }: { title: string; value: s
             flexShrink: 0
           }}
         >
-          <Icon size={24} color={color} />
+          <Icon size={18} color={color} />
         </div>
-        <div>
-          <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
+        <div style={{ minWidth: 0 }}>
+          <Typography variant='caption' color='text.secondary' sx={{ display: 'block', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {title}
           </Typography>
-          <Typography variant='h6' fontWeight={600}>
+          <Typography variant='subtitle1' fontWeight={700} sx={{ lineHeight: 1.3, whiteSpace: 'nowrap' }}>
             {value}
           </Typography>
         </div>
@@ -184,6 +184,7 @@ export default memo(function TableUsers({ onEditUser, onAdjustBalance, onViewTra
 
   const { data: response, isLoading, isFetching } = useAdminUsers({ page: 1, per_page: fetchLimit, search, sort_by: sortBy, sort_order: sortOrder })
   const { data: stats } = useAdminUserStats()
+  const { isChild } = useBranding()
   const toggleBanMutation = useToggleBan()
   const updateStatusMutation = useUpdateUserStatus()
   const [selectedStatus, setSelectedStatus] = useState<number>(1)
@@ -485,29 +486,17 @@ return (
   return (
     <>
       {/* Stats Cards */}
-      <Grid2 container spacing={2} sx={{ mb: 3 }}>
-        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard title='Tổng users' value={userStats.total_users} icon={Users} color='#7C3AED' />
-        </Grid2>
-        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard title='Số admin' value={userStats.admin_count ?? 0} icon={UserCog} color='#DC2626' />
-        </Grid2>
-        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard title='Số user' value={userStats.user_count ?? 0} icon={UserCheck} color='#0EA5E9' />
-        </Grid2>
-        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <StatCard title='Tổng users' value={userStats.total_users} icon={Users} color='#7C3AED' />
+        <StatCard title='Số admin' value={userStats.admin_count ?? 0} icon={UserCog} color='#DC2626' />
+        <StatCard title='Số user' value={userStats.user_count ?? 0} icon={UserCheck} color='#0EA5E9' />
+        {!isChild && (
           <StatCard title='Số reseller' value={userStats.reseller_count ?? 0} icon={Store} color='#0D9488' />
-        </Grid2>
-        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard title='User mới tháng này' value={userStats.new_users_this_month} icon={UserPlus} color='#2563EB' />
-        </Grid2>
-        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard title='Tổng số dư' value={formatVND(userStats.total_balance)} icon={Wallet} color='#059669' />
-        </Grid2>
-        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard title='Tổng nạp' value={formatVND(userStats.total_deposited)} icon={Wallet} color='#D97706' />
-        </Grid2>
-      </Grid2>
+        )}
+        <StatCard title='User mới tháng này' value={userStats.new_users_this_month} icon={UserPlus} color='#2563EB' />
+        <StatCard title='Tổng số dư' value={formatVND(userStats.total_balance)} icon={Wallet} color='#059669' />
+        <StatCard title='Tổng nạp' value={formatVND(userStats.total_deposited)} icon={Wallet} color='#D97706' />
+      </div>
 
       {/* Table */}
       <div className='orders-content'>
