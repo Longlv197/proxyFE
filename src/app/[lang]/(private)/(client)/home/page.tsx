@@ -252,7 +252,12 @@ function AnnouncementPost({ announcement }: { announcement: Announcement }) {
   const TypeIcon = typeInfo.icon
 
   const sanitizedHTML = useMemo(() => sanitize(announcement.content), [announcement.content])
-  const isLong = announcement.content.length > 500
+
+  // Đo độ dài theo text thật (bỏ thẻ HTML) — tránh thu gọn sớm khi nội dung nhiều style/ảnh
+  const isLong = useMemo(
+    () => announcement.content.replace(/<[^>]*>/g, '').trim().length > 500,
+    [announcement.content]
+  )
 
   const handleShare = async () => {
     const textContent = announcement.content.replace(/<[^>]*>/g, '').trim()
@@ -266,7 +271,7 @@ function AnnouncementPost({ announcement }: { announcement: Announcement }) {
       }
     } else {
       await navigator.clipboard.writeText(shareText)
-      toast.success('Đã sao chép nội dung')
+      toast.info('Đã sao chép nội dung')
     }
   }
 
