@@ -13,6 +13,8 @@ import {
   KeyRound,
   Users,
   UserPlus,
+  UserCog,
+  Store,
   BadgeCheck,
   BadgeMinus,
   Search,
@@ -486,6 +488,15 @@ return (
       <Grid2 container spacing={2} sx={{ mb: 3 }}>
         <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard title='Tổng users' value={userStats.total_users} icon={Users} color='#7C3AED' />
+        </Grid2>
+        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard title='Số admin' value={userStats.admin_count ?? 0} icon={UserCog} color='#DC2626' />
+        </Grid2>
+        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard title='Số user' value={userStats.user_count ?? 0} icon={UserCheck} color='#0EA5E9' />
+        </Grid2>
+        <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard title='Số reseller' value={userStats.reseller_count ?? 0} icon={Store} color='#0D9488' />
         </Grid2>
         <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard title='User mới tháng này' value={userStats.new_users_this_month} icon={UserPlus} color='#2563EB' />

@@ -12,6 +12,9 @@ export interface AdminUsersParams {
 
 export interface UserStats {
   total_users: number
+  admin_count?: number
+  user_count?: number
+  reseller_count?: number
   new_users_this_month: number
   total_balance: number
   total_deposited: number
