@@ -23,15 +23,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })
   })
   
-  // Thêm các trang quan trọng khác
+  // Trang công khai thật (ngoài nhóm (private)) — tránh đưa URL 404/cần-đăng-nhập vào sitemap
   const importantPages = [
     'about',
+    'cooperate',
+    'hotline',
     'pricing',
-    'contact',
-    'features',
-    'support',
-    'privacy',
-    'terms'
+    'docs'
   ]
   
   importantPages.forEach((page) => {
