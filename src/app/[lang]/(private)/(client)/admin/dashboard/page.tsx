@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import DateRangeFilter from '@/views/Client/Admin/Dashboard/DateRangeFilter'
 import ProfitHero from '@/views/Client/Admin/Dashboard/ProfitHero'
+import SystemBalancesRow from '@/views/Client/Admin/Dashboard/SystemBalancesRow'
 import TrendCharts from '@/views/Client/Admin/Dashboard/TrendCharts'
 import OrdersDepositsRow from '@/views/Client/Admin/Dashboard/OrdersDepositsRow'
 import ProviderBreakdown from '@/views/Client/Admin/Dashboard/PartnerBreakdown'
@@ -46,6 +47,9 @@ export default function DashboardPage() {
       <div className={`space-y-4 transition-opacity duration-300 ${isFetching ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
         {/* 2. Tổng quan: Lãi/lỗ + breakdown + dự kiến */}
         <ProfitHero revenue={data.revenue} periodDays={data.period_days} />
+
+        {/* 2b. Số dư hệ thống hiện tại (snapshot, không theo bộ lọc) */}
+        <SystemBalancesRow balances={data.balances} />
 
         {/* 3. Biểu đồ xu hướng: Doanh thu + Nạp tiền theo ngày */}
         <TrendCharts data={data.daily_trend} />

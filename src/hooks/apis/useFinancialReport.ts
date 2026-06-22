@@ -80,6 +80,10 @@ export interface FinancialReportData {
   }
   provider_breakdown: ProviderBreakdownItem[]
   daily_trend: DailyTrendItem[]
+  balances?: {
+    total_balance: number
+    total_affiliate_balance: number
+  }
 }
 
 // ═══════════════════════════════════════════════════════
