@@ -19,6 +19,7 @@ const SOCIAL_PLATFORM_OPTIONS = [
 const SEO_LANGUAGES = [
   { code: 'vi', label: 'Tiếng Việt' },
   { code: 'en', label: 'English' },
+  { code: 'cn', label: '中文' },
   { code: 'ja', label: '日本語' },
   { code: 'ko', label: '한국어' }
 ]
@@ -36,6 +37,11 @@ const getSeoPlaceholders = (
     title: `${siteName || 'Site Name'} - High Quality Proxy Service`,
     description: 'Premium residential and datacenter proxies for all your needs',
     keywords: 'proxy, buy proxy, residential proxy, datacenter proxy'
+  },
+  cn: {
+    title: `${siteName || '网站名称'} - 高质量代理服务`,
+    description: '提供高质量住宅代理和数据中心代理，满足各种需求',
+    keywords: '代理, proxy, 住宅代理, 数据中心代理'
   },
   ja: {
     title: `${siteName || 'サイト名'} - 高品質プロキシサービス`,

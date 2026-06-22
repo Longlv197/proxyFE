@@ -23,13 +23,16 @@ const TestimonialsSection = dynamic(() => import('@/app/[lang]/(landing-page)/co
   ssr: true
 })
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params
   const branding = await getServerBranding()
   const name = branding.site_name || ''
   const desc = branding.site_description || ''
 
-  // Có tên + mô tả → "Tên - Mô tả". Chỉ có 1 → hiện cái đó. Không có gì → "Proxy Service"
-  const title = name && desc ? `${name} - ${desc}` : name || desc || 'Proxy Service'
+  // Ưu tiên SEO title do admin đặt (tab Google & Quảng bá) theo ngôn ngữ.
+  // Fallback: "Tên - Mô tả" → tên → mô tả → "Proxy Service".
+  const seoLang = (branding as any).seo_meta?.[lang]
+  const title = seoLang?.title || (name && desc ? `${name} - ${desc}` : name || desc || 'Proxy Service')
 
   return { title }
 }
