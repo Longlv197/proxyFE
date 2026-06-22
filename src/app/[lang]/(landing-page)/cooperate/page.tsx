@@ -3,14 +3,17 @@ import type { Metadata } from 'next'
 import Services from '../components/cooperate/Services'
 import Agency from '../components/cooperate/Agency'
 import About from '../components/cooperate/About'
+import { getServerBranding } from '@/utils/getServerBranding'
+import { interpolateAppName } from '@/utils/interpolateAppName'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params
   const dictionary = await import(`@/locales/${lang}.json`).then(m => m.default)
+  const appName = (await getServerBranding()).site_name || ''
 
   return {
-    title: dictionary.landing?.header?.menu?.cooperate || 'Cooperate with us',
-    description: dictionary.landing?.cooperate?.about?.subtitle || 'Join us as an agent and enjoy preferential policies'
+    title: interpolateAppName(dictionary.landing?.header?.menu?.cooperate, appName) || 'Cooperate with us',
+    description: interpolateAppName(dictionary.landing?.cooperate?.about?.subtitle, appName) || 'Join us as an agent and enjoy preferential policies'
   }
 }
 
