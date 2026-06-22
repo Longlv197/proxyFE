@@ -43,7 +43,8 @@ const TYPE_LABELS: Record<string, { label: string; color: 'success' | 'info' | '
   REFUND_FULL: { label: 'Hoàn toàn bộ', color: 'secondary' },
   RENEWAL: { label: 'Gia hạn', color: 'warning' },
   REFUND_RENEWAL: { label: 'Hoàn GH', color: 'secondary' },
-  RUT_HOA_HONG_AFFILIATE: { label: 'Rút hoa hồng', color: 'primary' }
+  RUT_HOA_HONG_AFFILIATE: { label: 'Rút hoa hồng', color: 'primary' },
+  CONG_HOA_HONG_AFFILIATE: { label: 'Cộng hoa hồng (Admin)', color: 'info' }
 }
 
 function parseDescription(row: any): string {
@@ -60,6 +61,12 @@ function parseDescription(row: any): string {
     if (parsed.note) parts.push(parsed.note)
     if (parsed.admin || parsed.admin_name) parts.push('Admin: ' + (parsed.admin_name || parsed.admin))
     if (parts.length) return parts.join(' | ')
+  }
+
+  if (type === 'CONG_HOA_HONG_AFFILIATE' && parsed) {
+    const admin = parsed.admin_name || parsed.admin
+
+    return [noidung, admin ? 'Admin: ' + admin : ''].filter(Boolean).join(' | ')
   }
 
   return noidung || '-'

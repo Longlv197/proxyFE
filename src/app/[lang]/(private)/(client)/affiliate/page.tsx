@@ -1,6 +1,6 @@
 'use client'
 
-import { MousePointer, DollarSign, BanknoteArrowDown } from 'lucide-react'
+import { MousePointer, DollarSign, BanknoteArrowDown, TrendingUp, Wallet } from 'lucide-react'
 
 import AffiliatePage from '@/views/Client/Affiliate/AffiliatePage'
 import BoxCustom from '@/components/UI/BoxCustom'
@@ -21,11 +21,40 @@ export default function Affiliate() {
                 <div>
                   <p className='text-sm text-gray-500 mb-1'>Thu nhập tháng này</p>
                   <p className='text-2xl font-bold text-gray-900'>
-                    {isLoading ? '...' : (new Intl.NumberFormat('vi-VN').format(affiliateData?.total ?? 0) + ' đ')}
+                    {isLoading ? '...' : (new Intl.NumberFormat('vi-VN').format(affiliateData?.month ?? 0) + ' đ')}
                   </p>
                 </div>
                 <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
                   <DollarSign className='w-6 h-6 text-green-500' />
+                </div>
+              </div>
+            </BoxCustom>
+
+            <BoxCustom>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <p className='text-sm text-gray-500 mb-1'>Thu nhập tổng</p>
+                  <p className='text-2xl font-bold text-gray-900'>
+                    {isLoading ? '...' : (new Intl.NumberFormat('vi-VN').format(affiliateData?.total ?? 0) + ' đ')}
+                  </p>
+                </div>
+                <div className='w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center'>
+                  <TrendingUp className='w-6 h-6 text-emerald-500' />
+                </div>
+              </div>
+            </BoxCustom>
+
+            <BoxCustom>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <p className='text-sm text-gray-500 mb-1'>Số dư affiliate</p>
+                  <p className='text-2xl font-bold text-gray-900'>
+                    {isLoading ? '...' : (new Intl.NumberFormat('vi-VN').format(affiliateData?.affiliate_balance ?? 0) + ' đ')}
+                  </p>
+                  <p className='text-xs text-gray-400 mt-1'>Chưa hỗ trợ rút</p>
+                </div>
+                <div className='w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center'>
+                  <Wallet className='w-6 h-6 text-teal-500' />
                 </div>
               </div>
             </BoxCustom>

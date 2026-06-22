@@ -21,6 +21,7 @@ import {
   Loader2,
   History,
   Tags,
+  Coins,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
@@ -69,6 +70,7 @@ import type { AdminUser, UserStats } from '@/hooks/apis/useAdminUsers'
 interface TableUsersProps {
   onEditUser?: (user: any) => void
   onAdjustBalance?: (user: any) => void
+  onAdjustAffiliate?: (user: any) => void
   onViewTransactions?: (user: any) => void
   onProviderPricing?: (user: any) => void
 }
@@ -116,7 +118,7 @@ function StatCard({ title, value, icon: Icon, color }: { title: string; value: s
   )
 }
 
-export default memo(function TableUsers({ onEditUser, onAdjustBalance, onViewTransactions, onProviderPricing }: TableUsersProps) {
+export default memo(function TableUsers({ onEditUser, onAdjustBalance, onAdjustAffiliate, onViewTransactions, onProviderPricing }: TableUsersProps) {
   // API fetch limit (mặc định 100, tối đa 20000)
   const [fetchLimit, setFetchLimit] = useState(100)
   const [fetchLimitInput, setFetchLimitInput] = useState('100')
@@ -413,6 +415,12 @@ return (
                 </IconButton>
               </Tooltip>
 
+              <Tooltip title='Cộng/trừ tiền affiliate'>
+                <IconButton size='small' onClick={() => onAdjustAffiliate?.(user)} sx={{ color: '#0d9488' }}>
+                  <Coins size={17} />
+                </IconButton>
+              </Tooltip>
+
               <Tooltip title='Lịch sử giao dịch'>
                 <IconButton size='small' color='primary' onClick={() => onViewTransactions?.(user)}>
                   <History size={17} />
@@ -446,7 +454,7 @@ return (
         size: 260
       }
     ],
-    [onEditUser, onAdjustBalance, onViewTransactions, onProviderPricing, handleOpenBanDialog, handleOpenResetPwDialog]
+    [onEditUser, onAdjustBalance, onAdjustAffiliate, onViewTransactions, onProviderPricing, handleOpenBanDialog, handleOpenResetPwDialog]
   )
 
   const table = useReactTable({

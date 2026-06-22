@@ -5,12 +5,13 @@ import { useState, useCallback, useRef } from 'react'
 import TableUsers from '@/views/Client/Admin/Users/TableUsers'
 import ModalEditUser from '@/views/Client/Admin/Users/ModalEditUser'
 import ModalBalanceAdjust from '@/views/Client/Admin/Users/ModalBalanceAdjust'
+import ModalAffiliateAdjust from '@/views/Client/Admin/Users/ModalAffiliateAdjust'
 import UserTransactionModal from '@/views/Client/Admin/Users/UserTransactionModal'
 import ProviderPricingModal from '@/views/Client/Admin/Users/ProviderPricingModal'
 
 export default function UsersPage() {
   const [modalState, setModalState] = useState<{
-    type: 'edit' | 'balance' | 'transaction' | 'providerPricing' | null
+    type: 'edit' | 'balance' | 'affiliateBalance' | 'transaction' | 'providerPricing' | null
     user: any
   }>({ type: null, user: null })
 
@@ -20,6 +21,10 @@ export default function UsersPage() {
 
   const handleAdjustBalance = useCallback((user: any) => {
     setModalState({ type: 'balance', user })
+  }, [])
+
+  const handleAdjustAffiliate = useCallback((user: any) => {
+    setModalState({ type: 'affiliateBalance', user })
   }, [])
 
   const handleViewTransactions = useCallback((user: any) => {
@@ -39,11 +44,13 @@ export default function UsersPage() {
       <TableUsers
         onEditUser={handleEditUser}
         onAdjustBalance={handleAdjustBalance}
+        onAdjustAffiliate={handleAdjustAffiliate}
         onViewTransactions={handleViewTransactions}
         onProviderPricing={handleProviderPricing}
       />
       {modalState.type === 'edit' && <ModalEditUser open onClose={handleClose} userData={modalState.user} />}
       {modalState.type === 'balance' && <ModalBalanceAdjust open onClose={handleClose} userData={modalState.user} />}
+      {modalState.type === 'affiliateBalance' && <ModalAffiliateAdjust open onClose={handleClose} userData={modalState.user} />}
       {modalState.type === 'transaction' && <UserTransactionModal
         open
         onClose={handleClose}

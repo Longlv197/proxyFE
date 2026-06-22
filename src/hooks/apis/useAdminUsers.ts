@@ -117,6 +117,23 @@ return res?.data
   })
 }
 
+// Hook: adjust affiliate balance (cộng/trừ số dư affiliate)
+export const useAdjustAffiliateBalance = () => {
+  const axiosAuth = useAxiosAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ userId, amount, description }: { userId: number; amount: number; description: string }) => {
+      const res = await axiosAuth.post(`/admin/users/${userId}/adjust-affiliate`, { amount, description })
+
+      return res?.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
+    }
+  })
+}
+
 // Hook: toggle ban (backward compat)
 export const useToggleBan = () => {
   const axiosAuth = useAxiosAuth()
