@@ -17,6 +17,7 @@ import ProtocolSelector from '@components/form/protocol-selector/ProtocolSelecto
 import { setBalance } from '@/store/userSlice'
 import type { AppDispatch, RootState } from '@/store'
 import useAxiosAuth from '@/hocs/useAxiosAuth'
+import { useValidateVoucher } from '@/hooks/apis/useVouchers'
 
 import './styles.css'
 
@@ -161,6 +162,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [selectedProtocol, setSelectedProtocol] = useState(protocols[0] || 'http')
   const [quantity, setQuantity] = useState(Math.max(1, minQuantity))
   const [discountCode, setDiscountCode] = useState('')
+  const [discountAmount, setDiscountAmount] = useState(0)
+  const [voucherFeedback, setVoucherFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [purchaseSuccess, setPurchaseSuccess] = useState(false)
   const [apiError, setApiError] = useState('')
   const [showTopBanner, setShowTopBanner] = useState(false)
@@ -320,6 +323,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // Package mode (residential): giá cố định theo gói, số lượng proxy KHÔNG nhân vào tiền (khớp BE).
   const total = priceQuantityMode === PRICE_QUANTITY_MODE.PACKAGE ? unitPrice : unitPrice * quantity
 
+  // Tổng sau giảm giá voucher (không âm). discountAmount = 0 khi chưa/không áp mã.
+  const finalTotal = Math.max(0, total - discountAmount)
+
   const calculateDiscount = (key: string, price: number) => {
     if (priceOptions.length <= 1) return null
     const sorted = [...priceOptions].sort((a, b) => parseInt(a.key) - parseInt(b.key))
@@ -373,6 +379,15 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setShowTopBanner(true)
     }
   })
+
+  const { mutate: validateVoucher, isPending: isValidatingVoucher } = useValidateVoucher()
+
+  // Đổi số lượng / thời hạn / sản phẩm → giảm giá cũ không còn đúng → reset, buộc áp lại.
+  useEffect(() => {
+    setDiscountAmount(0)
+    setVoucherFeedback(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quantity, activeDuration, serviceTypeId])
 
   const handlePurchase = () => {
     if (isSubmitting.current || isPending || purchaseSuccess) return
@@ -429,7 +444,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
       quantity,
       protocol: selectedProtocol,
       days: activeDuration,
-      total,
+      total: finalTotal,
+      ...(discountAmount > 0 && { voucher_code: discountCode.trim() }),
       ...(productType === 'static' && {
         price: unitPrice,
         ip_version: ipVersion,
@@ -458,7 +474,39 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   }
 
   const handleApplyDiscount = () => {
-    toast.info('Tính năng đang phát triển')
+    const code = discountCode.trim()
+
+    if (!code) {
+      setVoucherFeedback({ type: 'error', text: 'Vui lòng nhập mã giảm giá.' })
+
+      return
+    }
+    if (isValidatingVoucher) return
+
+    validateVoucher(
+      { code, serviceTypeId, quantity, duration: activeDuration },
+      {
+        onSuccess: res => {
+          if (res.success && (res.discount ?? 0) > 0) {
+            setDiscountAmount(res.discount ?? 0)
+            setVoucherFeedback({
+              type: 'success',
+              text: `Áp dụng thành công — giảm ${(res.discount ?? 0).toLocaleString('vi-VN')}đ`
+            })
+          } else {
+            setDiscountAmount(0)
+            setVoucherFeedback({ type: 'error', text: res.message || 'Mã giảm giá không hợp lệ.' })
+          }
+        },
+        onError: (err: any) => {
+          setDiscountAmount(0)
+          setVoucherFeedback({
+            type: 'error',
+            text: err?.response?.data?.message || 'Không kiểm tra được mã, vui lòng thử lại.'
+          })
+        }
+      }
+    )
   }
 
   if (!open) return null
@@ -1233,14 +1281,35 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 type='text'
                 placeholder='Mã giảm giá'
                 value={discountCode}
-                onChange={e => setDiscountCode(e.target.value)}
+                onChange={e => {
+                  setDiscountCode(e.target.value)
+                  if (voucherFeedback) setVoucherFeedback(null)
+                }}
                 className='discount-input'
+                disabled={isValidatingVoucher || purchaseSuccess}
               />
             </div>
-            <button type='button' className='discount-btn' onClick={handleApplyDiscount}>
-              Áp dụng
+            <button
+              type='button'
+              className='discount-btn'
+              onClick={handleApplyDiscount}
+              disabled={isValidatingVoucher || purchaseSuccess}
+            >
+              {isValidatingVoucher ? 'Đang kiểm tra…' : 'Áp dụng'}
             </button>
           </div>
+          {voucherFeedback && (
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: '12px',
+                fontWeight: 500,
+                color: voucherFeedback.type === 'success' ? '#16a34a' : '#dc2626'
+              }}
+            >
+              {voucherFeedback.text}
+            </div>
+          )}
 
           {/* Order summary */}
           <div className='checkout-summary'>
@@ -1316,6 +1385,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <span className='summary-label'>Số lượng:</span>
               <span className='summary-value'>{quantity}</span>
             </div>
+            {discountAmount > 0 && (
+              <div className='summary-row'>
+                <span className='summary-label'>Giảm giá:</span>
+                <span className='summary-value' style={{ color: '#16a34a', fontWeight: 600 }}>
+                  −{discountAmount.toLocaleString('vi-VN')}đ
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Lỗi từ API — hiển thị ở cuối */}
@@ -1351,7 +1428,22 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         <div className='checkout-footer'>
           <div className='checkout-total'>
             <span className='total-text'>Tổng Cộng:</span>
-            <span className='total-amount'>{total.toLocaleString('vi-VN')}đ</span>
+            <span className='total-amount'>
+              {discountAmount > 0 && (
+                <span
+                  style={{
+                    textDecoration: 'line-through',
+                    color: '#94a3b8',
+                    fontWeight: 400,
+                    fontSize: '0.8em',
+                    marginRight: 6
+                  }}
+                >
+                  {total.toLocaleString('vi-VN')}đ
+                </span>
+              )}
+              {finalTotal.toLocaleString('vi-VN')}đ
+            </span>
           </div>
           {purchaseSuccess ? (
             <div style={{ display: 'flex', gap: 8, width: '100%' }}>

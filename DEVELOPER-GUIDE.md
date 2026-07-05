@@ -3494,3 +3494,22 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 - `OrderDetail.tsx`: import `ResidentialPackageBox`, tính `isResidential` + `residentialMeta`, rẽ nhánh tab Proxy.
 
 **Files:** `views/Client/HistoryOrder/ResidentialPackageBox.tsx` (mới), `views/Client/HistoryOrder/DownloadProxyModal.tsx` (mới), `views/Client/HistoryOrder/OrderDetail.tsx`, `hooks/apis/useOrders.ts`
+
+#### 13.N+12 Mã giảm giá (voucher) — admin CRUD + ô nhập mã checkout (06/07/2026)
+
+**Thêm:**
+- `hooks/apis/useVouchers.ts` — `useAdminVouchers` (list), `useCreateVoucher`, `useUpdateVoucher`, `useDeleteVoucher`, `useVoucherCodes`, và `useValidateVoucher` (preview ở checkout). Gọi thẳng `/admin/vouchers` + `/voucher/validate` (baseURL đã là API root).
+- Trang admin `admin/vouchers`: `TableVouchers.tsx` (list @tanstack/react-table: tên, loại mã, giảm, điều kiện đơn, lượt dùng, trạng thái tính toán active/inactive/expired/exhausted) + `ModalAddVoucher.tsx` (form tạo/sửa, field HIỆN theo ngữ cảnh: sàn/trần chỉ khi giảm %, mã cố định chỉ khi mã chung; edit chỉ sửa quy tắc, khoá field cấu trúc).
+- Menu admin "Mã giảm giá" (icon TicketPercent) + quyền `admin.vouchers` trong `useRole`.
+
+**Sửa `checkout-modal/CheckoutModal.tsx`** (ô nhập mã đã có stub sẵn):
+- `handleApplyDiscount` gọi `useValidateVoucher` (code + serviceTypeId + quantity + duration) → hiện `discountAmount` + feedback xanh/đỏ inline.
+- Reset mã khi đổi số lượng/thời hạn/sản phẩm (giá thay đổi → mã cũ không còn đúng).
+- Summary thêm dòng "Giảm giá"; footer tổng cộng hiện giá gạch + `finalTotal`.
+- `orderData` thêm `voucher_code` khi đã áp mã; BE tính lại + tiêu mã (authoritative).
+
+**Convention:** không `toast.success` (dùng `toast.info`/inline); không hardcode màu nút (dùng `var(--primary-gradient)`).
+
+**Lưu ý:** preview dùng giá từ `PricingService::getPrice` (BE) — khớp SP chạy GenericBuyProvider; SP provider-specific có thể lệch chút, số charge luôn đúng (BE authoritative).
+
+**Files:** `hooks/apis/useVouchers.ts` (mới), `views/Client/Admin/Vouchers/{TableVouchers,ModalAddVoucher}.tsx` (mới), `app/[lang]/(private)/(client)/admin/vouchers/page.tsx` (mới), `components/checkout-modal/CheckoutModal.tsx`, `components/layout/vertical/VerticalMenu.tsx`, `hooks/useRole.tsx`

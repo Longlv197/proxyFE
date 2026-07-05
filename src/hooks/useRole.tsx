@@ -19,6 +19,7 @@ export type Permission =
   | 'admin.depositHistory'
   | 'admin.serviceType'
   | 'admin.announcements'
+  | 'admin.vouchers'
   | 'reseller.credentials'
   | 'user.proxy'
   | 'user.orders'
@@ -36,7 +37,8 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'admin.transactionHistory',
     'admin.depositHistory',
     'admin.serviceType',
-    'admin.announcements'
+    'admin.announcements',
+    'admin.vouchers'
   ],
   reseller: [
     'reseller.credentials',

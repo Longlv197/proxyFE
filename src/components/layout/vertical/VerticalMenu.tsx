@@ -26,7 +26,8 @@ import {
   LifeBuoy,
   Landmark,
   ShoppingCart,
-  Activity
+  Activity,
+  TicketPercent
 } from 'lucide-react'
 
 // MUI Imports
@@ -526,6 +527,15 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
                 href={`/${locale}/admin/announcements`}
               >
                 Thông báo
+              </MenuItem>
+            )}
+            {hasPermission('admin.vouchers') && (
+              <MenuItem
+                icon={<TicketPercent size={20} strokeWidth={1.5} />}
+                {...nav('admin/vouchers')}
+                href={`/${locale}/admin/vouchers`}
+              >
+                Mã giảm giá
               </MenuItem>
             )}
             {hasPermission('admin.announcements') && (
