@@ -26,7 +26,16 @@ export interface VoucherCampaign {
   total_capacity?: number
   remaining?: number
   runtime_status?: 'active' | 'inactive' | 'expired' | 'exhausted'
+  sample_code?: string | null
   created_at: string
+}
+
+export interface VoucherItemRow {
+  id: number
+  code: string
+  status: number
+  used_count: number
+  usage_limit: number
 }
 
 export interface VoucherValidateResult {

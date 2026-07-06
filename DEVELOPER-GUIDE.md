@@ -3513,3 +3513,9 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Lưu ý:** preview dùng giá từ `PricingService::getPrice` (BE) — khớp SP chạy GenericBuyProvider; SP provider-specific có thể lệch chút, số charge luôn đúng (BE authoritative).
 
 **Files:** `hooks/apis/useVouchers.ts` (mới), `views/Client/Admin/Vouchers/{TableVouchers,ModalAddVoucher}.tsx` (mới), `app/[lang]/(private)/(client)/admin/vouchers/page.tsx` (mới), `components/checkout-modal/CheckoutModal.tsx`, `components/layout/vertical/VerticalMenu.tsx`, `hooks/useRole.tsx`
+
+#### 13.N+13 Voucher — hiện mã trong bảng + modal "Xem mã" (06/07/2026)
+
+**Vấn đề:** Tạo chiến dịch mã chung xong không thấy mã đâu (bảng không có cột mã, thiếu UI xem mã).
+**Sửa:** Thêm cột "Mã" (mã chung hiện trực tiếp; mã riêng hiện mẫu + tổng số) + nút "Xem mã" (icon Eye) mở `ModalVoucherCodes` — mã chung hiện to + copy; mã riêng list + copy tất cả + tải .txt. Dùng `sample_code` từ index + `useVoucherCodes`.
+**Files:** `views/Client/Admin/Vouchers/{TableVouchers,ModalVoucherCodes}.tsx` (modal mới), `hooks/apis/useVouchers.ts`

@@ -19,12 +19,13 @@ import {
   DialogActions,
   Chip
 } from '@mui/material'
-import { TicketPercent, SquarePlus, Pencil, Trash2 } from 'lucide-react'
+import { TicketPercent, SquarePlus, Pencil, Trash2, Eye } from 'lucide-react'
 import { toast } from 'react-toastify'
 
 import { useAdminVouchers, useDeleteVoucher } from '@/hooks/apis/useVouchers'
 import type { VoucherCampaign } from '@/hooks/apis/useVouchers'
 import ModalAddVoucher from './ModalAddVoucher'
+import ModalVoucherCodes from './ModalVoucherCodes'
 
 const vnd = (v: number | string | null | undefined) =>
   v == null ? '—' : Number(v).toLocaleString('vi-VN') + 'đ'
@@ -45,6 +46,13 @@ export default function TableVouchers() {
   const [editData, setEditData] = useState<VoucherCampaign | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<VoucherCampaign | null>(null)
+  const [codesOpen, setCodesOpen] = useState(false)
+  const [codesTarget, setCodesTarget] = useState<VoucherCampaign | null>(null)
+
+  const handleOpenCodes = useCallback((row: VoucherCampaign) => {
+    setCodesTarget(row)
+    setCodesOpen(true)
+  }, [])
 
   const handleOpenCreate = useCallback(() => {
     setModalType('create')
@@ -94,6 +102,38 @@ export default function TableVouchers() {
             />
           </div>
         )
+      },
+      {
+        header: 'Mã',
+        id: 'code',
+        size: 150,
+        cell: ({ row }) => {
+          const c = row.original
+          if (!c.sample_code) return <span style={{ color: '#94a3b8' }}>—</span>
+          if (c.code_type === 1) {
+            // Mã chung → hiện mã trực tiếp
+            return (
+              <span
+                onClick={() => handleOpenCodes(c)}
+                style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: '#0f172a', cursor: 'pointer' }}
+                title='Bấm để xem/copy'
+              >
+                {c.sample_code}
+              </span>
+            )
+          }
+
+          // Mã riêng → mẫu + tổng số
+          return (
+            <span
+              onClick={() => handleOpenCodes(c)}
+              style={{ fontFamily: 'monospace', fontSize: 12, color: '#64748b', cursor: 'pointer' }}
+              title='Bấm để xem tất cả mã'
+            >
+              {c.sample_code} <span style={{ color: '#3b82f6' }}>+{Math.max(0, (c.total_quantity || 1) - 1)} mã</span>
+            </span>
+          )
+        }
       },
       {
         header: 'Giảm giá',
@@ -178,6 +218,15 @@ export default function TableVouchers() {
         size: 90,
         cell: ({ row }) => (
           <div style={{ display: 'flex', gap: 4 }}>
+            <Tooltip title='Xem mã'>
+              <IconButton
+                size='small'
+                onClick={() => handleOpenCodes(row.original)}
+                sx={{ color: '#64748b', '&:hover': { color: '#16a34a', backgroundColor: '#f0fdf4' } }}
+              >
+                <Eye size={15} />
+              </IconButton>
+            </Tooltip>
             <Tooltip title='Sửa quy tắc'>
               <IconButton
                 size='small'
@@ -200,7 +249,7 @@ export default function TableVouchers() {
         )
       }
     ],
-    [handleOpenEdit, handleOpenDelete]
+    [handleOpenEdit, handleOpenDelete, handleOpenCodes]
   )
 
   const table = useReactTable({
@@ -283,6 +332,8 @@ export default function TableVouchers() {
       </div>
 
       <ModalAddVoucher open={modalOpen} onClose={() => setModalOpen(false)} type={modalType} data={editData} />
+
+      <ModalVoucherCodes open={codesOpen} onClose={() => setCodesOpen(false)} campaign={codesTarget} />
 
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Xác nhận xoá chiến dịch</DialogTitle>
