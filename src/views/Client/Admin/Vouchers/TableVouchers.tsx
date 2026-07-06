@@ -159,15 +159,16 @@ export default function TableVouchers() {
       {
         header: 'Điều kiện đơn',
         id: 'order_cond',
-        size: 150,
+        size: 160,
         cell: ({ row }) => {
           const c = row.original
-          if (!c.min_order_amount && !c.max_order_amount) return <span style={{ color: '#94a3b8' }}>—</span>
+          const min = Number(c.min_order_amount || 0)
+          const max = c.max_order_amount ? Number(c.max_order_amount) : null
 
           return (
             <span style={{ fontSize: '12px', color: '#64748b' }}>
-              {c.min_order_amount ? `từ ${vnd(c.min_order_amount)}` : ''}
-              {c.max_order_amount ? ` đến ${vnd(c.max_order_amount)}` : ''}
+              từ {min.toLocaleString('vi-VN')}đ
+              {max ? ` đến ${max.toLocaleString('vi-VN')}đ` : ''}
             </span>
           )
         }

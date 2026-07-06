@@ -3526,3 +3526,9 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Nguyên nhân:** `buildPayload` chỉ gửi field khi khác rỗng → để trắng = không gửi = BE `fill()` giữ nguyên. Verify qua tinker: gửi null tường minh thì xoá được.
 **Sửa:** Luôn gửi field tuỳ chọn (min/max đơn, sàn/trần %, ngày) dạng `null` khi trống → xoá được điều kiện. Sàn/trần gửi null khi không phải giảm %.
 **Files:** `views/Client/Admin/Vouchers/ModalAddVoucher.tsx`
+
+#### 13.N+15 Voucher — đơn tối thiểu trống hiển thị "0đ" thay vì "—" (06/07/2026)
+
+**Vấn đề:** Xoá đơn tối thiểu → lưu null → bảng hiện "—", khó hiểu (tưởng chưa lưu). User mong thấy 0.
+**Sửa:** Đơn tối thiểu mặc định 0, trống = 0 (không null) — "từ 0đ" = không giới hạn dưới. Bảng luôn hiện "từ Xđ" (X=0 nếu trống) + "đến Yđ" nếu có max. Max vẫn null = không giới hạn trên. min=0 vẫn qua check (subtotal < 0 không bao giờ đúng).
+**Files:** `views/Client/Admin/Vouchers/{TableVouchers,ModalAddVoucher}.tsx`

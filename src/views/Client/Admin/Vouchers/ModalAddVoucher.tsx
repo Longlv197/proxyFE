@@ -47,7 +47,7 @@ const defaultForm = {
   discount_value: '' as string,
   min_discount_amount: '' as string,
   max_discount_amount: '' as string,
-  min_order_amount: '' as string,
+  min_order_amount: '0' as string,
   max_order_amount: '' as string,
   per_user_limit: 1,
   starts_at: '',
@@ -78,7 +78,7 @@ export default function ModalAddVoucher({ open, onClose, type, data }: Props) {
         discount_value: String(Number(data.discount_value)),
         min_discount_amount: data.min_discount_amount != null ? String(Number(data.min_discount_amount)) : '',
         max_discount_amount: data.max_discount_amount != null ? String(Number(data.max_discount_amount)) : '',
-        min_order_amount: data.min_order_amount != null ? String(Number(data.min_order_amount)) : '',
+        min_order_amount: data.min_order_amount != null ? String(Number(data.min_order_amount)) : '0',
         max_order_amount: data.max_order_amount != null ? String(Number(data.max_order_amount)) : '',
         per_user_limit: data.per_user_limit,
         starts_at: toLocalInput(data.starts_at),
@@ -117,7 +117,9 @@ export default function ModalAddVoucher({ open, onClose, type, data }: Props) {
     // Kẹp giảm chỉ ý nghĩa khi giảm %; không phải % → null (xoá sàn/trần cũ nếu có)
     p.min_discount_amount = isPercent ? num(formData.min_discount_amount) : null
     p.max_discount_amount = isPercent ? num(formData.max_discount_amount) : null
-    p.min_order_amount = num(formData.min_order_amount)
+    // Đơn tối thiểu: trống = 0 (từ 0đ, không giới hạn dưới) — không để null cho rõ nghĩa
+    p.min_order_amount = formData.min_order_amount === '' ? 0 : Number(formData.min_order_amount)
+    // Đơn tối đa: trống = null (không giới hạn trên)
     p.max_order_amount = num(formData.max_order_amount)
     p.starts_at = formData.starts_at || null
     p.ends_at = formData.ends_at || null
@@ -277,7 +279,7 @@ export default function ModalAddVoucher({ open, onClose, type, data }: Props) {
               value={formData.min_order_amount}
               onChange={e => handleChange('min_order_amount', e.target.value)}
               size='small'
-              helperText='Đơn phải ≥ mức này mới dùng được mã'
+              helperText='Đơn phải ≥ mức này. 0 = không giới hạn dưới'
             />
           </Grid2>
           <Grid2 size={{ xs: 12, sm: 6 }}>
