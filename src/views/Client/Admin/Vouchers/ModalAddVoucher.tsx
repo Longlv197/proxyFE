@@ -110,15 +110,17 @@ export default function ModalAddVoucher({ open, onClose, type, data }: Props) {
       per_user_limit: Number(formData.per_user_limit) || 1
     }
 
-    // Kẹp giảm — chỉ gửi khi giảm %
-    if (isPercent) {
-      if (formData.min_discount_amount !== '') p.min_discount_amount = Number(formData.min_discount_amount)
-      if (formData.max_discount_amount !== '') p.max_discount_amount = Number(formData.max_discount_amount)
-    }
-    if (formData.min_order_amount !== '') p.min_order_amount = Number(formData.min_order_amount)
-    if (formData.max_order_amount !== '') p.max_order_amount = Number(formData.max_order_amount)
-    if (formData.starts_at) p.starts_at = formData.starts_at
-    if (formData.ends_at) p.ends_at = formData.ends_at
+    // LUÔN gửi các field tuỳ chọn (null khi trống) → cho phép XOÁ điều kiện khi sửa.
+    // Nếu chỉ gửi khi khác rỗng thì để trắng = không gửi = BE giữ giá trị cũ (không xoá được).
+    const num = (v: string) => (v === '' || v == null ? null : Number(v))
+
+    // Kẹp giảm chỉ ý nghĩa khi giảm %; không phải % → null (xoá sàn/trần cũ nếu có)
+    p.min_discount_amount = isPercent ? num(formData.min_discount_amount) : null
+    p.max_discount_amount = isPercent ? num(formData.max_discount_amount) : null
+    p.min_order_amount = num(formData.min_order_amount)
+    p.max_order_amount = num(formData.max_order_amount)
+    p.starts_at = formData.starts_at || null
+    p.ends_at = formData.ends_at || null
 
     // Field cấu trúc — chỉ gửi khi TẠO (edit không đổi được)
     if (!isEdit) {

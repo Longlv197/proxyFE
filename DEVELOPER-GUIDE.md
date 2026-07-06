@@ -3519,3 +3519,10 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Vấn đề:** Tạo chiến dịch mã chung xong không thấy mã đâu (bảng không có cột mã, thiếu UI xem mã).
 **Sửa:** Thêm cột "Mã" (mã chung hiện trực tiếp; mã riêng hiện mẫu + tổng số) + nút "Xem mã" (icon Eye) mở `ModalVoucherCodes` — mã chung hiện to + copy; mã riêng list + copy tất cả + tải .txt. Dùng `sample_code` từ index + `useVoucherCodes`.
 **Files:** `views/Client/Admin/Vouchers/{TableVouchers,ModalVoucherCodes}.tsx` (modal mới), `hooks/apis/useVouchers.ts`
+
+#### 13.N+14 Voucher — sửa/xoá điều kiện đơn không lưu được (06/07/2026)
+
+**Vấn đề:** Sửa chiến dịch, XOÁ trắng điều kiện đơn (min/max) để bỏ điều kiện → không lưu (BE giữ giá trị cũ). Đổi sang giá trị mới thì OK, chỉ xoá là không được.
+**Nguyên nhân:** `buildPayload` chỉ gửi field khi khác rỗng → để trắng = không gửi = BE `fill()` giữ nguyên. Verify qua tinker: gửi null tường minh thì xoá được.
+**Sửa:** Luôn gửi field tuỳ chọn (min/max đơn, sàn/trần %, ngày) dạng `null` khi trống → xoá được điều kiện. Sàn/trần gửi null khi không phải giảm %.
+**Files:** `views/Client/Admin/Vouchers/ModalAddVoucher.tsx`
