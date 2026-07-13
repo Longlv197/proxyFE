@@ -51,7 +51,7 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Lấy Proxy Xoay Mới',
     method: 'GET',
     endpoint: `${PROXY_BASE}/proxies/new`,
-    description: 'Lấy proxy hiện tại từ cache (CHỈ ĐỌC, không gọi NCC). second = số giây tới lần xoay kế (cooldown hoặc nhịp auto). real_ip = IP gốc NCC trả (nếu có cấu hình). Đơn mới chưa kích hoạt → trả NO_PROXY_DATA; gọi /proxies/rotate-ip để lấy proxy lần đầu.',
+    description: 'Lấy proxy hiện tại từ cache (CHỈ ĐỌC, không xoay IP). second = số giây tới lần xoay kế (cooldown hoặc nhịp auto). real_ip = IP gốc (IP thoát thực tế, nếu sản phẩm có cấu hình). Đơn mới chưa kích hoạt → trả NO_PROXY_DATA; gọi /proxies/rotate-ip để lấy proxy lần đầu.',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
@@ -97,7 +97,7 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Lấy Proxy Hiện Tại',
     method: 'GET',
     endpoint: `${PROXY_BASE}/proxies/current`,
-    description: 'Lấy proxy hiện tại (alias của /proxies/new, CHỈ ĐỌC). second = số giây tới lần xoay kế. real_ip = IP gốc NCC trả (nếu có cấu hình).',
+    description: 'Lấy proxy hiện tại (alias của /proxies/new, CHỈ ĐỌC). second = số giây tới lần xoay kế. real_ip = IP gốc (IP thoát thực tế, nếu sản phẩm có cấu hình).',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
@@ -142,7 +142,7 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Xoay IP Proxy',
     method: 'POST',
     endpoint: `${PROXY_BASE}/proxies/rotate-ip`,
-    description: 'Xoay IP ngay — gọi sang nhà cung cấp lấy IP mới. Có cooldown tối thiểu theo sản phẩm (mặc định 60 giây); trong cooldown trả về proxy HIỆN TẠI kèm second = số giây còn lại (không gọi NCC). Field real_ip = IP gốc (exit) NCC trả về, chỉ có khi NCC được cấu hình field này.',
+    description: 'Xoay IP ngay — đổi sang IP mới. Có cooldown tối thiểu theo sản phẩm (mặc định 60 giây); trong cooldown trả về proxy HIỆN TẠI kèm second = số giây còn lại (không đổi IP). Field real_ip = IP gốc (IP thoát thực tế), chỉ có khi sản phẩm được cấu hình field này.',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
@@ -176,7 +176,7 @@ export const apiEndpoints: ApiEndpoint[] = [
 }`,
       '502 ERROR': `{
   "success": false,
-  "message": "Lỗi khi gọi nhà cung cấp",
+  "message": "Xoay IP thất bại, vui lòng thử lại",
   "status": "FAIL",
   "error": "ROTATE_FAILED",
   "seconds": 60

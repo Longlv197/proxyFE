@@ -3532,3 +3532,9 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Vấn đề:** Xoá đơn tối thiểu → lưu null → bảng hiện "—", khó hiểu (tưởng chưa lưu). User mong thấy 0.
 **Sửa:** Đơn tối thiểu mặc định 0, trống = 0 (không null) — "từ 0đ" = không giới hạn dưới. Bảng luôn hiện "từ Xđ" (X=0 nếu trống) + "đến Yđ" nếu có max. Max vẫn null = không giới hạn trên. min=0 vẫn qua check (subtotal < 0 không bao giờ đúng).
 **Files:** `views/Client/Admin/Vouchers/{TableVouchers,ModalAddVoucher}.tsx`
+
+#### 13.N+16 Dọn lộ NCC trong tài liệu API (13/07/2026)
+
+**Vấn đề:** Tài liệu API (hiển thị cho khách/đại lý tích hợp) lộ "nhà cung cấp"/"NCC" — vi phạm quy tắc giấu nguồn hàng. VD: "Xoay IP ngay — gọi sang nhà cung cấp lấy IP mới... không gọi NCC... IP gốc (exit) NCC trả về".
+**Sửa:** Dọn 4 chỗ trong `apiDocsConfig.ts` (mô tả /proxies/new, /current, /rotate-ip + ví dụ 502): "gọi sang nhà cung cấp"→"đổi sang IP mới", "không gọi NCC"→"không đổi IP", "IP gốc NCC trả"→"IP gốc (IP thoát thực tế)", "Lỗi khi gọi nhà cung cấp"→"Xoay IP thất bại". Giữ nguyên nghĩa kỹ thuật (cooldown/second/real_ip).
+**Files:** `src/configs/apiDocsConfig.ts`
