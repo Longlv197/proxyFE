@@ -3538,3 +3538,9 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Vấn đề:** Tài liệu API (hiển thị cho khách/đại lý tích hợp) lộ "nhà cung cấp"/"NCC" — vi phạm quy tắc giấu nguồn hàng. VD: "Xoay IP ngay — gọi sang nhà cung cấp lấy IP mới... không gọi NCC... IP gốc (exit) NCC trả về".
 **Sửa:** Dọn 4 chỗ trong `apiDocsConfig.ts` (mô tả /proxies/new, /current, /rotate-ip + ví dụ 502): "gọi sang nhà cung cấp"→"đổi sang IP mới", "không gọi NCC"→"không đổi IP", "IP gốc NCC trả"→"IP gốc (IP thoát thực tế)", "Lỗi khi gọi nhà cung cấp"→"Xoay IP thất bại". Giữ nguyên nghĩa kỹ thuật (cooldown/second/real_ip).
 **Files:** `src/configs/apiDocsConfig.ts`
+
+#### 13.N+17 Hiện "IP hiện tại" (exit) đổi khi xoay + bỏ nhãn NCC (13/07/2026)
+
+**Vấn đề:** Proxy xoay HomeProxy hiện cổng cố định → khách bấm xoay tưởng IP không đổi. Nhãn "IP gốc (NCC)" lộ nguồn hàng.
+**Sửa:** ProxyDetailModal — `real_ip` (BE giờ trả IP exit thật) đổi nhãn "IP gốc (NCC):" → "IP hiện tại:" (đổi mỗi lần xoay → khách thấy rõ). Bỏ chữ "NCC".
+**Files:** `src/views/Client/OrderRotatingProxy/ProxyDetailModal.tsx`

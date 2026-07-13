@@ -177,13 +177,13 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
           </Box>
         )}
 
-        {/* IP gốc NCC trả về (nếu NCC có cấu hình field) */}
+        {/* IP thật ra internet (exit) — đổi mỗi lần xoay; proxy kết nối là cổng cố định */}
         {localProxy?.real_ip && (
           <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant='body2' color='text.secondary'>IP gốc (NCC):</Typography>
+            <Typography variant='body2' color='text.secondary'>IP hiện tại:</Typography>
             <Typography sx={{ fontFamily: 'monospace', fontWeight: 600, color: '#059669', fontSize: '0.9rem' }}>{localProxy.real_ip}</Typography>
             <Button variant='text' size='small' startIcon={<Copy size={13} />} sx={{ minWidth: 0 }}
-              onClick={() => copy(localProxy.real_ip, 'Đã copy IP gốc!')} />
+              onClick={() => copy(localProxy.real_ip, 'Đã copy IP!')} />
           </Box>
         )}
 
