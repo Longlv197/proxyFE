@@ -49,6 +49,10 @@ const INTERVAL_OPTIONS = [
 ]
 
 const fmtInterval = (s: number) => INTERVAL_OPTIONS.find(o => o.v === s)?.label || `${s}s`
+const fmtCountdown = (s: number) => {
+  const m = Math.floor(s / 60), sec = s % 60
+  return m > 0 ? `${m}p ${sec.toString().padStart(2, '0')}s` : `${sec}s`
+}
 
 const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, proxy, orderKey, onProxyChange }) => {
   const [, copy] = useCopy()
@@ -87,12 +91,20 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
     if (open && orderKey) fetchMode()
   }, [open, orderKey, fetchMode])
 
-  // Đếm ngược cooldown
+  // Đếm ngược: manual = cooldown; auto = tới lần NCC tự đổi IP (lặp lại theo chu kỳ).
   useEffect(() => {
-    if (countdown <= 0) return
+    if (countdown <= 0) {
+      // Auto hết 1 chu kỳ → IP vừa tự đổi → nạp lại đếm ngược + lấy IP mới
+      if (rot?.auto_rotate && (rot.auto_rotate_interval || 0) > 0) {
+        setCountdown(rot.auto_rotate_interval)
+        pingIp()
+      }
+      return
+    }
     const t = setInterval(() => setCountdown(c => (c <= 1 ? 0 : c - 1)), 1000)
     return () => clearInterval(t)
-  }, [countdown])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdown, rot?.auto_rotate, rot?.auto_rotate_interval])
 
   // Ping proxy lấy IP THẬT hiện tại (exit). Cần vì ở chế độ auto, NCC tự đổi IP phía họ,
   // mình không gọi sang nên IP lưu bị cũ — ping qua chính proxy để lấy IP đang dùng thật.
@@ -227,8 +239,8 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
           <>
             <Divider sx={{ my: 2 }} />
 
-            {/* Nút xoay/lấy proxy thủ công — mặc định cho xoay tay; chỉ ẩn khi SP tắt allow_manual */}
-            {(!rot || rot.allow_manual) && (
+            {/* Nút xoay tay — ẩn khi auto bật (auto tự đổi, hiện đếm ngược riêng bên dưới); ẩn khi SP tắt allow_manual */}
+            {(!rot || (rot.allow_manual && !rot.auto_rotate)) && (
               <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.5 }}>
                 <Button variant='contained' color='primary' disableElevation
                   startIcon={rotating ? <CircularProgress size={16} color='inherit' /> : <RefreshCw size={16} />}
@@ -267,11 +279,19 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
                     </TextField>
                   </Box>
                 )}
-                <Typography sx={{ fontSize: 11, color: '#94a3b8', mt: 0.75 }}>
-                  {rot.auto_rotate
-                    ? `Hệ thống tự đổi IP mỗi ${fmtInterval(rot.auto_rotate_interval)} — không cần gọi API.`
-                    : `Bật để hệ thống tự đổi IP định kỳ. Chu kỳ tối thiểu cho sản phẩm này: ${fmtInterval(rot.min_interval)}.`}
-                </Typography>
+                {rot.auto_rotate ? (
+                  <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                    <RefreshCw size={13} color='#059669' />
+                    <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: '#059669' }}>
+                      {countdown > 0 ? `IP mới sau ${fmtCountdown(countdown)}` : 'Đang đổi IP...'}
+                    </Typography>
+                    <Typography sx={{ fontSize: 11, color: '#94a3b8' }}>· tự đổi mỗi {fmtInterval(rot.auto_rotate_interval)}</Typography>
+                  </Box>
+                ) : (
+                  <Typography sx={{ fontSize: 11, color: '#94a3b8', mt: 0.75 }}>
+                    Bật để hệ thống tự đổi IP định kỳ. Chu kỳ tối thiểu cho sản phẩm này: {fmtInterval(rot.min_interval)}.
+                  </Typography>
+                )}
               </Box>
             )}
           </>

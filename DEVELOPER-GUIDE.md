@@ -3550,3 +3550,9 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Vấn đề:** Modal cài đặt proxy (ProxyDetailModal) chỉ hiện IP lưu (cũ ở chế độ auto vì NCC tự xoay phía họ, mình không biết IP mới) + KHÔNG có nút refresh (trang OrderDetail thì có).
 **Sửa:** Modal ping qua proxy (`POST /proxy/ping` → origin_ip) lấy IP THẬT hiện tại. Tự ping khi mở modal + nút ↻ "Làm mới IP hiện tại". Sau xoay tay set IP exit từ response. Bỏ 1 chỗ text lộ "nhà cung cấp".
 **Files:** `src/views/Client/OrderRotatingProxy/ProxyDetailModal.tsx`
+
+#### 13.N+19 Auto mode: hiện "IP mới sau X" thay nút xoay tay + cooldown (13/07/2026)
+
+**Vấn đề:** Modal khi bật auto vẫn hiện nút "Có thể xoay sau Xs" (ngôn ngữ xoay tay) — sai ngữ cảnh.
+**Sửa:** Auto ON → ẩn nút xoay tay, hiện "🔄 IP mới sau {mm:ss} · tự đổi mỗi {interval}" (đếm ngược lặp, BE trả `second` theo anchor+modulo). Hết chu kỳ tự nạp lại + ping IP mới. Auto OFF → nút xoay tay + cooldown như cũ.
+**Files:** `src/views/Client/OrderRotatingProxy/ProxyDetailModal.tsx`
