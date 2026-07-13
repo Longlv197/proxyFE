@@ -60,6 +60,8 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
   const [rotating, setRotating] = useState(false)
   const [savingMode, setSavingMode] = useState(false)
   const [countdown, setCountdown] = useState(0)
+  const [pingedIp, setPingedIp] = useState<string>('')
+  const [pinging, setPinging] = useState(false)
 
   // Đồng bộ proxy từ prop khi mở/đổi
   useEffect(() => { setLocalProxy(proxy) }, [proxy])
@@ -92,6 +94,31 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
     return () => clearInterval(t)
   }, [countdown])
 
+  // Ping proxy lấy IP THẬT hiện tại (exit). Cần vì ở chế độ auto, NCC tự đổi IP phía họ,
+  // mình không gọi sang nên IP lưu bị cũ — ping qua chính proxy để lấy IP đang dùng thật.
+  const pingIp = useCallback(async () => {
+    const proxyStr = extractProxyValue(localProxy)
+    if (!proxyStr || proxyStr === '-' || pinging) return
+    setPinging(true)
+    try {
+      const res = await axiosAuth.post('/proxy/ping', { proxy_string: proxyStr })
+      setPingedIp(res.data?.data?.origin_ip || '')
+    } catch {
+      // ping lỗi → giữ IP cũ
+    } finally {
+      setPinging(false)
+    }
+  }, [localProxy, axiosAuth, pinging])
+
+  // Tự ping lấy IP hiện tại khi mở modal (nếu đã có proxy)
+  useEffect(() => {
+    if (open && localProxy) {
+      const s = extractProxyValue(localProxy)
+      if (s && s !== '-') pingIp()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, orderKey])
+
   // Xoay IP / Lấy proxy lần đầu (gọi NCC)
   const handleRotate = async () => {
     if (!orderKey || rotating) return
@@ -102,6 +129,7 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
         const data = res.data.data
         setLocalProxy(data)
         onProxyChange?.(data)
+        setPingedIp(data?.real_ip || '') // IP exit mới ngay sau xoay (BE trả kèm)
         setCountdown(Number(res.data.second) || 0)
         toast.info(res.data.message || 'Đã xoay IP')
       } else {
@@ -172,18 +200,25 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
         ) : (
           <Box sx={{ p: 2.5, mb: 2, bgcolor: '#fffbeb', borderRadius: 2, border: '1px solid #fde68a', textAlign: 'center' }}>
             <Typography variant='body2' sx={{ color: '#92400e' }}>
-              Chưa có proxy — bấm <strong>"Lấy proxy"</strong> bên dưới để kích hoạt (hệ thống gọi sang nhà cung cấp).
+              Chưa có proxy — bấm <strong>"Lấy proxy"</strong> bên dưới để kích hoạt.
             </Typography>
           </Box>
         )}
 
-        {/* IP thật ra internet (exit) — đổi mỗi lần xoay; proxy kết nối là cổng cố định */}
-        {localProxy?.real_ip && (
+        {/* IP thật ra internet (exit) — đổi mỗi lần xoay; proxy kết nối là cổng cố định.
+            Ping trực tiếp qua proxy để lấy IP đang dùng THẬT (kể cả khi tự xoay định kỳ). */}
+        {(pingedIp || localProxy?.real_ip) && (
           <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant='body2' color='text.secondary'>IP hiện tại:</Typography>
-            <Typography sx={{ fontFamily: 'monospace', fontWeight: 600, color: '#059669', fontSize: '0.9rem' }}>{localProxy.real_ip}</Typography>
+            <Typography sx={{ fontFamily: 'monospace', fontWeight: 600, color: '#059669', fontSize: '0.9rem' }}>
+              {pinging ? 'Đang lấy...' : (pingedIp || localProxy?.real_ip)}
+            </Typography>
+            <Button variant='text' size='small' sx={{ minWidth: 0, px: 0.5 }} disabled={pinging}
+              onClick={pingIp} title='Làm mới IP hiện tại'>
+              <RefreshCw size={13} />
+            </Button>
             <Button variant='text' size='small' startIcon={<Copy size={13} />} sx={{ minWidth: 0 }}
-              onClick={() => copy(localProxy.real_ip, 'Đã copy IP!')} />
+              onClick={() => copy(pingedIp || localProxy?.real_ip, 'Đã copy IP!')} />
           </Box>
         )}
 

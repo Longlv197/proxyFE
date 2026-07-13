@@ -3544,3 +3544,9 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Vấn đề:** Proxy xoay HomeProxy hiện cổng cố định → khách bấm xoay tưởng IP không đổi. Nhãn "IP gốc (NCC)" lộ nguồn hàng.
 **Sửa:** ProxyDetailModal — `real_ip` (BE giờ trả IP exit thật) đổi nhãn "IP gốc (NCC):" → "IP hiện tại:" (đổi mỗi lần xoay → khách thấy rõ). Bỏ chữ "NCC".
 **Files:** `src/views/Client/OrderRotatingProxy/ProxyDetailModal.tsx`
+
+#### 13.N+18 Nút "làm mới IP hiện tại" trong modal proxy (13/07/2026)
+
+**Vấn đề:** Modal cài đặt proxy (ProxyDetailModal) chỉ hiện IP lưu (cũ ở chế độ auto vì NCC tự xoay phía họ, mình không biết IP mới) + KHÔNG có nút refresh (trang OrderDetail thì có).
+**Sửa:** Modal ping qua proxy (`POST /proxy/ping` → origin_ip) lấy IP THẬT hiện tại. Tự ping khi mở modal + nút ↻ "Làm mới IP hiện tại". Sau xoay tay set IP exit từ response. Bỏ 1 chỗ text lộ "nhà cung cấp".
+**Files:** `src/views/Client/OrderRotatingProxy/ProxyDetailModal.tsx`
