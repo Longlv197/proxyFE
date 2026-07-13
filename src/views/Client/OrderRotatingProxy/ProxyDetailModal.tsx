@@ -65,6 +65,7 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
   const [savingMode, setSavingMode] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [pingedIp, setPingedIp] = useState<string>('')
+  const [prevIp, setPrevIp] = useState<string>('') // IP ngay TRƯỚC lần đổi gần nhất → hiện "vừa đổi: X → Y"
   const [pinging, setPinging] = useState(false)
 
   // Đồng bộ proxy từ prop khi mở/đổi
@@ -94,8 +95,9 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
   // Đếm ngược: manual = cooldown; auto = tới lần NCC tự đổi IP (lặp lại theo chu kỳ).
   useEffect(() => {
     if (countdown <= 0) {
-      // Auto hết 1 chu kỳ → IP vừa tự đổi → nạp lại đếm ngược + lấy IP mới
+      // Auto hết 1 chu kỳ → IP vừa tự đổi → lưu IP cũ, nạp lại đếm ngược + lấy IP mới
       if (rot?.auto_rotate && (rot.auto_rotate_interval || 0) > 0) {
+        setPrevIp(pingedIp)
         setCountdown(rot.auto_rotate_interval)
         pingIp()
       }
@@ -139,6 +141,7 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
       const res = await axiosAuth.post('/proxies/rotate-ip', { key: orderKey })
       if (res.data?.success) {
         const data = res.data.data
+        setPrevIp(pingedIp || localProxy?.real_ip || '') // IP trước khi xoay
         setLocalProxy(data)
         onProxyChange?.(data)
         setPingedIp(data?.real_ip || '') // IP exit mới ngay sau xoay (BE trả kèm)
@@ -220,17 +223,24 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
         {/* IP thật ra internet (exit) — đổi mỗi lần xoay; proxy kết nối là cổng cố định.
             Ping trực tiếp qua proxy để lấy IP đang dùng THẬT (kể cả khi tự xoay định kỳ). */}
         {(pingedIp || localProxy?.real_ip) && (
-          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant='body2' color='text.secondary'>IP hiện tại:</Typography>
-            <Typography sx={{ fontFamily: 'monospace', fontWeight: 600, color: '#059669', fontSize: '0.9rem' }}>
-              {pinging ? 'Đang lấy...' : (pingedIp || localProxy?.real_ip)}
-            </Typography>
-            <Button variant='text' size='small' sx={{ minWidth: 0, px: 0.5 }} disabled={pinging}
-              onClick={pingIp} title='Làm mới IP hiện tại'>
-              <RefreshCw size={13} />
-            </Button>
-            <Button variant='text' size='small' startIcon={<Copy size={13} />} sx={{ minWidth: 0 }}
-              onClick={() => copy(pingedIp || localProxy?.real_ip, 'Đã copy IP!')} />
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant='body2' color='text.secondary'>IP hiện tại:</Typography>
+              <Typography sx={{ fontFamily: 'monospace', fontWeight: 600, color: '#059669', fontSize: '0.9rem' }}>
+                {pinging ? 'Đang lấy...' : (pingedIp || localProxy?.real_ip)}
+              </Typography>
+              <Button variant='text' size='small' sx={{ minWidth: 0, px: 0.5 }} disabled={pinging}
+                onClick={() => pingIp()} title='Làm mới IP hiện tại'>
+                <RefreshCw size={13} />
+              </Button>
+              <Button variant='text' size='small' startIcon={<Copy size={13} />} sx={{ minWidth: 0 }}
+                onClick={() => copy(pingedIp || localProxy?.real_ip, 'Đã copy IP!')} />
+            </Box>
+            {prevIp && (pingedIp || localProxy?.real_ip) && prevIp !== (pingedIp || localProxy?.real_ip) && (
+              <Typography sx={{ fontSize: 11, color: '#94a3b8', mt: 0.25, fontFamily: 'monospace' }}>
+                ↳ vừa đổi: <span style={{ textDecoration: 'line-through' }}>{prevIp}</span> → <span style={{ color: '#059669', fontWeight: 700 }}>{pingedIp || localProxy?.real_ip}</span>
+              </Typography>
+            )}
           </Box>
         )}
 

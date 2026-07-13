@@ -3556,3 +3556,9 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Vấn đề:** Modal khi bật auto vẫn hiện nút "Có thể xoay sau Xs" (ngôn ngữ xoay tay) — sai ngữ cảnh.
 **Sửa:** Auto ON → ẩn nút xoay tay, hiện "🔄 IP mới sau {mm:ss} · tự đổi mỗi {interval}" (đếm ngược lặp, BE trả `second` theo anchor+modulo). Hết chu kỳ tự nạp lại + ping IP mới. Auto OFF → nút xoay tay + cooldown như cũ.
 **Files:** `src/views/Client/OrderRotatingProxy/ProxyDetailModal.tsx`
+
+#### 13.N+20 Hiện "IP vừa đổi: cũ → mới" trong modal (cả 2 mode) (13/07/2026)
+
+**Vấn đề:** Cần thấy IP trước/sau mỗi lần đổi (xoay tay hoặc auto tự đổi).
+**Sửa:** State `prevIp` lưu IP ngay trước lần đổi. Xoay tay → prevIp = IP cũ, IP mới từ response. Auto hết chu kỳ → prevIp = IP cũ trước khi ping IP mới. Hiện dòng "↳ vừa đổi: <s>cũ</s> → mới" dưới "IP hiện tại", áp cho cả thủ công lẫn tự động.
+**Files:** `src/views/Client/OrderRotatingProxy/ProxyDetailModal.tsx`
