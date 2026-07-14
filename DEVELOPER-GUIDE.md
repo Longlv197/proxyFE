@@ -3562,3 +3562,9 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Vấn đề:** Cần thấy IP trước/sau mỗi lần đổi (xoay tay hoặc auto tự đổi).
 **Sửa:** State `prevIp` lưu IP ngay trước lần đổi. Xoay tay → prevIp = IP cũ, IP mới từ response. Auto hết chu kỳ → prevIp = IP cũ trước khi ping IP mới. Hiện dòng "↳ vừa đổi: <s>cũ</s> → mới" dưới "IP hiện tại", áp cho cả thủ công lẫn tự động.
 **Files:** `src/views/Client/OrderRotatingProxy/ProxyDetailModal.tsx`
+
+#### 13.N+21 Admin: xem số dư NCC trong dialog nạp tiền (14/07/2026)
+
+**Vấn đề:** Nạp tiền NCC (HomeProxy) mà không thấy số dư hiện tại.
+**Sửa:** Hook `useProviderBalance` (GET /provider-balance/{code}). Dialog nạp tiền tự lấy + hiện "Số dư hiện tại: X đ" + nút Làm mới. NCC không hỗ trợ → ẩn dòng (endpoint trả 422). Deposit HomeProxy qrCode giờ chuẩn hoá data URI ở BE.
+**Files:** `src/hooks/apis/useProviders.ts`, `src/views/Client/Admin/Provider/TableProvider.tsx`

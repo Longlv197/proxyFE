@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
@@ -48,7 +48,7 @@ import {
 
 import { toast } from 'react-toastify'
 
-import { useDeleteProvider, useProviders } from '@/hooks/apis/useProviders'
+import { useDeleteProvider, useProviders, useProviderBalance } from '@/hooks/apis/useProviders'
 import ConfigVersionDrawer from '@/views/Client/Admin/ConfigVersions/ConfigVersionDrawer'
 import QrCodeDialog from '@/views/Client/Admin/Provider/QrCodeDialog'
 import TransactionModal from '@/views/Client/Admin/Provider/TransactionModal'
@@ -76,6 +76,8 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
   const [rechargeDialogOpen, setRechargeDialogOpen] = useState(false)
   const [providerToRecharge, setProviderToRecharge] = useState<any>(null)
   const [rechargeAmount, setRechargeAmount] = useState('')
+  const [providerBalance, setProviderBalance] = useState<number | null>(null)
+  const balanceMutation = useProviderBalance()
 
   const [qrCodeDialogOpen, setQrCodeDialogOpen] = useState(false)
   const [providerForQrCode, setProviderForQrCode] = useState<any>(null)
@@ -245,7 +247,26 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
     setRechargeDialogOpen(false)
     setProviderToRecharge(null)
     setRechargeAmount('')
+    setProviderBalance(null)
   }, [])
+
+  // Lấy số dư ví NCC khi mở dialog nạp tiền (chỉ NCC hỗ trợ mới trả số, else ẩn dòng số dư)
+  const fetchProviderBalance = useCallback((code?: string) => {
+    if (!code) return
+    balanceMutation.mutate(code, {
+      onSuccess: (res: any) => setProviderBalance(res?.data?.balance ?? null),
+      onError: () => setProviderBalance(null)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (rechargeDialogOpen && providerToRecharge) {
+      setProviderBalance(null)
+      fetchProviderBalance(providerToRecharge?.provider_code || providerToRecharge?.code)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rechargeDialogOpen, providerToRecharge])
 
   const handleConfirmRecharge = useCallback(() => {
     if (providerToRecharge && rechargeAmount && Number(rechargeAmount) > 0) {
@@ -793,9 +814,27 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
       >
         <DialogTitle id='recharge-dialog-title'>Nạp tiền cho nhà cung cấp</DialogTitle>
         <DialogContent>
-          <DialogContentText id='recharge-dialog-description' sx={{ mb: 2 }}>
+          <DialogContentText id='recharge-dialog-description' sx={{ mb: 1 }}>
             Nhà cung cấp: <strong>{providerToRecharge?.title || providerToRecharge?.name || ''}</strong>
           </DialogContentText>
+          {(balanceMutation.isPending || providerBalance !== null) && (
+            <DialogContentText sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+              Số dư hiện tại:{' '}
+              <strong style={{ color: '#059669' }}>
+                {balanceMutation.isPending
+                  ? 'Đang lấy...'
+                  : `${new Intl.NumberFormat('vi-VN').format(providerBalance || 0)} đ`}
+              </strong>
+              <Button
+                size='small'
+                variant='text'
+                disabled={balanceMutation.isPending}
+                onClick={() => fetchProviderBalance(providerToRecharge?.provider_code || providerToRecharge?.code)}
+              >
+                Làm mới
+              </Button>
+            </DialogContentText>
+          )}
           <TextField
             autoFocus
             margin='dense'

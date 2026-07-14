@@ -103,6 +103,19 @@ return res?.data
   })
 }
 
+// Hook lấy số dư ví NCC (hiện hỗ trợ homeproxy.vn). Trả { success, data: { balance } }
+export const useProviderBalance = () => {
+  const axiosAuth = useAxiosAuth()
+
+  return useMutation({
+    mutationFn: async (providerCode: string) => {
+      const res = await axiosAuth.get(`/provider-balance/${providerCode}`)
+
+      return res?.data
+    }
+  })
+}
+
 // Hook để lấy lịch sử giao dịch nạp tiền của provider
 export const useProviderTransactions = (providerId?: number | string, enabled: boolean = true) => {
   const axiosAuth = useAxiosAuth()
