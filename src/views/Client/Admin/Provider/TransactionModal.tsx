@@ -342,6 +342,7 @@ return (
                         <th className='table-header th'>Thời gian</th>
                         <th className='table-header th'>Loại</th>
                         <th className='table-header th'>Số tiền</th>
+                        <th className='table-header th'>Số dư trước</th>
                         <th className='table-header th'>Số dư sau</th>
                         <th className='table-header th'>Trạng thái</th>
                         <th className='table-header th'>Mã đơn</th>
@@ -360,6 +361,7 @@ return (
                             <td className='table-cell text-sm font-semibold' style={{ color: t.type === 1 ? '#059669' : '#dc2626' }}>
                               {t.type === 1 ? '+' : '-'}{fmt.format(t.amount)} đ
                             </td>
+                            <td className='table-cell text-sm text-gray-500'>{fmt.format(t.balance_before)} đ</td>
                             <td className='table-cell text-sm'>{fmt.format(t.balance_after)} đ</td>
                             <td className='table-cell'>
                               <Chip label={t.status || '-'} size='small' color={done ? 'success' : pending ? 'warning' : 'default'} />
