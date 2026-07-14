@@ -898,6 +898,7 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
           onClose={handleCloseTransactionModal}
           providerId={providerForTransaction?.id}
           providerName={providerForTransaction?.title || providerForTransaction?.name}
+          providerCode={providerForTransaction?.provider_code || providerForTransaction?.code}
         />
       )}
 

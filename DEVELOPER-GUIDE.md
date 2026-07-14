@@ -3568,3 +3568,8 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Vấn đề:** Nạp tiền NCC (HomeProxy) mà không thấy số dư hiện tại.
 **Sửa:** Hook `useProviderBalance` (GET /provider-balance/{code}). Dialog nạp tiền tự lấy + hiện "Số dư hiện tại: X đ" + nút Làm mới. NCC không hỗ trợ → ẩn dòng (endpoint trả 422). Deposit HomeProxy qrCode giờ chuẩn hoá data URI ở BE.
 **Files:** `src/hooks/apis/useProviders.ts`, `src/views/Client/Admin/Provider/TableProvider.tsx`
+
+#### 13.N+22 Admin: tab "Giao dịch tại nhà cung cấp" (lịch sử thật HomeProxy) (14/07/2026)
+
+**Sửa:** TransactionModal thêm 2 tab: "Giao dịch của tôi" (DB mình, cũ) + "Giao dịch tại nhà cung cấp" (API NCC thật, phân trang server-side). Hook `useProviderApiTransactions`. Bảng: Thời gian/Loại/Số tiền/Số dư sau/Trạng thái/Mã đơn + nút Trước/Sau. NCC không hỗ trợ → báo "chưa hỗ trợ".
+**Files:** `src/hooks/apis/useProviders.ts`, `src/views/Client/Admin/Provider/{TransactionModal,TableProvider}.tsx`

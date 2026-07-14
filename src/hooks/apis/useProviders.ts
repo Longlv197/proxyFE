@@ -116,6 +116,27 @@ export const useProviderBalance = () => {
   })
 }
 
+// Hook lấy lịch sử giao dịch THẬT tại NCC (phân trang server-side). Trả { success, data, total, has_next }
+export const useProviderApiTransactions = (
+  providerCode?: string,
+  page: number = 1,
+  limit: number = 20,
+  enabled: boolean = true
+) => {
+  const axiosAuth = useAxiosAuth()
+
+  return useQuery({
+    queryKey: ['providerApiTransactions', providerCode, page, limit],
+    enabled: enabled && !!providerCode,
+    retry: false,
+    queryFn: async () => {
+      const res = await axiosAuth.get(`/provider-transactions/${providerCode}`, { params: { page, limit } })
+
+      return res?.data
+    }
+  })
+}
+
 // Hook để lấy lịch sử giao dịch nạp tiền của provider
 export const useProviderTransactions = (providerId?: number | string, enabled: boolean = true) => {
   const axiosAuth = useAxiosAuth()
