@@ -3573,3 +3573,9 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 
 **Sửa:** TransactionModal thêm 2 tab: "Giao dịch của tôi" (DB mình, cũ) + "Giao dịch tại nhà cung cấp" (API NCC thật, phân trang server-side). Hook `useProviderApiTransactions`. Bảng: Thời gian/Loại/Số tiền/Số dư sau/Trạng thái/Mã đơn + nút Trước/Sau. NCC không hỗ trợ → báo "chưa hỗ trợ".
 **Files:** `src/hooks/apis/useProviders.ts`, `src/views/Client/Admin/Provider/{TransactionModal,TableProvider}.tsx`
+
+#### 13.N+23 Fix khựng khi gõ TIẾNG VIỆT trong input controlled (14/07/2026)
+
+**Vấn đề:** Gõ tiếng Việt (Unikey/IME) khựng ở nhiều ô (ticket, note...); gõ không dấu mượt. Nguyên nhân: IME bắn nhiều event/chữ → controlled input setState+re-render 3-5 lần/chữ. Không ô nào xử lý composition.
+**Sửa:** Hook `useComposingInput(setValue)` — chỉ commit state khi compositionend (kết thúc gõ 1 chữ) → tiếng Việt 1 lần/chữ như không dấu. Áp cho: TicketDetailDialog (reply), CreditManualDrawer (reason, manualUserId). Sẽ rải tiếp các ô note khác.
+**Files:** `src/hooks/useComposingInput.ts` (mới), `src/views/Client/SupportTickets/TicketDetailDialog.tsx`, `src/views/Client/Admin/DepositManagement/CreditManualDrawer.tsx`

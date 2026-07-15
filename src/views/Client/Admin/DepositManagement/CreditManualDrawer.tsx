@@ -21,6 +21,7 @@ import { toast } from 'react-toastify'
 
 import { useMatchDeposits, useManualCredit, type MatchDeposit } from '@/hooks/apis/useTransactionBank'
 import { useMatchTransactions, useAdminCreditDeposit, type MatchTransaction } from '@/hooks/apis/useDepositManagement'
+import { useComposingInput } from '@/hooks/useComposingInput'
 
 const formatVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
 
@@ -59,6 +60,8 @@ export default function CreditManualDrawer(props: Props) {
   const [selectedId, setSelectedId] = useState<string>('')
   const [manualUserId, setManualUserId] = useState<string>('')
   const [reason, setReason] = useState<string>('')
+  const reasonBind = useComposingInput(setReason)
+  const manualUserIdBind = useComposingInput(setManualUserId)
 
   // Mode A — match deposits
   const matchDeposits = useMatchDeposits(mode === 'transaction' && open ? props.transactionId : null)
@@ -266,7 +269,7 @@ export default function CreditManualDrawer(props: Props) {
                     fullWidth
                     sx={{ mt: 1 }}
                     value={manualUserId}
-                    onChange={(e) => setManualUserId(e.target.value)}
+                    {...manualUserIdBind}
                   />
                 )}
               </Box>
@@ -285,7 +288,7 @@ export default function CreditManualDrawer(props: Props) {
             rows={3}
             placeholder='VD: Lệnh nạp hết hạn, user chuyển khoản trễ. Số tiền + mã khớp.'
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            {...reasonBind}
             error={reason.length > 0 && reason.length < 5}
             helperText={reason.length > 0 && reason.length < 5 ? `Còn ${5 - reason.length} ký tự` : `${reason.length}/500`}
           />

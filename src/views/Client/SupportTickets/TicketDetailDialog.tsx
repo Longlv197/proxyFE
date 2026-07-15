@@ -17,6 +17,7 @@ import { formatDateTimeLocal } from '@/utils/formatDate'
 import { TICKET_STATUS, TICKET_STATUS_LABELS, TICKET_STATUS_COLORS, TICKET_TYPE_LABELS } from '@/constants/ticketStatus'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/constants/orderStatus'
 import { useUserReply } from '@/hooks/apis/useTickets'
+import { useComposingInput } from '@/hooks/useComposingInput'
 
 // Resolve relative path → full URL
 function resolveUrl(path: string | null | undefined): string {
@@ -43,6 +44,7 @@ export default function TicketDetailDialog({ open, onClose, ticket }: Props) {
   const reply = useUserReply()
   const session = useSession()
   const currentUserId = Number((session?.data?.user as any)?.id) || 0
+  const replyBind = useComposingInput(setReplyText)
 
   // Reset local replies khi ticket đổi
   const ticketId = ticket?.id
@@ -187,7 +189,7 @@ export default function TicketDetailDialog({ open, onClose, ticket }: Props) {
                 <textarea
                   rows={2}
                   value={replyText}
-                  onChange={e => setReplyText(e.target.value)}
+                  {...replyBind}
                   placeholder='Nhập phản hồi...'
                   maxLength={2000}
                   style={{
