@@ -3579,3 +3579,13 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Vấn đề:** Gõ tiếng Việt (Unikey/IME) khựng ở nhiều ô (ticket, note...); gõ không dấu mượt. Nguyên nhân: IME bắn nhiều event/chữ → controlled input setState+re-render 3-5 lần/chữ. Không ô nào xử lý composition.
 **Sửa:** Hook `useComposingInput(setValue)` — chỉ commit state khi compositionend (kết thúc gõ 1 chữ) → tiếng Việt 1 lần/chữ như không dấu. Áp cho: TicketDetailDialog (reply), CreditManualDrawer (reason, manualUserId). Sẽ rải tiếp các ô note khác.
 **Files:** `src/hooks/useComposingInput.ts` (mới), `src/views/Client/SupportTickets/TicketDetailDialog.tsx`, `src/views/Client/Admin/DepositManagement/CreditManualDrawer.tsx`
+
+#### 13.N+24 Bộ máy cấu hình Provider — panel Kiểm tra config trong modal Provider (25/07/2026)
+
+**Bối cảnh:** BE có bộ máy cấu hình (schema/validator/harness/thẻ tóm tắt/diff-guard — changelog BE 15.N+33). Task 7 (cuối) chạm nhẹ UI để admin dùng.
+**Thêm:**
+- `useConfigTools.ts` — 3 hook (useAxiosAuth + TanStack): `useValidateConfig` (GET validate), `useConfigCard` (GET thẻ tóm tắt), `useTestConfig` (POST test harness).
+- `ConfigToolPanel.tsx` — panel cột phải modal Provider (CHỈ edit mode): kết quả validate 🔴/🟡/🟢, thẻ tóm tắt tiếng người (dòng ⚠ thay đổi so version trước tô đỏ — đọc-trước là thấy sự cố kiểu config bị đổi nhầm), nút "Test" (nhập ServiceType id + tick "gọi thật" → dry-run mua an toàn $0 / gọi endpoint đọc). Màu theo theme MUI (không hardcode), inline feedback (KHÔNG toast.success).
+**Cắm vào:** `ModalAddProvider.tsx` — dưới JSON preview, `isEditMode && <ConfigToolPanel code={providerData?.provider_code} />`.
+**API:** `GET admin/config-tool/{code}/validate|doc`, `POST admin/config-tool/{code}/test` (body product_id, live). Quyền admin check ở BE controller.
+**Files:** `src/hooks/apis/useConfigTools.ts` (mới), `src/views/Client/Admin/Provider/components/ConfigToolPanel.tsx` (mới), `src/views/Client/Admin/Provider/ModalAddProvider.tsx`

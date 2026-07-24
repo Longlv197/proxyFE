@@ -53,6 +53,7 @@ import IpWhitelistSection from './sections/IpWhitelistSection'
 import RenewSection from './sections/RenewSection'
 import ContactInfoSection from './sections/ContactInfoSection'
 import JsonPreviewPanel from './components/JsonPreviewPanel'
+import ConfigToolPanel from './components/ConfigToolPanel'
 import ProviderInvoiceTab from './ProviderInvoiceTab'
 
 // ─── Tab config ─────────────────────────────────────
@@ -390,6 +391,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
           {activeTab <= 4 && (
             <Grid2 size={{ xs: 12, md: 4 }}>
               <JsonPreviewPanel jsonPreview={jsonPreview} />
+              {isEditMode && <ConfigToolPanel code={providerData?.provider_code} />}
             </Grid2>
           )}
         </Grid2>
