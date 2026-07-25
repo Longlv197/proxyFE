@@ -847,6 +847,25 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+42 Modal Provider: bỏ bẫy 2 nút lưu + chấm rail tab nói THẬT trạng thái (25/07/2026)
+
+**Vấn đề 1 — bẫy 2 nút lưu (nguy hiểm, không chỉ khó hiểu):** tab Residential có nút riêng "Lưu cấu hình
+Residential" gọi `useUpdateProvider` với `api_config` dựng từ **`provider.api_config` CŨ trong props**.
+Admin sửa tab Mua/Xoay/Gia hạn rồi bấm nút này → **các thay đổi kia bị mất trắng** (không cảnh báo gì).
+**Sửa:** bỏ hẳn nút đó + `handleSave` + import `useUpdateProvider` trong section; thay bằng `<Alert>` chỉ rõ
+"bấm Cập nhật ở dưới". Nút footer vốn đã lưu tab này qua `stateRef.build()` → chỉ còn **1 đường lưu duy nhất**.
+**Vấn đề 2 — chấm trên rail tab nói dối:** chấm chỉ phản ánh `enabled`, nên NCC bật mua mà **quên URL** vẫn
+chấm xanh. **Sửa:** 3 trạng thái — xám (chưa bật) / xanh (bật & đủ field tối thiểu) / **vàng (đang bật nhưng
+THIẾU field bắt buộc)**, kèm Tooltip giải thích. Điều kiện đủ: Mua = có URL chung hoặc ít nhất 1 URL theo thời
+hạn (kể cả format cũ `duration_urls`) cho MỖI loại đang bật · Xoay = `rotate.url` · IP = `ip_whitelist.param` ·
+Gia hạn = `renew.url` · Residential = đủ 2 endpoint balance/tariffs (lấy từ config ĐÃ LƯU vì state tab này
+nằm cục bộ trong section, không ở react-hook-form).
+**Hiệu năng:** trạng thái tính trong **cùng nhịp debounce 500ms** với JSON preview (`watch` subscription sẵn có),
+KHÔNG thêm `useWatch` cho từng field → không re-render cả modal mỗi lần gõ phím.
+**Verify (Playwright):** xoá URL xoay của bestproxy.vn (không lưu) → chấm tab "Xoay proxy" **đổi vàng** sau
+~500ms, các tab khác giữ nguyên; tab Residential chỉ còn 1 nút lưu; bấm Hủy → DB không đổi (`rotate.url` giữ nguyên).
+**Files:** `src/views/Client/Admin/Provider/ModalAddProvider.tsx`, `ResidentialProviderSection.tsx`
+
 #### 13.N+41 Modal Provider: cột JSON bật/tắt linh hoạt + hết vỡ layout ở laptop 1366 (25/07/2026)
 
 **Vấn đề:** cột JSON preview chiếm cứng ~1/3 chiều ngang ở MỌI tab 0-4, kể cả tab IP Whitelist / Gia hạn chỉ có

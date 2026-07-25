@@ -15,6 +15,7 @@ import Paper from '@mui/material/Paper'
 import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
+import Tooltip from '@mui/material/Tooltip'
 import useMediaQuery from '@mui/material/useMediaQuery'
 
 import { toast } from 'react-toastify'
@@ -97,6 +98,63 @@ const PAPER_SX = {
   maxHeight: 'calc(100vh - 100px)'
 }
 
+// ─── Trạng thái từng tab ────────────────────────────
+// 'off' = chưa bật · 'ok' = bật & đủ field tối thiểu · 'missing' = ĐANG BẬT nhưng THIẾU field bắt buộc.
+// Trước đây chấm chỉ báo bật/tắt → NCC bật mua mà quên URL vẫn chấm xanh (nói dối).
+type TabState = 'off' | 'ok' | 'missing'
+
+const TAB_DOT: Record<TabState, string> = {
+  off: 'action.disabled',
+  ok: 'success.main',
+  missing: 'warning.main'
+}
+
+const TAB_DOT_HINT: Record<TabState, string> = {
+  off: 'Chưa bật',
+  ok: 'Đã bật, đủ thông tin tối thiểu',
+  missing: 'Đang bật nhưng THIẾU thông tin bắt buộc — vào tab này kiểm lại'
+}
+
+/** Có URL mua chưa? (URL chung, hoặc ít nhất 1 dòng URL theo thời hạn — kể cả format cũ duration_urls) */
+const hasBuyUrl = (buy: any): boolean => {
+  if (!buy) return false
+
+  if (buy.use_url_by_duration) {
+    const rows = [...(buy.duration_units || []), ...(buy.duration_urls || [])]
+
+    return rows.some((r: any) => String(r?.url || '').trim() !== '')
+  }
+
+  return String(buy.url || '').trim() !== ''
+}
+
+/**
+ * Tính trạng thái 7 tab từ giá trị form (tab Residential lấy từ config ĐÃ LƯU vì state của nó
+ * nằm cục bộ trong section, không nằm trong react-hook-form).
+ */
+const computeTabStatus = (v: any, providerData?: any): TabState[] => {
+  const rot = v?.buy_rotating
+  const sta = v?.buy_static
+  const buyOn = !!rot?.enabled || !!sta?.enabled
+  const buyMissing = (rot?.enabled && !hasBuyUrl(rot)) || (sta?.enabled && !hasBuyUrl(sta))
+
+  const flag = (on: boolean, ok: boolean): TabState => (!on ? 'off' : ok ? 'ok' : 'missing')
+
+  const cfg = providerData?.api_config || {}
+  const eps = cfg.residential_endpoints || {}
+  const residentialOn = cfg.kind === 'residential'
+
+  return [
+    'ok', // Cơ bản — không vẽ chấm
+    flag(buyOn, !buyMissing),
+    flag(!!v?.rotate?.enabled, String(v?.rotate?.url || '').trim() !== ''),
+    flag(!!v?.ip_whitelist?.enabled, String(v?.ip_whitelist?.param || '').trim() !== ''),
+    flag(!!v?.renew?.enabled, String(v?.renew?.url || '').trim() !== ''),
+    flag(residentialOn, !!String(eps.balance || '').trim() && !!String(eps.tariffs || '').trim()),
+    'ok' // Liên hệ — không có gì bắt buộc
+  ]
+}
+
 // Chấm cảnh báo trên nhãn tab Kiểm tra — dùng token theme.
 const LEVEL_DOT: Record<string, string> = {
   red: 'error.main',
@@ -154,22 +212,9 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     formState: { errors }
   } = useForm<FormValues>({ defaultValues })
 
-  // Status badges
-  const buyRotatingEnabled = useWatch({ control, name: 'buy_rotating.enabled' })
-  const buyStaticEnabled = useWatch({ control, name: 'buy_static.enabled' })
-  const rotateEnabled = useWatch({ control, name: 'rotate.enabled' })
-  const ipEnabled = useWatch({ control, name: 'ip_whitelist.enabled' })
-  const renewEnabled = useWatch({ control, name: 'renew.enabled' })
-
-  const tabEnabled = [
-    true, // Cơ bản luôn active
-    buyRotatingEnabled || buyStaticEnabled,
-    rotateEnabled,
-    ipEnabled,
-    renewEnabled,
-    providerData?.api_config?.kind === 'residential', // Residential dot xanh khi đã bật flag
-    true // Liên hệ luôn cho phép
-  ]
+  // Trạng thái chấm trên rail tab — tính lại trong cùng nhịp debounce với JSON preview
+  // (không đăng ký thêm useWatch cho từng field → không re-render cả modal mỗi lần gõ phím).
+  const [tabStatus, setTabStatus] = useState<TabState[]>(() => computeTabStatus(defaultValues))
 
   // Tab Residential lưu state cục bộ (KHÔNG nằm trong react-hook-form) — section đẩy build()
   // qua ref để nút "Cập nhật" footer cũng lưu được tab này (tránh trap 2 nút lưu)
@@ -185,6 +230,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       debounceRef.current = setTimeout(() => {
         const config = buildApiConfig(values as FormValues)
         setJsonPreview(config ? JSON.stringify(config, null, 2) : '// Chưa có cấu hình API')
+        setTabStatus(computeTabStatus(values, providerData))
       }, 500)
     })
 
@@ -192,7 +238,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       subscription.unsubscribe()
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [watch])
+  }, [watch, providerData])
 
   // Load data on edit
   useEffect(() => {
@@ -225,9 +271,11 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
 
       const config = buildApiConfig(values as FormValues)
       setJsonPreview(config ? JSON.stringify(config, null, 2) : '// Chưa có cấu hình API')
+      setTabStatus(computeTabStatus(values, providerData))
     } else {
       reset(defaultValues)
       setJsonPreview('// Chưa có cấu hình API')
+      setTabStatus(computeTabStatus(defaultValues))
     }
 
     setActiveTab(0)
@@ -404,30 +452,35 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                       <i className={tab.icon} style={{ fontSize: 16, opacity: 0.7 }} />
                       <span>{tab.label}</span>
-                      {/* Tab Kiểm tra: chấm theo MỨC CẢNH BÁO (đỏ/vàng/xanh); tab khác: bật/tắt */}
+                      {/* Chấm trạng thái: tab Kiểm tra theo mức cảnh báo; tab khác theo
+                          chưa bật / đủ / ĐANG BẬT MÀ THIẾU field bắt buộc */}
                       {i > 0 &&
                         (i === CHECK_TAB_INDEX ? (
-                          <Box
-                            sx={{
-                              ml: 'auto',
-                              width: 8,
-                              height: 8,
-                              borderRadius: '50%',
-                              bgcolor: LEVEL_DOT[checkLevel] || 'action.disabled',
-                              flexShrink: 0
-                            }}
-                          />
+                          <Tooltip title='Kết quả kiểm cấu hình' placement='right'>
+                            <Box
+                              sx={{
+                                ml: 'auto',
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: LEVEL_DOT[checkLevel] || 'action.disabled',
+                                flexShrink: 0
+                              }}
+                            />
+                          </Tooltip>
                         ) : (
-                          <Box
-                            sx={{
-                              ml: 'auto',
-                              width: 7,
-                              height: 7,
-                              borderRadius: '50%',
-                              background: tabEnabled[i] ? '#4caf50' : '#e0e0e0',
-                              flexShrink: 0
-                            }}
-                          />
+                          <Tooltip title={TAB_DOT_HINT[tabStatus[i] || 'off']} placement='right'>
+                            <Box
+                              sx={{
+                                ml: 'auto',
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: TAB_DOT[tabStatus[i] || 'off'],
+                                flexShrink: 0
+                              }}
+                            />
+                          </Tooltip>
                         ))}
                     </Box>
                   }

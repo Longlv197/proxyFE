@@ -11,7 +11,6 @@ import { toast } from 'react-toastify'
 
 import { AlertCircle, ChevronDown, DollarSign, Globe, Link2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 
-import { useUpdateProvider } from '@/hooks/apis/useProviders'
 import {
   useResidentialBalance, useResidentialTariffs, useSyncResidentialTariffs
 } from '@/hooks/apis/useResidentialProviderAdmin'
@@ -24,7 +23,8 @@ import {
  *   - residential_endpoints          5 URL admin gọi: balance, tariffs, countries, regions, cities
  *   - proxy_host_options             mảng string các domain trung gian (ẩn NCC)
  *
- * Lưu độc lập với form chính qua callback handleSave → useUpdateProvider.
+ * Lưu CHUNG với form chính: đẩy buildConfig() lên parent qua stateRef, nút "Cập nhật" footer merge vào payload.
+ * (Trước có nút lưu riêng trong tab — đã bỏ vì nó dựng payload từ api_config CŨ, làm mất thay đổi ở tab khác.)
  */
 
 // Đã bỏ countries/regions/cities (dependent dropdown) — location dùng combo nhập tay.
@@ -59,7 +59,6 @@ type Props = {
 }
 
 export default function ResidentialProviderSection({ provider, stateRef }: Props) {
-  const updateMut = useUpdateProvider(provider?.id)
   const cfg = provider?.api_config ?? {}
 
   const [isResidential, setIsResidential] = useState<boolean>(cfg.kind === 'residential')
@@ -138,31 +137,7 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleSave = async () => {
-    if (!provider) return
-
-    const result = buildConfig()
-    if (!result.ok) { toast.error(result.error); return }
-
-    const mergedConfig = {
-      ...(provider.api_config || {}),
-      ...result.config
-    }
-
-    try {
-      await updateMut.mutateAsync({
-        title: provider.title,
-        provider_code: provider.provider_code,
-        token_api: provider.token_api,
-        status: provider.status,
-        order: provider.order ?? 0,
-        api_config: mergedConfig
-      } as any)
-      toast.info('Đã lưu cấu hình residential')
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || e.message || 'Lưu thất bại')
-    }
-  }
+  // (Đã bỏ handleSave riêng của tab này — xem ghi chú ở cuối file. Lưu qua nút "Cập nhật" footer.)
 
   const handleSync = async () => {
     try {
@@ -381,15 +356,13 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
         </>
       )}
 
-      {/* ─── Save (sticky bottom) ───────────────────────────── */}
-      <Box sx={{ position: 'sticky', bottom: 0, mt: 3, pt: 2, background: 'linear-gradient(180deg, transparent 0%, #fff 30%)', display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          variant='contained' size='large' onClick={handleSave} disabled={updateMut.isPending}
-          sx={{ minWidth: 200, background: '#6366f1', '&:hover': { background: '#4f46e5' } }}
-        >
-          {updateMut.isPending ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Lưu cấu hình Residential'}
-        </Button>
-      </Box>
+      {/* ─── Nhắc chỗ lưu ───────────────────────────────────
+          ĐÃ BỎ nút "Lưu cấu hình Residential" riêng: nó gửi api_config dựng từ `provider.api_config` CŨ
+          (props), nên nếu admin vừa sửa tab Mua/Xoay/... mà chưa bấm "Cập nhật" rồi bấm nút này thì các
+          thay đổi kia BỊ MẤT. Nút "Cập nhật" ở footer đã lưu cả tab này qua stateRef → chỉ giữ 1 đường lưu. */}
+      <Alert severity='info' sx={{ mt: 3 }}>
+        Sửa xong bấm <b>“Cập nhật”</b> ở góc dưới bên phải — nút đó lưu cả cấu hình Residential này cùng các tab khác.
+      </Alert>
     </Box>
   )
 }
