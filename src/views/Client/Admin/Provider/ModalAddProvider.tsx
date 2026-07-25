@@ -59,6 +59,7 @@ import RenewSection from './sections/RenewSection'
 import ContactInfoSection from './sections/ContactInfoSection'
 import JsonPreviewPanel from './components/JsonPreviewPanel'
 import ConfigToolPanel from './components/ConfigToolPanel'
+import OverviewPanel from './components/OverviewPanel'
 import ProviderInvoiceTab from './ProviderInvoiceTab'
 
 // ─── Tab config ─────────────────────────────────────
@@ -73,13 +74,21 @@ const BASE_TABS = [
   { label: 'Liên hệ', icon: 'tabler-address-book' }
 ]
 
-// Tab "Kiểm tra" chỉ có ở edit mode (cần provider đã lưu để đối chiếu DB) → APPEND cuối,
-// KHÔNG chèn giữa: mọi chỗ so `activeTab === N` + tabEnabled[] đang dùng chỉ số cứng của BASE_TABS.
+// Tab "Kiểm tra" và "Tổng quan" chỉ có ở edit mode (cần provider đã lưu để đối chiếu DB).
+// Chỉ số của chúng nằm SAU BASE_TABS (7, 8) — KHÔNG chèn vào giữa vì mọi chỗ so `activeTab === N`
+// đang dùng chỉ số cứng của BASE_TABS. Thứ tự HIỂN THỊ trên rail thì đặt riêng ở TAB_ORDER.
 const CHECK_TAB = { label: 'Kiểm tra', icon: 'tabler-checklist' }
 const CHECK_TAB_INDEX = BASE_TABS.length // = 7
+const OVERVIEW_TAB = { label: 'Tổng quan', icon: 'tabler-layout-dashboard' }
+const OVERVIEW_TAB_INDEX = BASE_TABS.length + 1 // = 8
 
 // Nhớ lựa chọn hiện/ẩn cột JSON của admin (localStorage). Chưa chọn lần nào → theo bề ngang màn hình.
 const JSON_PREF_KEY = 'provider_modal_json_visible'
+
+// Công tắc "Hướng dẫn": ẩn/hiện các khối giảng giải dài (đánh dấu bằng class 'provider-guide').
+// Mặc định ẨN — admin đã quen thì form ngắn đi gần nửa; ai cần đọc thì bật, hệ thống nhớ lựa chọn.
+const GUIDE_PREF_KEY = 'provider_modal_guide_visible'
+const HIDE_GUIDE_SX = { '& .provider-guide': { display: 'none' } }
 
 // Nhãn field dài ("Tên param số lượng", "Trường kiểm tra"...) mặc định bị MUI cắt bằng dấu ba chấm
 // → cho xuống dòng. Nhãn ở template này nằm TRÊN ô nhập (position relative) nên xuống dòng an toàn.
@@ -170,7 +179,16 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
   const [renderedTabs, setRenderedTabs] = useState<Set<number>>(new Set([0]))
 
   const isEditMode = type === 'edit' && !!providerData?.id
-  const TABS = isEditMode ? [...BASE_TABS, CHECK_TAB] : BASE_TABS
+
+  // Rail tab: edit mode thì "Tổng quan" đứng ĐẦU (màn đọc trước), "Kiểm tra" đứng CUỐI.
+  // value = chỉ số logic (không đổi), thứ tự trong mảng = thứ tự hiển thị.
+  const TABS: Array<{ label: string; icon: string; value: number }> = isEditMode
+    ? [
+        { ...OVERVIEW_TAB, value: OVERVIEW_TAB_INDEX },
+        ...BASE_TABS.map((t, i) => ({ ...t, value: i })),
+        { ...CHECK_TAB, value: CHECK_TAB_INDEX }
+      ]
+    : BASE_TABS.map((t, i) => ({ ...t, value: i }))
 
   // Kiểm cấu hình: fetch ngay khi mở modal để vẽ chấm cảnh báo trên nhãn tab (admin thấy NGAY,
   // không phải bấm vào tab mới biết). ConfigToolPanel dùng chung queryKey → KHÔNG tốn thêm request.
@@ -194,10 +212,27 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       return next
     })
 
+  // Công tắc hướng dẫn — mặc định ẩn, nhớ lựa chọn
+  const [showGuide, setShowGuide] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setShowGuide(window.localStorage.getItem(GUIDE_PREF_KEY) === '1')
+  }, [])
+
+  const toggleGuide = () =>
+    setShowGuide(prev => {
+      const next = !prev
+
+      if (typeof window !== 'undefined') window.localStorage.setItem(GUIDE_PREF_KEY, next ? '1' : '0')
+
+      return next
+    })
+
   const queryClient = useQueryClient()
   const configCode = isEditMode ? providerData?.provider_code : undefined
   const { data: configValidate } = useValidateConfig(configCode)
-  const { data: configCard } = useConfigCard(configCode)
+  const { data: configCard, isLoading: configCardLoading } = useConfigCard(configCode)
   const checkLevel = configLevel(configValidate, configCard)
 
   const createMutation = useCreateProvider()
@@ -278,8 +313,11 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       setTabStatus(computeTabStatus(defaultValues))
     }
 
-    setActiveTab(0)
-    setRenderedTabs(new Set([0]))
+    // Sửa NCC → mở thẳng màn "Tổng quan" (đọc trước rồi mới sửa). Thêm mới → vào tab Cơ bản.
+    const firstTab = type === 'edit' && providerData?.id ? OVERVIEW_TAB_INDEX : 0
+
+    setActiveTab(firstTab)
+    setRenderedTabs(new Set([firstTab, 0]))
   }, [open, type, providerData, reset])
 
   // Track rendered tabs (keep form fields mounted)
@@ -397,19 +435,34 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
         <Typography variant='h5' component='span'>
           {type === 'create' ? 'Thêm mới nhà cung cấp' : 'Cập nhật nhà cung cấp'}
         </Typography>
-        {activeTab <= 4 && (
-          <Button
-            type='button'
-            size='small'
-            variant='tonal'
-            color='secondary'
-            onClick={toggleJson}
-            startIcon={<i className='tabler-code' style={{ fontSize: 16 }} />}
-            sx={{ ml: 'auto', textTransform: 'none', flexShrink: 0 }}
-          >
-            {showJson ? 'Ẩn JSON' : 'Xem JSON'}
-          </Button>
-        )}
+        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+          <Tooltip title='Hiện/ẩn các đoạn giải thích dài trong form'>
+            <Button
+              type='button'
+              size='small'
+              variant={showGuide ? 'contained' : 'tonal'}
+              color='secondary'
+              onClick={toggleGuide}
+              startIcon={<i className='tabler-help-circle' style={{ fontSize: 16 }} />}
+              sx={{ textTransform: 'none' }}
+            >
+              Hướng dẫn
+            </Button>
+          </Tooltip>
+          {activeTab <= 4 && (
+            <Button
+              type='button'
+              size='small'
+              variant='tonal'
+              color='secondary'
+              onClick={toggleJson}
+              startIcon={<i className='tabler-code' style={{ fontSize: 16 }} />}
+              sx={{ textTransform: 'none' }}
+            >
+              {showJson ? 'Ẩn JSON' : 'Xem JSON'}
+            </Button>
+          )}
+        </Box>
         <DialogCloseButton onClick={onClose} disableRipple>
           <i className='tabler-x' />
         </DialogCloseButton>
@@ -445,43 +498,44 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                 }
               }}
             >
-              {TABS.map((tab, i) => (
+              {TABS.map(tab => (
                 <Tab
-                  key={i}
+                  key={tab.value}
+                  value={tab.value}
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                       <i className={tab.icon} style={{ fontSize: 16, opacity: 0.7 }} />
                       <span>{tab.label}</span>
-                      {/* Chấm trạng thái: tab Kiểm tra theo mức cảnh báo; tab khác theo
-                          chưa bật / đủ / ĐANG BẬT MÀ THIẾU field bắt buộc */}
-                      {i > 0 &&
-                        (i === CHECK_TAB_INDEX ? (
-                          <Tooltip title='Kết quả kiểm cấu hình' placement='right'>
-                            <Box
-                              sx={{
-                                ml: 'auto',
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                bgcolor: LEVEL_DOT[checkLevel] || 'action.disabled',
-                                flexShrink: 0
-                              }}
-                            />
-                          </Tooltip>
-                        ) : (
-                          <Tooltip title={TAB_DOT_HINT[tabStatus[i] || 'off']} placement='right'>
-                            <Box
-                              sx={{
-                                ml: 'auto',
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                bgcolor: TAB_DOT[tabStatus[i] || 'off'],
-                                flexShrink: 0
-                              }}
-                            />
-                          </Tooltip>
-                        ))}
+                      {/* Chấm trạng thái: tab Kiểm tra theo mức cảnh báo; tab cấu hình theo
+                          chưa bật / đủ / ĐANG BẬT MÀ THIẾU field bắt buộc.
+                          Tab "Tổng quan" và "Cơ bản" không có chấm. */}
+                      {tab.value === CHECK_TAB_INDEX ? (
+                        <Tooltip title='Kết quả kiểm cấu hình' placement='right'>
+                          <Box
+                            sx={{
+                              ml: 'auto',
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              bgcolor: LEVEL_DOT[checkLevel] || 'action.disabled',
+                              flexShrink: 0
+                            }}
+                          />
+                        </Tooltip>
+                      ) : tab.value > 0 && tab.value < BASE_TABS.length ? (
+                        <Tooltip title={TAB_DOT_HINT[tabStatus[tab.value] || 'off']} placement='right'>
+                          <Box
+                            sx={{
+                              ml: 'auto',
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              bgcolor: TAB_DOT[tabStatus[tab.value] || 'off'],
+                              flexShrink: 0
+                            }}
+                          />
+                        </Tooltip>
+                      ) : null}
                     </Box>
                   }
                 />
@@ -498,14 +552,26 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
               component='form'
               onSubmit={handleSubmit(onSubmit)}
               sx={{
-                display: activeTab === CHECK_TAB_INDEX ? 'none' : 'flex',
+                // Ẩn hẳn khung form ở các tab ngoài BASE_TABS (Kiểm tra / Tổng quan) — để display:'flex'
+                // thì khung rỗng vẫn chiếm nửa chiều cao, đẩy nội dung 2 tab kia xuống dưới.
+                display: activeTab < BASE_TABS.length ? 'flex' : 'none',
                 flexDirection: 'column',
                 flex: 1,
                 minHeight: 0
               }}
             >
               {/* pb rộng để card cuối không bị cắt sát mép vùng cuộn */}
-              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 2, pb: 4, ...LABEL_WRAP_SX }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  minHeight: 0,
+                  overflowY: 'auto',
+                  pr: 2,
+                  pb: 4,
+                  ...LABEL_WRAP_SX,
+                  ...(showGuide ? {} : HIDE_GUIDE_SX)
+                }}
+              >
                 {/* Tab 0: Cơ bản */}
                 <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
                   <BasicInfoSection control={control} errors={errors} />
@@ -554,6 +620,30 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                 )}
               </Box>
             </Box>
+
+            {/* Tab 8: Tổng quan — màn đọc trước, NGOÀI <form> */}
+            {isEditMode && renderedTabs.has(OVERVIEW_TAB_INDEX) && (
+              <Box
+                sx={{
+                  display: activeTab === OVERVIEW_TAB_INDEX ? 'block' : 'none',
+                  flex: 1,
+                  minHeight: 0,
+                  overflowY: 'auto',
+                  pr: 2,
+                  pb: 4
+                }}
+              >
+                <OverviewPanel
+                  card={configCard}
+                  cardLoading={configCardLoading}
+                  validate={configValidate}
+                  tabStatus={tabStatus}
+                  tabLabels={BASE_TABS.map(t => t.label)}
+                  onGoToTab={goToTab}
+                  onOpenCheck={() => goToTab(CHECK_TAB_INDEX)}
+                />
+              </Box>
+            )}
 
             {/* Tab 7: Kiểm tra — NGOÀI <form> để nút Test / dropdown không submit nhầm form provider */}
             {isEditMode && renderedTabs.has(CHECK_TAB_INDEX) && (

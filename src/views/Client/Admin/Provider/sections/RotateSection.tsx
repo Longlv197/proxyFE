@@ -85,8 +85,8 @@ function RotateSection({ control }: SectionProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {/* Giải thích tổng quan */}
-      <Box sx={{ p: 1.5, background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: 1.5 }}>
+      {/* Giải thích tổng quan — ẩn được bằng công tắc "Hướng dẫn" */}
+      <Box className='provider-guide' sx={{ p: 1.5, background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: 1.5 }}>
         <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#0e7490', mb: 0.5 }}>
           API Xoay proxy — lấy proxy mới (rotation)
         </Typography>

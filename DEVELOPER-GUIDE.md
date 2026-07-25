@@ -847,6 +847,32 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+43 Modal Provider: làm lại CÁCH TRÌNH BÀY — Tổng quan / thu gọn giảng giải / khối tóm tắt (25/07/2026)
+
+**Vấn đề:** 3 đợt trước chỉ chữa khung và mấy cái bẫy, **không đụng cách trình bày thông tin** — vẫn là
+"hiển thị cho xong": mỗi tab là bảng field kỹ thuật + khối giảng giải dài LUÔN mở, lần nào vào cũng phải đọc
+lại; muốn biết NCC cấu hình ra sao phải đọc JSON; không có lớp tổng quan, không thu gọn được, ai cũng nhận
+cùng một mật độ chữ.
+**Sửa — 3 lớp:**
+- **(A) Tab "Tổng quan"** (`components/OverviewPanel.tsx`) — **màn ĐẦU TIÊN khi mở sửa NCC**: thẻ đọc-nhanh
+  tiếng người (NCC bán kiểu gì, mua ra sao, proxy giao dạng gì) · ⚠ thay đổi so lần lưu trước (Alert đỏ) ·
+  **Việc cần làm** (tab nào đang bật mà thiếu field bắt buộc → nút "Sửa ngay" nhảy thẳng) · chip "đang bật
+  những gì" + nút mở tab Kiểm tra. Dữ liệu lấy từ bộ máy cấu hình sẵn có (`useConfigCard`/`useValidateConfig`),
+  KHÔNG thêm request. Tab này value=8, "Kiểm tra"=7 — **append cuối, chỉ đổi THỨ TỰ HIỂN THỊ** bằng
+  `TABS[{label,icon,value}]` + `<Tab value=...>`, nên mọi chỗ so `activeTab === N` giữ nguyên chỉ số cũ.
+- **(B) Công tắc "Hướng dẫn"** ở tiêu đề modal — ẩn/hiện mọi khối giảng giải dài (đánh dấu bằng class
+  `provider-guide`, ẩn bằng 1 rule CSS ở container thay vì prop-drill qua 6 section). **Mặc định ẨN** (form
+  ngắn đi rõ rệt), nhớ lựa chọn trong `localStorage['provider_modal_guide_visible']`.
+- **(C) Khối bước thu/bung được, thu lại vẫn đọc được** (`PipelineStepCard`): bấm header để thu; khi thu hiện
+  **1 dòng tóm tắt GIÁ TRỊ THẬT** thay vì mô tả chung — VD bước 1: `GET 3 URL theo thời hạn · token ở query "key"`,
+  bước 2: `NCC trả proxy ngay · coi là OK khi "status" = 100`, bước 5: `2 mã lỗi NCC + 1 mã HTTP đã khai`.
+  Dùng `<Collapse>` **giữ children mounted** (không `unmountOnExit`) → thu khối KHÔNG mất dữ liệu form.
+**Verify (Playwright):** mở sửa NCC → vào thẳng Tổng quan, đủ 4 khối, nút "Sửa ngay"/chip nhảy đúng tab ·
+tắt Hướng dẫn → các khối giảng giải biến mất, bật lại thì hiện, F5 vẫn nhớ · thu khối ① → hiện đúng dòng tóm
+tắt · **thu CẢ 6 khối rồi bấm Cập nhật → api_config khớp 100% bản gốc** (không mất field nào).
+**Files:** `components/OverviewPanel.tsx` (mới), `components/PipelineStepCard.tsx`, `ModalAddProvider.tsx`,
+`sections/{BuyConfigSection,RotateSection,IpWhitelistSection,RenewSection}.tsx`, `components/SavePreviewBox.tsx`
+
 #### 13.N+42 Modal Provider: bỏ bẫy 2 nút lưu + chấm rail tab nói THẬT trạng thái (25/07/2026)
 
 **Vấn đề 1 — bẫy 2 nút lưu (nguy hiểm, không chỉ khó hiểu):** tab Residential có nút riêng "Lưu cấu hình

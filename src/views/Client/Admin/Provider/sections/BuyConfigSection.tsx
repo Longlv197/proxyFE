@@ -173,16 +173,49 @@ function DurationUrlTable({ prefix, control, setValue }: { prefix: string; contr
   )
 }
 
+// ─── Tóm tắt khi thu khối (hiện giá trị THẬT, không phải mô tả chung) ───
+
+const AUTH_LABELS: Record<string, string> = {
+  query: 'query',
+  header: 'header',
+  bearer: 'bearer',
+  body: 'body'
+}
+
+/** Rút gọn URL cho dòng tóm tắt: bỏ https:// và cắt phần đuôi quá dài. */
+function shortenUrl(url?: string): string {
+  const u = String(url || '').trim().replace(/^https?:\/\//, '')
+
+  return u.length > 52 ? `${u.slice(0, 49)}…` : u
+}
+
 // ─── Pipeline Step 1: API Call ──────────────────────
 
 function StepApiCall({ prefix, control, setValue }: BuySectionProps) {
   const useUrlByDuration = useWatch({ control, name: `${prefix}.use_url_by_duration` })
   const durationParam = useWatch({ control, name: `${prefix}.duration_param` })
 
+  // Tóm tắt hiện khi thu khối lại
+  const method = useWatch({ control, name: `${prefix}.method` })
+  const url = useWatch({ control, name: `${prefix}.url` })
+  const authType = useWatch({ control, name: `${prefix}.auth_type` })
+  const authParam = useWatch({ control, name: `${prefix}.auth_param` })
+  const durationUnits: any[] = useWatch({ control, name: `${prefix}.duration_units` }) || []
+
+  const urlPart = useUrlByDuration
+    ? `${durationUnits.filter(r => String(r?.url || '').trim()).length} URL theo thời hạn`
+    : shortenUrl(url) || 'chưa có URL'
+
+  const summary = [
+    `${method || 'GET'} ${urlPart}`,
+    authParam ? `token ở ${AUTH_LABELS[authType as string] || authType} "${authParam}"` : 'chưa khai token'
+  ].join(' · ')
+
   return (
     <PipelineStepCard
       step={1}
       title='Gọi API nhà cung cấp'
+      summary={summary}
       description='Khi khách mua proxy → hệ thống tự BUILD request HTTP từ config bên dưới → gửi đến NCC → nhận response JSON. Config sai URL/auth → request thất bại, đơn bị treo.'
     >
       <Grid2 container spacing={2}>
@@ -299,16 +332,24 @@ function StepApiCall({ prefix, control, setValue }: BuySectionProps) {
 function StepSuccessCheck({ prefix, control }: BuySectionProps) {
   const responseMode = useWatch({ control, name: `${prefix}.response_mode` })
   const responseType = useWatch({ control, name: `${prefix}.response.type` })
+  const successField = useWatch({ control, name: `${prefix}.response.success_field` })
+  const successValue = useWatch({ control, name: `${prefix}.response.success_value` })
+
+  const summary = [
+    responseMode === 'deferred' ? 'NCC trả mã đơn trước, lấy proxy sau' : 'NCC trả proxy ngay',
+    successField ? `coi là OK khi "${successField}" = ${successValue ?? ''}` : 'chưa khai trường kiểm tra'
+  ].join(' · ')
 
   return (
     <PipelineStepCard
       step={2}
       title='Kiểm tra kết quả — thành công hay lỗi?'
+      summary={summary}
       description='Sau khi nhận response từ NCC → hệ thống ĐỌC trường kiểm tra (VD: "statusCode") → SO SÁNH với giá trị OK (VD: 200). Khớp → đơn thành công, chuyển sang bước 3. Không khớp → đơn lỗi, hoàn tiền. Sai config → hệ thống không phân biệt được, đơn bị treo mãi.'
     >
       <Grid2 container spacing={2}>
-        {/* Giải thích 2 dạng response */}
-        <Grid2 size={{ xs: 12 }}>
+        {/* Giải thích 2 dạng response — ẩn được bằng công tắc "Hướng dẫn" */}
+        <Grid2 size={{ xs: 12 }} className='provider-guide'>
           <Box sx={{ p: 1.5, background: '#f8fafc', borderRadius: 1.5, border: '1px solid #e2e8f0', fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
             Sau khi gọi API mua, nhà cung cấp sẽ <strong>trả về kết quả</strong>. Có 2 dạng:
             <Box sx={{ display: 'flex', gap: 1.5, mt: 1, mb: 0.5, flexWrap: 'wrap' }}>
@@ -427,10 +468,26 @@ function StepProxyExtract({ prefix, control, setValue }: BuySectionProps & { set
     }
   }, [proxyFormat, prefix, setValue])
 
+  const proxiesPath = useWatch({ control, name: `${prefix}.response.proxies_path` })
+  const proxyKeyField = useWatch({ control, name: `${prefix}.response.proxy_key_field` })
+
+  const formatLabel: Record<string, string> = {
+    key: 'khoá xoay',
+    string: 'chuỗi ip:port',
+    fields: 'các field riêng'
+  }
+
+  const step3Summary = [
+    responseMode === 'deferred' ? 'lấy proxy ở bước sau (deferred)' : `mảng proxy ở "${proxiesPath || '(gốc response)'}"`,
+    `dạng ${formatLabel[proxyFormat as string] || proxyFormat || 'chưa chọn'}`,
+    proxyFormat === 'key' && proxyKeyField ? `khoá: "${proxyKeyField}"` : ''
+  ].filter(Boolean).join(' · ')
+
   return (
     <PipelineStepCard
       step={3}
       title='Trích xuất proxy từ response'
+      summary={step3Summary}
       description={responseMode === 'deferred'
         ? 'NCC chỉ trả mã đơn lúc mua (deferred). Hệ thống GHI MÃ ĐƠN → tự gọi API lấy proxy sau (poll mỗi phút) → khi có proxy → LƯU VÀO OrderItem.proxy hoặc OrderItem.provider_key.'
         : 'Khi đơn OK → hệ thống TÌM mảng proxy trong response (VD: data.proxies) → ĐỌC từng proxy theo format (key xoay / chuỗi ip:port / fields riêng) → LƯU VÀO OrderItem.proxy (hoặc provider_key nếu dạng key). Sai đường dẫn → hệ thống không tìm được proxy, đơn thất bại.'}
@@ -807,14 +864,21 @@ const DeferredFetchConfig = memo(function DeferredFetchConfig({ prefix, control 
 // ─── Pipeline Step 4: Data Storage ──────────────────
 
 function StepDataStorage({ prefix, control }: BuySectionProps) {
+  const mapping: any[] = useWatch({ control, name: `${prefix}.response.response_mapping` }) || []
+
+  const summary = mapping.length
+    ? `Lưu thêm ${mapping.length} field từ NCC: ${mapping.slice(0, 3).map((m: any) => m?.source_field || m?.target || '?').join(', ')}${mapping.length > 3 ? '…' : ''}`
+    : 'Không lưu thêm field nào ngoài proxy'
+
   return (
     <PipelineStepCard
       step={4}
       title='Ánh xạ dữ liệu — lưu thêm field từ NCC'
+      summary={summary}
       description='Ngoài proxy (bước 3), NCC có thể trả thêm dữ liệu (ISP, region, loại proxy...). Bảng dưới cấu hình: ĐỌC field nào từ response NCC → ĐẶT TÊN gì trong hệ thống → LƯU VÀO ĐÂU.'
     >
-      {/* Giải thích data flow */}
-      <Box sx={{ mb: 2, p: 1.5, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 1.5 }}>
+      {/* Giải thích data flow — ẩn được bằng công tắc "Hướng dẫn" */}
+      <Box className='provider-guide' sx={{ mb: 2, p: 1.5, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 1.5 }}>
         <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#0c4a6e', mb: 1 }}>
           Dữ liệu được lưu ở đâu?
         </Typography>
@@ -861,10 +925,20 @@ function StepErrorHandling({ prefix, control }: BuySectionProps) {
     name: `${prefix}.response.http_errors` as any,
   })
 
+  const errorMessageField = useWatch({ control, name: `${prefix}.response.error_message_field` })
+
+  const summary = [
+    errorCodeFields.length || httpErrorFields.length
+      ? `${errorCodeFields.length} mã lỗi NCC + ${httpErrorFields.length} mã HTTP đã khai`
+      : 'Chưa khai mã lỗi nào',
+    errorMessageField ? `lý do lỗi đọc từ "${errorMessageField}"` : ''
+  ].filter(Boolean).join(' · ')
+
   return (
     <PipelineStepCard
       step={5}
       title='Xử lý lỗi — thông báo rõ ràng thay vì lỗi chung'
+      summary={summary}
       description='Khi NCC trả lỗi → hệ thống ĐỌC mã lỗi từ response → TÌM trong bảng lỗi bên dưới → HIỆN thông báo tiếng Việt cho admin. Không config → admin chỉ thấy "Lỗi không xác định". Trường lý do lỗi = field chứa message lỗi gốc của NCC (VD: "message", "error.msg").'
     >
       <Grid2 container spacing={2}>
@@ -987,10 +1061,15 @@ function StepParamsMapping({ prefix, control }: BuySectionProps) {
   }
   const replacedConfigs = [...new Set(usedVars.map(v => replacedLabels[v]).filter(Boolean))]
 
+  const summary = enabled
+    ? `Bật · ${usedVars.length} biến: ${usedVars.slice(0, 4).join(', ')}${usedVars.length > 4 ? '…' : ''}`
+    : 'Tắt — dùng config cũ'
+
   return (
     <PipelineStepCard
       step={6}
       title='Params Mapping — biến chuẩn hệ thống (chỉ dùng khi MUA HÀNG)'
+      summary={summary}
       description='Dùng khi gọi API MUA proxy — dịch biến hệ thống (quantity, duration...) sang tên param NCC yêu cầu. Không ảnh hưởng xoay, gia hạn, lấy proxy.'
     >
       <Grid2 container spacing={2}>

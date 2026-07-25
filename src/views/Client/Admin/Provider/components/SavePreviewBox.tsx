@@ -67,7 +67,8 @@ export default function SavePreviewBox({ prefix, control }: BuySectionProps) {
   dbPreview['// hệ thống tự sinh'] = 'key, type, protocol, status, buy_at, expired_at...'
 
   return (
-    <Box sx={{ mt: 1.5, border: '1px solid #bae6fd', borderRadius: 1.5, overflow: 'hidden' }}>
+    // Khối minh hoạ — ẩn được bằng công tắc "Hướng dẫn" ở tiêu đề modal
+    <Box className='provider-guide' sx={{ mt: 1.5, border: '1px solid #bae6fd', borderRadius: 1.5, overflow: 'hidden' }}>
       <Box sx={{ background: '#f0f9ff', px: 1.5, py: 1, borderBottom: '1px solid #bae6fd' }}>
         <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#0369a1' }}>
           Preview: Cấu trúc dữ liệu order_item trong DB
