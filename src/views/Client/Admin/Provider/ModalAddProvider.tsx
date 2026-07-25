@@ -279,6 +279,10 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
   useEffect(() => {
     if (!open) return
 
+    // Modal KHÔNG unmount giữa 2 lần mở → timer debounce của provider TRƯỚC có thể còn treo và
+    // bắn sau, ghi đè trạng thái tab bằng giá trị form cũ. Huỷ nó trước khi nạp provider mới.
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
     if (type === 'edit' && providerData) {
       const parsed = parseApiConfig(providerData.api_config)
       const values = {
@@ -638,7 +642,9 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                   cardLoading={configCardLoading}
                   validate={configValidate}
                   tabStatus={tabStatus}
-                  tabLabels={BASE_TABS.map(t => t.label)}
+                  // Residential lấy trạng thái từ config ĐÃ LƯU (state tab đó nằm cục bộ trong section,
+                  // không ở react-hook-form) → nói rõ ra, tránh admin bật xong chưa lưu mà tưởng đã tính.
+                  tabLabels={BASE_TABS.map((t, i) => (i === 5 ? `${t.label} (theo bản đã lưu)` : t.label))}
                   onGoToTab={goToTab}
                   onOpenCheck={() => goToTab(CHECK_TAB_INDEX)}
                 />

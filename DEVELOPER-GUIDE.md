@@ -870,6 +870,14 @@ cùng một mật độ chữ.
 **Verify (Playwright):** mở sửa NCC → vào thẳng Tổng quan, đủ 4 khối, nút "Sửa ngay"/chip nhảy đúng tab ·
 tắt Hướng dẫn → các khối giảng giải biến mất, bật lại thì hiện, F5 vẫn nhớ · thu khối ① → hiện đúng dòng tóm
 tắt · **thu CẢ 6 khối rồi bấm Cập nhật → api_config khớp 100% bản gốc** (không mất field nào).
+**Sửa tiếp sau review (cùng ngày):**
+- **Trạng thái tab dính NCC mở trước**: modal KHÔNG unmount giữa 2 lần mở → timer debounce 500ms của provider
+  cũ còn treo, bắn sau và ghi đè trạng thái bằng giá trị form cũ. Fix: `clearTimeout(debounceRef)` ngay đầu
+  effect nạp dữ liệu. Nghiệm: mở Proxyma ISP → Hủy → mở bestproxy.vn trong 120ms → chấm ra đúng của bestproxy
+  (Xoay xanh, Kiểm tra đỏ), không dính của ISP (Xoay xám, Kiểm tra vàng).
+- **Overview nói mập mờ về Residential**: trạng thái tab đó lấy từ config ĐÃ LƯU (state nằm cục bộ trong
+  section, không ở RHF) trong khi các tab khác lấy từ form chưa lưu → nhãn đổi thành "Residential (theo bản đã lưu)".
+- `OverviewPanel` dùng `React.ReactNode` mà không import React → đổi sang `import type { ReactNode }`.
 **Files:** `components/OverviewPanel.tsx` (mới), `components/PipelineStepCard.tsx`, `ModalAddProvider.tsx`,
 `sections/{BuyConfigSection,RotateSection,IpWhitelistSection,RenewSection}.tsx`, `components/SavePreviewBox.tsx`
 

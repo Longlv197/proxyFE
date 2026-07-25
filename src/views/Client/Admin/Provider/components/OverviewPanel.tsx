@@ -1,5 +1,7 @@
 'use client'
 
+import type { ReactNode } from 'react'
+
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
@@ -28,7 +30,7 @@ interface Props {
   onOpenCheck: () => void
 }
 
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <Paper variant='outlined' sx={{ p: 2.5, mb: 2.5, borderRadius: 1 }}>
     <Typography variant='subtitle1' fontWeight={600} sx={{ mb: 1.5 }}>
       {title}
