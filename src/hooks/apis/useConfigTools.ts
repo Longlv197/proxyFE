@@ -36,6 +36,25 @@ export interface ConfigCard {
   changes: DiffChange[]
 }
 
+/**
+ * Mức cảnh báo tổng hợp — dùng vẽ chấm màu trên nhãn tab "Kiểm tra" để admin THẤY NGAY
+ * khi mở modal, không phải bấm vào tab mới biết có vấn đề.
+ *   red    = có lỗi 🔴 hoặc thay đổi trọng yếu mức đỏ (đổi URL/handler)
+ *   yellow = có cảnh báo 🟡 hoặc thay đổi mức cam
+ *   green  = sạch · none = chưa có dữ liệu / NCC không chạy theo cấu hình
+ */
+export type ConfigLevel = 'none' | 'green' | 'yellow' | 'red'
+
+export const configLevel = (validate?: ValidateResult, card?: ConfigCard): ConfigLevel => {
+  const changes = card?.changes ?? []
+
+  if ((validate?.errors?.length ?? 0) > 0 || changes.some(c => c.severity === 'red')) return 'red'
+  if ((validate?.warnings?.length ?? 0) > 0 || changes.length > 0) return 'yellow'
+  if (!validate || validate.skipped) return 'none'
+
+  return 'green'
+}
+
 // ─── Hooks ───
 
 /** Kiểm config provider theo schema → 🔴/🟡/🟢. GET, không gọi mạng NCC. */

@@ -847,6 +847,41 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+40 Modal Provider: bỏ thanh cuộn ngoài, rail tab đứng yên, hết nhảy chiều cao (25/07/2026)
+
+**Vấn đề (đo bằng Playwright, không phải cảm giác):** ngay ở tab "Cơ bản" gần như trống, `DialogContent` cao 758px
+nhưng nội dung 804px → **LUÔN dư ~46px ⇒ luôn có thanh cuộn NGOÀI**. Thủ phạm: `JsonPreviewPanel` đặt
+`maxHeight: calc(100vh - 220px)` (=740px) + tiêu đề 24px + padding > chỗ trống thật. Cuộn trúng thanh ngoài →
+rail tab trái trôi mất tab "Cơ bản", thanh **"Proxy xoay / Proxy tĩnh" biến mất** (đang sửa xoay hay tĩnh cũng
+không biết), tiêu đề JSON trôi. Thêm nữa: paper dùng `minHeight` → mỗi tab một chiều cao, đổi tab là modal
+nhảy ~19px và cột form đổi độ rộng đột ngột. Cột form `maxHeight: calc(100vh - 240px)` không có đệm dưới →
+card cuối bị cắt ngang thân.
+**Sửa (chỉ CSS layout, KHÔNG đụng logic form):**
+- Dialog paper: `height`/`maxHeight` CỐ ĐỊNH `calc(100vh - 100px)` (thay `minHeight`) → 8 tab cùng chiều cao.
+  Giữ `overflow: visible` vì nút X được đẩy ra ngoài mép paper 9-10px.
+- `DialogContent`: `overflow: hidden` + `display: flex` ở md+ (xs vẫn cuộn bình thường) → **hết thanh cuộn ngoài**.
+- 3 cột đều `height: 100%` + `minHeight: 0`; rail tab tự cuộn riêng nên **không bao giờ trôi mất**; cột giữa
+  `flex: 1 + overflowY: auto + pb: 4` (đệm dưới → hết cắt cụt card cuối). `<form>` đổi thành `Box component='form'`
+  để nhận flex, và ẩn hẳn khi đang ở tab Kiểm tra (không chiếm chỗ flex).
+- `JsonPreviewPanel`: bỏ `position: sticky` + bỏ `maxHeight` theo 100vh; khối JSON `maxHeight: 100%` (KHÔNG `flex: 1`)
+  → config dài thì cuộn trong khung, config ngắn (thêm mới NCC) thì khối đen co lại 1 dòng thay vì đen cả cột.
+- `BuyConfigSection`: thanh "Proxy xoay / Proxy tĩnh" **sticky top** trong vùng cuộn → cuộn sâu vẫn biết đang sửa loại nào.
+**Verify (Playwright, 1600×960 và 1366×768 laptop):** cả 8 tab `paperH` không đổi (860 / 668), `DialogContent`
+dư 0px, **đúng 1 vùng cuộn**; cuộn sâu 900–1400px: rail tab + thanh xoay/tĩnh + tiêu đề JSON vẫn đứng yên;
+chế độ Thêm mới: không có tab Kiểm tra, khối JSON co đúng 1 dòng.
+**Files:** `src/views/Client/Admin/Provider/ModalAddProvider.tsx`, `components/JsonPreviewPanel.tsx`,
+`sections/BuyConfigSection.tsx`
+
+#### 13.N+39 Panel "Kiểm tra cấu hình" tách TAB RIÊNG — hết đè cột config (25/07/2026)
+
+**Vấn đề:** Panel ở 13.N+38 nhét vào cột JSON preview (Grid2 md:4, hẹp) và cùng `position:sticky top:16` với `JsonPreviewPanel` → 2 element sticky cạnh nhau, panel dài → hiển thị lôm côm, ĐÈ lên cột form config.
+**Sửa:**
+- `ModalAddProvider.tsx` — thêm tab thứ 8 **"Kiểm tra"** (`tabler-checklist`), APPEND cuối (index 7, không chèn giữa vì mọi `activeTab === N` + `tabEnabled[]` dùng chỉ số cứng), CHỈ edit mode. Panel render full-width ở cột giữa, **ngoài `<form>`** (nút Test/dropdown không submit nhầm form), lazy theo `renderedTabs`. Bỏ `<ConfigToolPanel/>` khỏi cột JSON (cột phải giữ nguyên điều kiện `activeTab <= 4` nên tab 7 tự ẩn).
+- **Chấm cảnh báo trên nhãn tab**: 🔴 khi có lỗi hoặc thay đổi trọng yếu mức đỏ · 🟡 khi có cảnh báo/thay đổi · 🟢 sạch — để admin THẤY NGAY khi mở modal, không phải bấm vào tab mới biết (nếu không, cảnh báo diff-guard bị giấu sau tab chưa mở). Helper `configLevel()` trong `useConfigTools.ts`; 2 hook dùng chung queryKey với panel → không tốn thêm request.
+- `ConfigToolPanel.tsx` — viết lại layout: bỏ sticky, 4 khối Paper có tiêu đề (Đọc nhanh → ⚠️ Thay đổi so lần trước → Kết quả kiểm tra → Test thử). Cảnh báo thay đổi render bằng `<Alert>` từ `card.changes` và **lọc dòng ⚠ trùng khỏi thẻ tóm tắt** (BE nhét vào cả `lines` lẫn `changes` → trước đây hiện 2 lần). Mỗi lỗi có nút **"Sửa ở tab ..."** nhảy thẳng tới tab cần sửa (map path: `buy.`/`response.`/`fetch.`→Mua proxy, `rotate.`→Xoay, `ip.`→IP Whitelist, `renew.`→Gia hạn, `kind|residential`→Residential; path lạ → không hiện nút). Gom N cảnh báo "key top-level ngoài schema" thành 1 thẻ liệt kê đủ tên key (trước hiện 8 thẻ giống hệt lấp hết panel).
+**Verify:** chạy FE dev + BE local, mở modal Sửa NCC bằng Playwright: tab Kiểm tra full-width không đè; cuộn tab Mua proxy → cột JSON không tràn sang form; Test dry-run trả buy_request 🟢 (URL + params + token che); ca lỗi (tự tạo tạm trên DemoProxy local rồi khôi phục nguyên trạng): chấm tab đỏ, Alert 🔴 `buy.method` + 🟡 field lạ + ⚠ "Định dạng proxy đổi: key → fields", bấm "Sửa ở tab Mua proxy" nhảy đúng tab.
+**Files:** `src/views/Client/Admin/Provider/components/ConfigToolPanel.tsx`, `src/views/Client/Admin/Provider/ModalAddProvider.tsx`, `src/hooks/apis/useConfigTools.ts`
+
 #### 13.N+38 Bộ máy cấu hình Provider — panel Kiểm tra config trong modal Provider (25/07/2026)
 
 **Bối cảnh:** BE có bộ máy cấu hình (schema/validator/harness/thẻ tóm tắt/diff-guard — changelog BE 15.N+33/34/35). Panel chạm nhẹ UI để admin dùng. (Trước đánh nhầm số 13.N+24 — đã sửa.)

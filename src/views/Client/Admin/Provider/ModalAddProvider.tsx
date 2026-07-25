@@ -30,6 +30,7 @@ import {
   Legend
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
+import { useQueryClient } from '@tanstack/react-query'
 
 import DialogCloseButton from '@/components/modals/DialogCloseButton'
 
@@ -39,6 +40,8 @@ import {
   useProviderStatistics,
   useProviderInvoiceSummary
 } from '@/hooks/apis/useProviders'
+
+import { useValidateConfig, useConfigCard, configLevel } from '@/hooks/apis/useConfigTools'
 
 import type { FormValues, ModalAddProviderProps } from './ProviderFormTypes'
 import { defaultValues } from './ProviderFormTypes'
@@ -68,6 +71,27 @@ const BASE_TABS = [
   { label: 'Liên hệ', icon: 'tabler-address-book' }
 ]
 
+// Tab "Kiểm tra" chỉ có ở edit mode (cần provider đã lưu để đối chiếu DB) → APPEND cuối,
+// KHÔNG chèn giữa: mọi chỗ so `activeTab === N` + tabEnabled[] đang dùng chỉ số cứng của BASE_TABS.
+const CHECK_TAB = { label: 'Kiểm tra', icon: 'tabler-checklist' }
+const CHECK_TAB_INDEX = BASE_TABS.length // = 7
+
+// Chiều cao CỐ ĐỊNH (không phải minHeight): đổi tab không làm modal cao thấp nhảy.
+// Giữ overflow visible vì nút X được đẩy ra ngoài mép paper 9-10px.
+const PAPER_SX = {
+  overflow: 'visible',
+  height: 'calc(100vh - 100px)',
+  maxHeight: 'calc(100vh - 100px)'
+}
+
+// Chấm cảnh báo trên nhãn tab Kiểm tra — dùng token theme.
+const LEVEL_DOT: Record<string, string> = {
+  red: 'error.main',
+  yellow: 'warning.main',
+  green: 'success.main',
+  none: 'action.disabled'
+}
+
 // ─── Component ──────────────────────────────────────
 
 export default function ModalAddProvider({ open, onClose, type, providerData }: ModalAddProviderProps) {
@@ -75,7 +99,15 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
   const [renderedTabs, setRenderedTabs] = useState<Set<number>>(new Set([0]))
 
   const isEditMode = type === 'edit' && !!providerData?.id
-  const TABS = isEditMode ? [...BASE_TABS] : BASE_TABS
+  const TABS = isEditMode ? [...BASE_TABS, CHECK_TAB] : BASE_TABS
+
+  // Kiểm cấu hình: fetch ngay khi mở modal để vẽ chấm cảnh báo trên nhãn tab (admin thấy NGAY,
+  // không phải bấm vào tab mới biết). ConfigToolPanel dùng chung queryKey → KHÔNG tốn thêm request.
+  const queryClient = useQueryClient()
+  const configCode = isEditMode ? providerData?.provider_code : undefined
+  const { data: configValidate } = useValidateConfig(configCode)
+  const { data: configCard } = useConfigCard(configCode)
+  const checkLevel = configLevel(configValidate, configCard)
 
   const createMutation = useCreateProvider()
   const updateMutation = useUpdateProvider(providerData?.id)
@@ -175,6 +207,9 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     setRenderedTabs(prev => new Set([...prev, newValue]))
   }
 
+  // Nhảy tab từ trong nội dung (nút "Sửa ở tab ..." của panel Kiểm tra)
+  const goToTab = (tab: number) => handleTabChange(null, tab)
+
   const onSubmit = (data: FormValues) => {
     // Validate: nếu use_url_by_duration=true thì phải có ít nhất 1 row có URL
     // Tránh bug ghi đè url_by_duration thành empty khi rows toàn trống
@@ -252,6 +287,13 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     mutation.mutate(payload, {
       onSuccess: () => {
         toast.info(type === 'create' ? 'Thêm nhà cung cấp thành công!' : 'Cập nhật thành công!')
+
+        // Config vừa đổi → kết quả kiểm + thẻ tóm tắt cũ đã sai (cache 30s). Không xoá thì admin sửa lỗi
+        // xong vào tab Kiểm tra vẫn thấy báo đỏ như cũ → tưởng sửa không ăn.
+        if (configCode) {
+          queryClient.invalidateQueries({ queryKey: ['configValidate', configCode] })
+          queryClient.invalidateQueries({ queryKey: ['configCard', configCode] })
+        }
       },
       onError: (error: any) => {
         toast.error(error?.response?.data?.message || 'Có lỗi xảy ra')
@@ -266,7 +308,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       onClose={onClose}
       open={open}
       closeAfterTransition={false}
-      PaperProps={{ sx: { overflow: 'visible', minHeight: 'calc(100vh - 100px)' } }}
+      PaperProps={{ sx: PAPER_SX }}
       fullWidth
       maxWidth='xl'
     >
@@ -279,10 +321,12 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
         </DialogCloseButton>
       </DialogTitle>
 
-      <DialogContent>
-        <Grid2 container spacing={0}>
-          {/* ═══════ BÊN TRÁI: Vertical Tabs ═══════ */}
-          <Grid2 size={{ xs: 12, md: 'auto' }}>
+      {/* KHÔNG cho DialogContent tự cuộn ở md+ — trước đây nó dư ~46px nên LUÔN có thanh cuộn ngoài,
+          cuộn trúng là rail tab + thanh Proxy xoay/tĩnh trôi mất. Giờ chỉ từng cột tự cuộn bên trong. */}
+      <DialogContent sx={{ display: { md: 'flex' }, overflow: { xs: 'auto', md: 'hidden' }, minHeight: 0 }}>
+        <Grid2 container spacing={0} sx={{ width: '100%', height: { md: '100%' }, minHeight: 0 }}>
+          {/* ═══════ BÊN TRÁI: Vertical Tabs (đứng yên, không cuộn theo nội dung) ═══════ */}
+          <Grid2 size={{ xs: 12, md: 'auto' }} sx={{ height: { md: '100%' }, overflowY: { md: 'auto' } }}>
             <Tabs
               orientation='vertical'
               value={activeTab}
@@ -314,18 +358,31 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                       <i className={tab.icon} style={{ fontSize: 16, opacity: 0.7 }} />
                       <span>{tab.label}</span>
-                      {i > 0 && (
-                        <Box
-                          sx={{
-                            ml: 'auto',
-                            width: 7,
-                            height: 7,
-                            borderRadius: '50%',
-                            background: tabEnabled[i] ? '#4caf50' : '#e0e0e0',
-                            flexShrink: 0
-                          }}
-                        />
-                      )}
+                      {/* Tab Kiểm tra: chấm theo MỨC CẢNH BÁO (đỏ/vàng/xanh); tab khác: bật/tắt */}
+                      {i > 0 &&
+                        (i === CHECK_TAB_INDEX ? (
+                          <Box
+                            sx={{
+                              ml: 'auto',
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              bgcolor: LEVEL_DOT[checkLevel] || 'action.disabled',
+                              flexShrink: 0
+                            }}
+                          />
+                        ) : (
+                          <Box
+                            sx={{
+                              ml: 'auto',
+                              width: 7,
+                              height: 7,
+                              borderRadius: '50%',
+                              background: tabEnabled[i] ? '#4caf50' : '#e0e0e0',
+                              flexShrink: 0
+                            }}
+                          />
+                        ))}
                     </Box>
                   }
                 />
@@ -334,9 +391,22 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
           </Grid2>
 
           {/* ═══════ GIỮA: Tab Content ═══════ */}
-          <Grid2 size={{ xs: 12, md: 'grow' as any }}>
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <Box sx={{ maxHeight: 'calc(100vh - 240px)', overflow: 'auto', pr: 2 }}>
+          <Grid2
+            size={{ xs: 12, md: 'grow' as any }}
+            sx={{ height: { md: '100%' }, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+          >
+            <Box
+              component='form'
+              onSubmit={handleSubmit(onSubmit)}
+              sx={{
+                display: activeTab === CHECK_TAB_INDEX ? 'none' : 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 0
+              }}
+            >
+              {/* pb rộng để card cuối không bị cắt sát mép vùng cuộn */}
+              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 2, pb: 4 }}>
                 {/* Tab 0: Cơ bản */}
                 <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
                   <BasicInfoSection control={control} errors={errors} />
@@ -384,14 +454,33 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                   </Box>
                 )}
               </Box>
-            </form>
+            </Box>
+
+            {/* Tab 7: Kiểm tra — NGOÀI <form> để nút Test / dropdown không submit nhầm form provider */}
+            {isEditMode && renderedTabs.has(CHECK_TAB_INDEX) && (
+              <Box
+                sx={{
+                  display: activeTab === CHECK_TAB_INDEX ? 'block' : 'none',
+                  flex: 1,
+                  minHeight: 0,
+                  overflowY: 'auto',
+                  pr: 2,
+                  pb: 4
+                }}
+              >
+                <ConfigToolPanel
+                  code={providerData?.provider_code}
+                  providerId={providerData?.id}
+                  onGoToTab={goToTab}
+                />
+              </Box>
+            )}
           </Grid2>
 
-          {/* ═══════ BÊN PHẢI: JSON Preview (ẩn khi tab Residential/Liên hệ) ═══════ */}
+          {/* ═══════ BÊN PHẢI: JSON Preview (ẩn khi tab Residential/Liên hệ/Kiểm tra) ═══════ */}
           {activeTab <= 4 && (
-            <Grid2 size={{ xs: 12, md: 4 }}>
+            <Grid2 size={{ xs: 12, md: 4 }} sx={{ height: { md: '100%' }, minHeight: 0 }}>
               <JsonPreviewPanel jsonPreview={jsonPreview} />
-              {isEditMode && <ConfigToolPanel code={providerData?.provider_code} providerId={providerData?.id} />}
             </Grid2>
           )}
         </Grid2>

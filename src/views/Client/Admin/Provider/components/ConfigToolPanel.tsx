@@ -1,9 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import Paper from '@mui/material/Paper'
+import Alert from '@mui/material/Alert'
+import AlertTitle from '@mui/material/AlertTitle'
 import Chip from '@mui/material/Chip'
 import Button from '@mui/material/Button'
 import Select from '@mui/material/Select'
@@ -12,11 +16,10 @@ import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Checkbox from '@mui/material/Checkbox'
-import Divider from '@mui/material/Divider'
 import CircularProgress from '@mui/material/CircularProgress'
 
 import { useValidateConfig, useConfigCard, useTestConfig } from '@/hooks/apis/useConfigTools'
-import type { HarnessCheck } from '@/hooks/apis/useConfigTools'
+import type { HarnessCheck, ValidateIssue } from '@/hooks/apis/useConfigTools'
 import { useServiceTypes } from '@/hooks/apis/useServiceType'
 
 // Màu theo trạng thái — dùng token theme, KHÔNG hardcode hex.
@@ -28,16 +31,75 @@ const STATUS_COLOR: Record<string, 'success' | 'error' | 'default'> = {
 
 const STATUS_ICON: Record<string, string> = { green: '🟢', red: '🔴', gray: '⚪' }
 
+/**
+ * Path lỗi (BE trả theo section schema: buy./rotate./renew./ip./response./fetch. + key top-level)
+ * → tab cần vào sửa trong modal. Path không khớp → KHÔNG hiện nút (không đoán bừa, tránh chỉ sai chỗ).
+ */
+const TAB_HINTS: { match: RegExp; tab: number; label: string }[] = [
+  { match: /^buy\./, tab: 1, label: 'Mua proxy' },
+  { match: /^response\./, tab: 1, label: 'Mua proxy' },
+  { match: /^fetch\./, tab: 1, label: 'Mua proxy' },
+  { match: /^rotate\./, tab: 2, label: 'Xoay proxy' },
+  { match: /^ip\./, tab: 3, label: 'IP Whitelist' },
+  { match: /^renew\./, tab: 4, label: 'Gia hạn' },
+  { match: /^(kind|residential)/, tab: 5, label: 'Residential' }
+]
+
+const findTabHint = (path?: string) => (path ? TAB_HINTS.find(h => h.match.test(path)) : undefined)
+
+/** Khối có tiêu đề — mỗi phần 1 Paper cho thoáng, không nhồi. */
+const Section = ({ title, children }: { title: string; children: ReactNode }) => (
+  <Paper variant='outlined' sx={{ p: 2.5, mb: 2.5, borderRadius: 1 }}>
+    <Typography variant='subtitle1' fontWeight={600} sx={{ mb: 1.5 }}>
+      {title}
+    </Typography>
+    {children}
+  </Paper>
+)
+
+/** 1 lỗi/cảnh báo: nói NGHĨA + nút nhảy thẳng tới tab cần sửa. */
+const IssueAlert = ({
+  issue,
+  severity,
+  onGoToTab
+}: {
+  issue: ValidateIssue
+  severity: 'error' | 'warning'
+  onGoToTab?: (tab: number) => void
+}) => {
+  const hint = findTabHint(issue.path)
+
+  return (
+    <Alert
+      severity={severity}
+      sx={{ mb: 1, '& .MuiAlert-message': { minWidth: 0, wordBreak: 'break-word' } }}
+      action={
+        hint && onGoToTab ? (
+          <Button type='button' size='small' color='inherit' onClick={() => onGoToTab(hint.tab)} sx={{ whiteSpace: 'nowrap' }}>
+            Sửa ở tab {hint.label}
+          </Button>
+        ) : undefined
+      }
+    >
+      <AlertTitle sx={{ fontSize: '0.85rem', mb: 0.25 }}>{issue.path}</AlertTitle>
+      <Typography variant='caption'>{issue.message}</Typography>
+    </Alert>
+  )
+}
+
 interface Props {
   code?: string
   providerId?: number
+
+  /** Nhảy sang tab khác trong modal (nút "Sửa ở tab ..."). */
+  onGoToTab?: (tab: number) => void
 }
 
 /**
- * Panel bộ máy cấu hình (chạm nhẹ Spec 1): kết quả validate + thẻ tóm tắt (đọc-trước) +
- * nút Test API thật. Chỉ hiện ở edit mode (cần provider đã lưu để đối chiếu DB).
+ * Tab "🔍 Kiểm tra" trong modal Provider (edit mode): thẻ đọc-trước → cảnh báo thay đổi →
+ * kết quả kiểm cấu hình → test thử an toàn $0. Full-width, KHÔNG sticky (bug đè cột config 25/07).
  */
-export default function ConfigToolPanel({ code, providerId }: Props) {
+export default function ConfigToolPanel({ code, providerId, onGoToTab }: Props) {
   const { data: validate, isLoading: vLoading } = useValidateConfig(code)
   const { data: card, isLoading: cLoading } = useConfigCard(code)
   const { data: allServiceTypes } = useServiceTypes()
@@ -56,6 +118,18 @@ export default function ConfigToolPanel({ code, providerId }: Props) {
   const errors = validate?.errors ?? []
   const warnings = validate?.warnings ?? []
 
+  // BE liệt kê RIÊNG từng key top-level ngoài schema (kind, timeout, base_url, isp_tariffs...) —
+  // 8 thẻ giống hệt nhau lấp hết panel. Gom 1 thẻ, vẫn liệt kê đủ tên key, không giấu gì.
+  const isUnknownTopKey = (w: ValidateIssue) => !w.path.includes('.') && w.message.includes('ngoài schema')
+  const unknownKeys = warnings.filter(isUnknownTopKey)
+  const fieldWarnings = warnings.filter(w => !isUnknownTopKey(w))
+
+  // BE nhét cảnh báo thay đổi vào CẢ `lines` (dòng bắt đầu bằng ⚠) lẫn `changes`.
+  // → lọc khỏi thẻ tóm tắt, chỉ hiện 1 lần bằng Alert cho nổi bật (tránh hiện 2 lần).
+  const cardLines = (card?.lines ?? []).filter(l => !l.trim().startsWith('⚠'))
+  const changeLines = (card?.lines ?? []).filter(l => l.trim().startsWith('⚠'))
+  const changes = card?.changes ?? []
+
   const runTest = () => {
     const pid = Number(productId)
 
@@ -64,99 +138,149 @@ export default function ConfigToolPanel({ code, providerId }: Props) {
   }
 
   return (
-    <Box sx={{ position: 'sticky', top: 16, mt: 3 }}>
-      <Typography variant='subtitle2' fontWeight={600} sx={{ mb: 1 }}>
-        🔎 Kiểm tra cấu hình
-      </Typography>
-
-      {/* ─── Validate ─── */}
-      <Box sx={{ mb: 2 }}>
-        {vLoading ? (
-          <CircularProgress size={16} />
-        ) : validate?.skipped ? (
-          <Chip size='small' label='Không-config-driven — bỏ qua kiểm' variant='tonal' color='secondary' />
-        ) : errors.length === 0 && warnings.length === 0 ? (
-          <Chip size='small' color='success' label='🟢 Config hợp lệ' />
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {errors.map((e, i) => (
-              <Typography key={`e${i}`} variant='caption' color='error.main'>
-                🔴 <b>{e.path}</b>: {e.message}
-              </Typography>
-            ))}
-            {warnings.map((w, i) => (
-              <Typography key={`w${i}`} variant='caption' color='warning.main'>
-                🟡 <b>{w.path}</b>: {w.message}
-              </Typography>
-            ))}
-          </Box>
-        )}
-      </Box>
-
-      <Divider sx={{ my: 1.5 }} />
-
-      {/* ─── Thẻ tóm tắt (đọc-trước) ─── */}
-      <Box sx={{ mb: 2 }}>
+    <Box sx={{ maxWidth: 1100, pb: 2 }}>
+      {/* ─── 1. Đọc nhanh (thẻ tóm tắt tiếng người) ─── */}
+      <Section title='📄 Đọc nhanh — nhà cung cấp này bán kiểu gì'>
         {cLoading ? (
-          <CircularProgress size={16} />
-        ) : card ? (
+          <CircularProgress size={18} />
+        ) : cardLines.length > 0 ? (
           <Box
             sx={{
               bgcolor: 'action.hover',
               borderRadius: 1,
-              p: 1.5,
-              fontSize: '0.8rem',
-              lineHeight: 1.7,
-              whiteSpace: 'pre-wrap',
+              p: 2,
+              fontSize: '0.875rem',
+              lineHeight: 1.9,
               wordBreak: 'break-word'
             }}
           >
-            {card.lines.map((line, i) => {
-              const isChange = line.trim().startsWith('⚠')
-
-              return (
-                <Box key={i} component='div' sx={{ color: isChange ? 'error.main' : 'text.primary', fontWeight: isChange ? 600 : 400 }}>
-                  {line}
-                </Box>
-              )
-            })}
+            {cardLines.map((line, i) => (
+              <Box key={i} component='div'>
+                {line}
+              </Box>
+            ))}
           </Box>
-        ) : null}
-      </Box>
+        ) : (
+          <Typography variant='body2' color='text.secondary'>
+            Chưa đọc được cấu hình.
+          </Typography>
+        )}
+      </Section>
 
-      <Divider sx={{ my: 1.5 }} />
+      {/* ─── 2. Thay đổi so lần trước (diff-guard) — thứ chặn sự cố đổi nhầm cấu hình ─── */}
+      {(changes.length > 0 || changeLines.length > 0) && (
+        <Section title='⚠️ Thay đổi so với lần lưu trước'>
+          {changes.length > 0
+            ? changes.map((c, i) => {
+                const hint = findTabHint(c.path)
 
-      {/* ─── Test API thật ─── */}
-      <Box>
-        <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 1 }}>
-          {'Test API (dry-run mua an toàn $0; tick “gọi thật” để test endpoint đọc)'}
+                return (
+                  <Alert
+                    key={i}
+                    severity={c.severity === 'red' ? 'error' : 'warning'}
+                    sx={{ mb: 1, '& .MuiAlert-message': { minWidth: 0, wordBreak: 'break-word' } }}
+                    action={
+                      hint && onGoToTab ? (
+                        <Button
+                          type='button'
+                          size='small'
+                          color='inherit'
+                          onClick={() => onGoToTab(hint.tab)}
+                          sx={{ whiteSpace: 'nowrap' }}
+                        >
+                          Xem tab {hint.label}
+                        </Button>
+                      ) : undefined
+                    }
+                  >
+                    <AlertTitle sx={{ fontSize: '0.85rem', mb: 0.25 }}>{c.label || c.path}</AlertTitle>
+                    <Typography variant='caption'>{c.message}</Typography>
+                  </Alert>
+                )
+              })
+            : changeLines.map((l, i) => (
+                <Alert key={i} severity='warning' sx={{ mb: 1 }}>
+                  <Typography variant='caption'>{l}</Typography>
+                </Alert>
+              ))}
+          <Typography variant='caption' color='text.secondary'>
+            Đây là các mục trọng yếu (URL, handler, định dạng proxy…) — đổi nhầm là đơn hàng đi sai nhà cung cấp.
+            Nếu anh cố ý đổi thì bỏ qua.
+          </Typography>
+        </Section>
+      )}
+
+      {/* ─── 3. Kết quả kiểm cấu hình ─── */}
+      <Section title='Kết quả kiểm tra cấu hình'>
+        {vLoading ? (
+          <CircularProgress size={18} />
+        ) : validate?.skipped ? (
+          <Alert severity='info'>
+            Nhà cung cấp này <b>không chạy theo cấu hình</b> (dùng code riêng) — không có gì để kiểm.
+          </Alert>
+        ) : errors.length === 0 && warnings.length === 0 ? (
+          <Alert severity='success'>🟢 Cấu hình hợp lệ — không phát hiện vấn đề.</Alert>
+        ) : (
+          <>
+            {errors.map((e, i) => (
+              <IssueAlert key={`e${i}`} issue={e} severity='error' onGoToTab={onGoToTab} />
+            ))}
+            {fieldWarnings.map((w, i) => (
+              <IssueAlert key={`w${i}`} issue={w} severity='warning' onGoToTab={onGoToTab} />
+            ))}
+            {unknownKeys.length > 0 && (
+              <Alert severity='warning' sx={{ mb: 1 }}>
+                <AlertTitle sx={{ fontSize: '0.85rem', mb: 0.25 }}>
+                  {unknownKeys.length} mục cấu hình nằm ngoài danh mục kiểm
+                </AlertTitle>
+                <Typography variant='caption' component='div' sx={{ wordBreak: 'break-word' }}>
+                  {unknownKeys.map(w => w.path).join(', ')}
+                </Typography>
+                <Typography variant='caption' component='div' sx={{ mt: 0.5 }}>
+                  Máy chưa mô hình hoá các mục này nên <b>không kiểm được</b> — không phải lỗi. Chỉ cần liếc xem có
+                  tên nào gõ sai không.
+                </Typography>
+              </Alert>
+            )}
+            <Typography variant='caption' color='text.secondary'>
+              🔴 chắc chắn sai, phải sửa · 🟡 nên kiểm lại (có thể là field mới hoặc gõ sai tên).
+            </Typography>
+          </>
+        )}
+      </Section>
+
+      {/* ─── 4. Test thử ─── */}
+      <Section title='Test thử — an toàn, KHÔNG mua gì ($0)'>
+        <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+          Dựng thử lệnh mua để xem gửi đi những gì (chỉ dựng, không gửi). Tick “gọi thật” để gọi thêm vài
+          endpoint chỉ-đọc của nhà cung cấp (xem số dư / danh mục) — vẫn không mua.
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-          <FormControl size='small' sx={{ minWidth: 190 }}>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+          <FormControl size='small' sx={{ minWidth: 260 }}>
             <InputLabel>Chọn sản phẩm</InputLabel>
-            <Select
-              label='Chọn sản phẩm'
-              value={productId}
-              onChange={e => setProductId(String(e.target.value))}
-            >
+            <Select label='Chọn sản phẩm' value={productId} onChange={e => setProductId(String(e.target.value))}>
               {products.length === 0 && (
                 <MenuItem value='' disabled>
-                  (NCC chưa có sản phẩm)
+                  (Nhà cung cấp chưa có sản phẩm)
                 </MenuItem>
               )}
               {products.map((p: any) => (
                 <MenuItem key={p.id} value={String(p.id)}>
-                  {p.name || `#${p.id}`} <Typography component='span' variant='caption' sx={{ ml: 0.5, color: 'text.secondary' }}>#{p.id}</Typography>
+                  {p.name || `#${p.id}`}
+                  <Typography component='span' variant='caption' sx={{ ml: 0.5, color: 'text.secondary' }}>
+                    #{p.id}
+                  </Typography>
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
           <FormControlLabel
             control={<Checkbox size='small' checked={live} onChange={e => setLive(e.target.checked)} />}
-            label={<Typography variant='caption'>gọi thật</Typography>}
+            label={<Typography variant='body2'>Gọi thật (endpoint chỉ-đọc)</Typography>}
           />
           <Button
-            size='small'
+            type='button'
             variant='contained'
             onClick={runTest}
             disabled={!productId || testMutation.isPending}
@@ -167,20 +291,33 @@ export default function ConfigToolPanel({ code, providerId }: Props) {
         </Box>
 
         {testMutation.isError && (
-          <Typography variant='caption' color='error.main'>
+          <Alert severity='error' sx={{ mb: 1 }}>
             {(testMutation.error as any)?.response?.data?.message || 'Lỗi khi test'}
-          </Typography>
+          </Alert>
         )}
 
-        {testMutation.data?.checks?.map((c: HarnessCheck, i: number) => (
-          <Box key={i} sx={{ mb: 1 }}>
-            <Chip size='small' color={STATUS_COLOR[c.status] || 'default'} label={`${STATUS_ICON[c.status] || ''} ${c.name}`} />
-            <Typography variant='caption' sx={{ display: 'block', color: 'text.secondary', whiteSpace: 'pre-wrap', mt: 0.5 }}>
-              {c.detail}
-            </Typography>
+        {testMutation.data?.checks?.length ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {testMutation.data.checks.map((c: HarnessCheck, i: number) => (
+              <Paper key={i} variant='outlined' sx={{ p: 1.5, borderRadius: 1 }}>
+                <Chip
+                  size='small'
+                  color={STATUS_COLOR[c.status] || 'default'}
+                  label={`${STATUS_ICON[c.status] || ''} ${c.name}`}
+                  sx={{ mb: 0.75 }}
+                />
+                <Typography
+                  variant='caption'
+                  component='div'
+                  sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                >
+                  {c.detail}
+                </Typography>
+              </Paper>
+            ))}
           </Box>
-        ))}
-      </Box>
+        ) : null}
+      </Section>
     </Box>
   )
 }

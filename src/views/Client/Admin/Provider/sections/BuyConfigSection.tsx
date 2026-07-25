@@ -1237,8 +1237,20 @@ function BuyConfigSection({ control, setValue }: { control: BuySectionProps['con
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {/* Toggle Rotating / Static */}
-      <Box sx={{ display: 'flex', gap: 0.5, background: '#f1f5f9', borderRadius: 1.5, p: 0.5 }}>
+      {/* Toggle Rotating / Static — GHIM trên đầu vùng cuộn: cuộn sâu vào form vẫn biết
+          mình đang sửa proxy xoay hay proxy tĩnh (trước đây trôi mất là mất luôn ngữ cảnh). */}
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 0.5,
+          background: '#f1f5f9',
+          borderRadius: 1.5,
+          p: 0.5,
+          position: 'sticky',
+          top: 0,
+          zIndex: 3
+        }}
+      >
         {[
           { key: 'rotating' as const, label: 'Proxy xoay', enabled: rotatingEnabled },
           { key: 'static' as const, label: 'Proxy tĩnh', enabled: staticEnabled },
