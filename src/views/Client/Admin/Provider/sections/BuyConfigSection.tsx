@@ -108,8 +108,23 @@ function DurationUrlTable({ prefix, control, setValue }: { prefix: string; contr
         const isCustom = currentUnitKey === 'custom'
 
         return (
-          <Box key={field.id} sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, px: 1.5, py: 0.75, borderBottom: '1px solid #f1f5f9', background: isDuplicate ? '#fef2f2' : 'transparent' }}>
-            <Typography sx={{ fontSize: 12, color: '#475569', fontWeight: 500, minWidth: 70 }}>Đơn vị:</Typography>
+          <Box
+            key={field.id}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+
+              // Ở laptop 1366 hàng này từng VỠ DÒNG (ô URL rớt xuống, chữ "ngày → URL:" đứng trơ).
+              // Giữ 1 hàng từ sm trở lên, ô URL co lại thay vì đẩy nhau xuống.
+              flexWrap: { xs: 'wrap', sm: 'nowrap' },
+              gap: 1,
+              px: 1.5,
+              py: 0.75,
+              borderBottom: '1px solid #f1f5f9',
+              background: isDuplicate ? '#fef2f2' : 'transparent'
+            }}
+          >
+            <Typography sx={{ fontSize: 12, color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>Đơn vị:</Typography>
             <Controller name={`${prefix}.duration_units.${index}.unit_key`} control={control} render={({ field: f }) => (
               <CustomTextField
                 {...f}
@@ -139,9 +154,14 @@ function DurationUrlTable({ prefix, control, setValue }: { prefix: string; contr
                 sx={{ width: 90, '& input': { fontSize: 13, textAlign: 'center', fontWeight: 600 } }}
               />
             )} />
-            <Typography sx={{ fontSize: 12, color: '#64748b' }}>ngày → URL:</Typography>
+            <Typography sx={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>ngày → URL:</Typography>
             <Controller name={`${prefix}.duration_units.${index}.url`} control={control} render={({ field: f }) => (
-              <CustomTextField {...f} size='small' placeholder='https://api.provider.com/...' sx={{ flex: 1, minWidth: 230, '& input': { fontSize: 12 } }} />
+              <CustomTextField
+                {...f}
+                size='small'
+                placeholder='https://api.provider.com/...'
+                sx={{ flex: 1, minWidth: { xs: 200, sm: 0 }, '& input': { fontSize: 12 } }}
+              />
             )} />
             <IconButton size='small' color='error' onClick={() => remove(index)} sx={{ p: '2px' }}>
               <Trash2 size={14} />

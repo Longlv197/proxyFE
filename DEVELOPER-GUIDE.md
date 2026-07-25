@@ -847,6 +847,26 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+41 Modal Provider: cột JSON bật/tắt linh hoạt + hết vỡ layout ở laptop 1366 (25/07/2026)
+
+**Vấn đề:** cột JSON preview chiếm cứng ~1/3 chiều ngang ở MỌI tab 0-4, kể cả tab IP Whitelist / Gia hạn chỉ có
+đúng 1 dropdown. Ở laptop 1366px hậu quả nặng: hàng "Đơn vị thời gian & URL gọi" **vỡ dòng** (ô URL rớt xuống,
+chữ "ngày → URL:" đứng trơ), nhãn dài ("Tên param số lượng", "Trường kiểm tra", "Giá trị OK") **bị cắt bằng
+dấu ba chấm** — admin không đọc được nhãn.
+**Sửa:**
+- **Nút "Xem JSON / Ẩn JSON"** ở tiêu đề modal (chỉ hiện ở tab 0-4). Nhớ lựa chọn trong `localStorage`
+  (`provider_modal_json_visible`). Chưa chọn lần nào → theo bề ngang: ≥1600px hiện, hẹp hơn tự thu về nút.
+  Đã chọn tay → tôn trọng lựa chọn ở mọi kích thước. Ẩn JSON = form dùng full width.
+- Nhãn field: bỏ cắt ba chấm, cho **xuống dòng** (`whiteSpace: normal`) — nhãn ở template nằm TRÊN ô nhập nên
+  an toàn. ĐÃ THỬ căn đáy ô nhập cho thẳng hàng → **hỏng** các hàng có helperText (ô có helper bị đẩy lên,
+  lệch nhiều hơn) → bỏ, chấp nhận ô hơi so le khi nhãn 2 dòng.
+- Hàng "Đơn vị thời gian & URL gọi": `flexWrap: nowrap` từ sm trở lên, ô URL `minWidth: 0` (co lại thay vì
+  rớt dòng), 2 nhãn phụ `whiteSpace: nowrap` → luôn gọn 1 hàng.
+**Verify (Playwright 1366×768 + 1600×960):** 1366 chưa có lựa chọn → JSON tự ẩn, nút "Xem JSON", 3 hàng
+đơn vị/URL nằm gọn 1 dòng, nhãn hiện đủ chữ; bấm "Xem JSON" → cột JSON hiện, hàng URL VẪN không vỡ;
+đóng modal mở lại → nhớ đúng lựa chọn; 1600 chưa có lựa chọn → JSON hiện sẵn.
+**Files:** `src/views/Client/Admin/Provider/ModalAddProvider.tsx`, `sections/BuyConfigSection.tsx`
+
 #### 13.N+40 Modal Provider: bỏ thanh cuộn ngoài, rail tab đứng yên, hết nhảy chiều cao (25/07/2026)
 
 **Vấn đề (đo bằng Playwright, không phải cảm giác):** ngay ở tab "Cơ bản" gần như trống, `DialogContent` cao 758px

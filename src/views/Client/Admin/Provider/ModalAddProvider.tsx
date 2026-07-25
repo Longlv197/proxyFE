@@ -15,6 +15,7 @@ import Paper from '@mui/material/Paper'
 import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
+import useMediaQuery from '@mui/material/useMediaQuery'
 
 import { toast } from 'react-toastify'
 import {
@@ -76,6 +77,18 @@ const BASE_TABS = [
 const CHECK_TAB = { label: 'Kiểm tra', icon: 'tabler-checklist' }
 const CHECK_TAB_INDEX = BASE_TABS.length // = 7
 
+// Nhớ lựa chọn hiện/ẩn cột JSON của admin (localStorage). Chưa chọn lần nào → theo bề ngang màn hình.
+const JSON_PREF_KEY = 'provider_modal_json_visible'
+
+// Nhãn field dài ("Tên param số lượng", "Trường kiểm tra"...) mặc định bị MUI cắt bằng dấu ba chấm
+// → cho xuống dòng. Nhãn ở template này nằm TRÊN ô nhập (position relative) nên xuống dòng an toàn.
+// ĐÃ THỬ căn đáy ô nhập cho thẳng hàng khi nhãn xuống 2 dòng → HỎNG các hàng có chữ chú thích
+// dưới ô (ô có helper bị đẩy lên, lệch nhiều hơn). Chấp nhận nhãn 2 dòng làm ô hơi so le —
+// vẫn hơn hẳn việc chữ bị cắt cụt bằng dấu ba chấm. Màn rộng / ẩn cột JSON thì nhãn vừa 1 dòng.
+const LABEL_WRAP_SX = {
+  '& .MuiInputLabel-root': { whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }
+}
+
 // Chiều cao CỐ ĐỊNH (không phải minHeight): đổi tab không làm modal cao thấp nhảy.
 // Giữ overflow visible vì nút X được đẩy ra ngoài mép paper 9-10px.
 const PAPER_SX = {
@@ -103,6 +116,26 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
 
   // Kiểm cấu hình: fetch ngay khi mở modal để vẽ chấm cảnh báo trên nhãn tab (admin thấy NGAY,
   // không phải bấm vào tab mới biết). ConfigToolPanel dùng chung queryKey → KHÔNG tốn thêm request.
+  // Cột JSON: màn rộng thì mặc định hiện, laptop hẹp thì mặc định thu về nút — nhưng admin đã tự
+  // chọn hiện/ẩn thì tôn trọng lựa chọn đó ở mọi kích thước.
+  const isWideScreen = useMediaQuery('(min-width:1600px)')
+  const [showJson, setShowJson] = useState(false)
+
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(JSON_PREF_KEY) : null
+
+    setShowJson(saved === null ? isWideScreen : saved === '1')
+  }, [isWideScreen])
+
+  const toggleJson = () =>
+    setShowJson(prev => {
+      const next = !prev
+
+      if (typeof window !== 'undefined') window.localStorage.setItem(JSON_PREF_KEY, next ? '1' : '0')
+
+      return next
+    })
+
   const queryClient = useQueryClient()
   const configCode = isEditMode ? providerData?.provider_code : undefined
   const { data: configValidate } = useValidateConfig(configCode)
@@ -312,10 +345,23 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       fullWidth
       maxWidth='xl'
     >
-      <DialogTitle>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 2, pr: 12 }}>
         <Typography variant='h5' component='span'>
           {type === 'create' ? 'Thêm mới nhà cung cấp' : 'Cập nhật nhà cung cấp'}
         </Typography>
+        {activeTab <= 4 && (
+          <Button
+            type='button'
+            size='small'
+            variant='tonal'
+            color='secondary'
+            onClick={toggleJson}
+            startIcon={<i className='tabler-code' style={{ fontSize: 16 }} />}
+            sx={{ ml: 'auto', textTransform: 'none', flexShrink: 0 }}
+          >
+            {showJson ? 'Ẩn JSON' : 'Xem JSON'}
+          </Button>
+        )}
         <DialogCloseButton onClick={onClose} disableRipple>
           <i className='tabler-x' />
         </DialogCloseButton>
@@ -406,7 +452,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
               }}
             >
               {/* pb rộng để card cuối không bị cắt sát mép vùng cuộn */}
-              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 2, pb: 4 }}>
+              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 2, pb: 4, ...LABEL_WRAP_SX }}>
                 {/* Tab 0: Cơ bản */}
                 <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
                   <BasicInfoSection control={control} errors={errors} />
@@ -477,8 +523,8 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
             )}
           </Grid2>
 
-          {/* ═══════ BÊN PHẢI: JSON Preview (ẩn khi tab Residential/Liên hệ/Kiểm tra) ═══════ */}
-          {activeTab <= 4 && (
+          {/* ═══════ BÊN PHẢI: JSON Preview — ẩn ở tab Residential/Liên hệ/Kiểm tra, và bật/tắt được ═══════ */}
+          {activeTab <= 4 && showJson && (
             <Grid2 size={{ xs: 12, md: 4 }} sx={{ height: { md: '100%' }, minHeight: 0 }}>
               <JsonPreviewPanel jsonPreview={jsonPreview} />
             </Grid2>
