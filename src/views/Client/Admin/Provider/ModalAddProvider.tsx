@@ -391,7 +391,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
           {activeTab <= 4 && (
             <Grid2 size={{ xs: 12, md: 4 }}>
               <JsonPreviewPanel jsonPreview={jsonPreview} />
-              {isEditMode && <ConfigToolPanel code={providerData?.provider_code} />}
+              {isEditMode && <ConfigToolPanel code={providerData?.provider_code} providerId={providerData?.id} />}
             </Grid2>
           )}
         </Grid2>

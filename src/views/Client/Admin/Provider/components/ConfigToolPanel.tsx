@@ -6,7 +6,10 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
 import Button from '@mui/material/Button'
-import TextField from '@mui/material/TextField'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Checkbox from '@mui/material/Checkbox'
 import Divider from '@mui/material/Divider'
@@ -14,6 +17,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 
 import { useValidateConfig, useConfigCard, useTestConfig } from '@/hooks/apis/useConfigTools'
 import type { HarnessCheck } from '@/hooks/apis/useConfigTools'
+import { useServiceTypes } from '@/hooks/apis/useServiceType'
 
 // Màu theo trạng thái — dùng token theme, KHÔNG hardcode hex.
 const STATUS_COLOR: Record<string, 'success' | 'error' | 'default'> = {
@@ -26,21 +30,28 @@ const STATUS_ICON: Record<string, string> = { green: '🟢', red: '🔴', gray: 
 
 interface Props {
   code?: string
+  providerId?: number
 }
 
 /**
  * Panel bộ máy cấu hình (chạm nhẹ Spec 1): kết quả validate + thẻ tóm tắt (đọc-trước) +
  * nút Test API thật. Chỉ hiện ở edit mode (cần provider đã lưu để đối chiếu DB).
  */
-export default function ConfigToolPanel({ code }: Props) {
+export default function ConfigToolPanel({ code, providerId }: Props) {
   const { data: validate, isLoading: vLoading } = useValidateConfig(code)
   const { data: card, isLoading: cLoading } = useConfigCard(code)
+  const { data: allServiceTypes } = useServiceTypes()
   const testMutation = useTestConfig()
 
   const [productId, setProductId] = useState('')
   const [live, setLive] = useState(false)
 
   if (!code) return null
+
+  // Sản phẩm (type_service) của NCC này → dropdown chọn để Test.
+  const products = Array.isArray(allServiceTypes)
+    ? allServiceTypes.filter((s: any) => Number(s.provider_id) === Number(providerId))
+    : []
 
   const errors = validate?.errors ?? []
   const warnings = validate?.warnings ?? []
@@ -121,14 +132,25 @@ export default function ConfigToolPanel({ code }: Props) {
           {'Test API (dry-run mua an toàn $0; tick “gọi thật” để test endpoint đọc)'}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-          <TextField
-            size='small'
-            type='number'
-            label='ServiceType id'
-            value={productId}
-            onChange={e => setProductId(e.target.value)}
-            sx={{ width: 130 }}
-          />
+          <FormControl size='small' sx={{ minWidth: 190 }}>
+            <InputLabel>Chọn sản phẩm</InputLabel>
+            <Select
+              label='Chọn sản phẩm'
+              value={productId}
+              onChange={e => setProductId(String(e.target.value))}
+            >
+              {products.length === 0 && (
+                <MenuItem value='' disabled>
+                  (NCC chưa có sản phẩm)
+                </MenuItem>
+              )}
+              {products.map((p: any) => (
+                <MenuItem key={p.id} value={String(p.id)}>
+                  {p.name || `#${p.id}`} <Typography component='span' variant='caption' sx={{ ml: 0.5, color: 'text.secondary' }}>#{p.id}</Typography>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <FormControlLabel
             control={<Checkbox size='small' checked={live} onChange={e => setLive(e.target.checked)} />}
             label={<Typography variant='caption'>gọi thật</Typography>}

@@ -847,6 +847,16 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+38 Bộ máy cấu hình Provider — panel Kiểm tra config trong modal Provider (25/07/2026)
+
+**Bối cảnh:** BE có bộ máy cấu hình (schema/validator/harness/thẻ tóm tắt/diff-guard — changelog BE 15.N+33/34/35). Panel chạm nhẹ UI để admin dùng. (Trước đánh nhầm số 13.N+24 — đã sửa.)
+**Thêm:**
+- `useConfigTools.ts` — 3 hook (useAxiosAuth + TanStack): `useValidateConfig` (GET validate), `useConfigCard` (GET thẻ tóm tắt), `useTestConfig` (POST test harness).
+- `ConfigToolPanel.tsx` — panel cột phải modal Provider (CHỈ edit mode): validate 🔴/🟡/🟢, thẻ tóm tắt tiếng người (dòng ⚠ thay đổi so version trước tô đỏ), nút "Test" **chọn sản phẩm bằng DROPDOWN** (`useServiceTypes` lọc theo `provider_id`, hiện tên sp) + tick "gọi thật" → dry-run mua an toàn $0 / gọi endpoint đọc. Màu theme MUI (không hardcode), inline feedback (KHÔNG toast.success).
+**Cắm vào:** `ModalAddProvider.tsx` — dưới JSON preview: `isEditMode && <ConfigToolPanel code=... providerId={providerData?.id} />`.
+**API:** `GET admin/config-tool/{code}/validate|doc`, `POST admin/config-tool/{code}/test` (body product_id, live). Quyền admin ở BE controller.
+**Files:** `src/hooks/apis/useConfigTools.ts` (mới), `src/views/Client/Admin/Provider/components/ConfigToolPanel.tsx` (mới), `src/views/Client/Admin/Provider/ModalAddProvider.tsx`
+
 ### 17/04/2026
 
 #### 13.N+37 Site con tier chiết khấu riêng (child_quantity_tiers) — admin tự quản tier cho user của mình
@@ -3580,12 +3590,3 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Sửa:** Hook `useComposingInput(setValue)` — chỉ commit state khi compositionend (kết thúc gõ 1 chữ) → tiếng Việt 1 lần/chữ như không dấu. Áp cho: TicketDetailDialog (reply), CreditManualDrawer (reason, manualUserId). Sẽ rải tiếp các ô note khác.
 **Files:** `src/hooks/useComposingInput.ts` (mới), `src/views/Client/SupportTickets/TicketDetailDialog.tsx`, `src/views/Client/Admin/DepositManagement/CreditManualDrawer.tsx`
 
-#### 13.N+24 Bộ máy cấu hình Provider — panel Kiểm tra config trong modal Provider (25/07/2026)
-
-**Bối cảnh:** BE có bộ máy cấu hình (schema/validator/harness/thẻ tóm tắt/diff-guard — changelog BE 15.N+33). Task 7 (cuối) chạm nhẹ UI để admin dùng.
-**Thêm:**
-- `useConfigTools.ts` — 3 hook (useAxiosAuth + TanStack): `useValidateConfig` (GET validate), `useConfigCard` (GET thẻ tóm tắt), `useTestConfig` (POST test harness).
-- `ConfigToolPanel.tsx` — panel cột phải modal Provider (CHỈ edit mode): kết quả validate 🔴/🟡/🟢, thẻ tóm tắt tiếng người (dòng ⚠ thay đổi so version trước tô đỏ — đọc-trước là thấy sự cố kiểu config bị đổi nhầm), nút "Test" (nhập ServiceType id + tick "gọi thật" → dry-run mua an toàn $0 / gọi endpoint đọc). Màu theo theme MUI (không hardcode), inline feedback (KHÔNG toast.success).
-**Cắm vào:** `ModalAddProvider.tsx` — dưới JSON preview, `isEditMode && <ConfigToolPanel code={providerData?.provider_code} />`.
-**API:** `GET admin/config-tool/{code}/validate|doc`, `POST admin/config-tool/{code}/test` (body product_id, live). Quyền admin check ở BE controller.
-**Files:** `src/hooks/apis/useConfigTools.ts` (mới), `src/views/Client/Admin/Provider/components/ConfigToolPanel.tsx` (mới), `src/views/Client/Admin/Provider/ModalAddProvider.tsx`
