@@ -10,6 +10,7 @@ import { Plus, Trash2 } from 'lucide-react'
 
 import CustomTextField from '@core/components/mui/TextField'
 import FieldHint from '../components/FieldHint'
+import SectionSummaryBar, { shortUrl } from '../components/SectionSummaryBar'
 import type { SectionProps } from '../ProviderFormTypes'
 
 function RotateParamsTable({ control }: SectionProps) {
@@ -83,8 +84,27 @@ function RotateParamRow({ index, control, onRemove }: { index: number; control: 
 function RotateSection({ control }: SectionProps) {
   const enabled = useWatch({ control, name: 'rotate.enabled' })
 
+  // Tóm tắt giá trị thật — hiện ngay đầu tab
+  const method = useWatch({ control, name: 'rotate.method' })
+  const url = useWatch({ control, name: 'rotate.url' })
+  const authType = useWatch({ control, name: 'rotate.auth_type' })
+  const authParam = useWatch({ control, name: 'rotate.auth_param' })
+  const keySource = useWatch({ control, name: 'rotate.key_source' })
+  const responseHttp = useWatch({ control, name: 'rotate.response_http' })
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <SectionSummaryBar
+        enabled={!!enabled}
+        offText='Đang TẮT — khách bấm "Xoay IP" thì hệ thống không gọi được nhà cung cấp này.'
+        parts={[
+          `${method || 'GET'} ${shortUrl(url) || 'chưa có URL xoay'}`,
+          authParam ? `token ở ${authType || 'query'} "${authParam}"` : 'chưa khai token',
+          keySource ? `khoá xoay lấy từ ${keySource === 'key' ? 'hệ thống' : keySource}` : null,
+          responseHttp ? `đọc proxy HTTP ở "${responseHttp}"` : null
+        ]}
+      />
+
       {/* Giải thích tổng quan — ẩn được bằng công tắc "Hướng dẫn" */}
       <Box className='provider-guide' sx={{ p: 1.5, background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: 1.5 }}>
         <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#0e7490', mb: 0.5 }}>

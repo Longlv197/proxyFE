@@ -16,6 +16,7 @@ import { Plus, Trash2 } from 'lucide-react'
 
 import CustomTextField from '@core/components/mui/TextField'
 import FieldHint from '../components/FieldHint'
+import SectionSummaryBar, { shortUrl } from '../components/SectionSummaryBar'
 import type { SectionProps, FormValues, RenewParamConfig, DurationMapRow } from '../ProviderFormTypes'
 import { ORDER_FIELDS, ITEM_FIELDS } from '../ProviderFormTypes'
 
@@ -288,8 +289,26 @@ function RenewSection({ control }: SectionProps) {
   const renewParams: RenewParamConfig[] = useWatch({ control, name: 'renew.renew_params' }) || []
   const { fields, append, remove } = useFieldArray({ control, name: 'renew.renew_params' as any })
 
+  // Tóm tắt giá trị thật
+  const renewUrl = useWatch({ control, name: 'renew.url' })
+  const renewMethod = useWatch({ control, name: 'renew.method' })
+  const renewAuthParam = useWatch({ control, name: 'renew.auth_param' })
+  const successField = useWatch({ control, name: 'renew.success_field' })
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <SectionSummaryBar
+        enabled={!!enabled}
+        offText='Đang TẮT — đơn của nhà cung cấp này không gia hạn được, hết hạn là hết.'
+        parts={[
+          `${renewMethod || 'POST'} ${shortUrl(renewUrl) || 'chưa có URL gia hạn'}`,
+          renewAuthParam ? `token ở ${renewAuthType || 'query'} "${renewAuthParam}"` : 'chưa khai token',
+          mode ? `gia hạn theo ${mode === 'by_item' ? 'từng proxy' : 'cả đơn'}` : null,
+          `${renewParams.length} tham số gửi NCC`,
+          successField ? `coi là OK khi "${successField}"` : null
+        ]}
+      />
+
       {/* Giải thích tổng quan — ẩn được bằng công tắc "Hướng dẫn" */}
       <Box className='provider-guide' sx={{ p: 1.5, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 1.5 }}>
         <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#92400e', mb: 0.5 }}>

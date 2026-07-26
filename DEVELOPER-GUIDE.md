@@ -847,6 +847,24 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+44 Modal Provider: dải tóm tắt cho các tab Xoay / IP Whitelist / Gia hạn (26/07/2026)
+
+**Vấn đề:** 13.N+43 mới áp cách trình bày mới cho tab Mua proxy (khối thu/bung + tóm tắt giá trị thật).
+3 tab còn lại vẫn là bảng field trơ — mở ra phải rà từng ô mới biết đang cấu hình gì, và nhìn không đồng bộ
+với tab Mua proxy.
+**Sửa:** thêm `components/SectionSummaryBar.tsx` — dải tóm tắt đặt ĐẦU mỗi tab, cùng ngôn ngữ trình bày với
+dòng tóm tắt khi thu khối ở tab Mua proxy:
+- **Xoay proxy**: `POST proxyxoays.shop/api/get.php · token ở query "key" · khoá xoay lấy từ hệ thống ·
+  đọc proxy HTTP ở "proxyhttp"`
+- **IP Whitelist**: `gửi IP khi mua VÀ khi xoay · tên param: "ip" · tối đa 3 IP`
+- **Gia hạn**: `POST .../renew · token ở query "key" · gia hạn theo từng proxy · 4 tham số gửi NCC`
+Khi TẮT thì nói rõ **hậu quả** thay vì chỉ "đang tắt" — VD: *"Đang TẮT — đơn của nhà cung cấp này không gia
+hạn được, hết hạn là hết."*
+**Verify (Playwright):** 3 tab hiện đúng giá trị thật của bestproxy.vn; tab tắt hiện câu hậu quả; đi qua cả 3
+tab rồi bấm Cập nhật → `api_config` khớp 100% bản gốc (dải tóm tắt chỉ đọc, không đụng dữ liệu form).
+Lint/tsc: không phát sinh lỗi mới (đối chiếu từng file trước/sau bằng `git stash`).
+**Files:** `components/SectionSummaryBar.tsx` (mới), `sections/{RotateSection,IpWhitelistSection,RenewSection}.tsx`
+
 #### 13.N+43 Modal Provider: làm lại CÁCH TRÌNH BÀY — Tổng quan / thu gọn giảng giải / khối tóm tắt (25/07/2026)
 
 **Vấn đề:** 3 đợt trước chỉ chữa khung và mấy cái bẫy, **không đụng cách trình bày thông tin** — vẫn là

@@ -7,13 +7,35 @@ import MenuItem from '@mui/material/MenuItem'
 
 import CustomTextField from '@core/components/mui/TextField'
 import FieldHint from '../components/FieldHint'
+import SectionSummaryBar from '../components/SectionSummaryBar'
 import type { SectionProps } from '../ProviderFormTypes'
+
+const IP_MODE_LABELS: Record<string, string> = {
+  buy: 'gửi IP khi MUA',
+  rotate: 'gửi IP khi XOAY',
+  both: 'gửi IP khi mua VÀ khi xoay'
+}
 
 function IpWhitelistSection({ control }: SectionProps) {
   const enabled = useWatch({ control, name: 'ip_whitelist.enabled' })
 
+  // Tóm tắt giá trị thật
+  const mode = useWatch({ control, name: 'ip_whitelist.mode' })
+  const param = useWatch({ control, name: 'ip_whitelist.param' })
+  const maxIps = useWatch({ control, name: 'ip_whitelist.max_ips' })
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <SectionSummaryBar
+        enabled={!!enabled}
+        offText='Đang TẮT — hệ thống không gửi IP của khách cho nhà cung cấp này.'
+        parts={[
+          IP_MODE_LABELS[mode as string] || (mode ? `chế độ ${mode}` : 'chưa chọn thời điểm gửi'),
+          param ? `tên param: "${param}"` : 'CHƯA khai tên param → không gửi được',
+          maxIps ? `tối đa ${maxIps} IP` : null
+        ]}
+      />
+
       {/* Giải thích tổng quan — ẩn được bằng công tắc "Hướng dẫn" */}
       <Box className='provider-guide' sx={{ p: 1.5, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 1.5 }}>
         <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#15803d', mb: 0.5 }}>
