@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, memo, useEffect, useRef } from 'react'
+import { useState, memo, useEffect, useRef, useMemo } from 'react'
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import Grid2 from '@mui/material/Grid2'
 import Box from '@mui/material/Box'
@@ -11,6 +11,7 @@ import IconButton from '@mui/material/IconButton'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Divider from '@mui/material/Divider'
+import Collapse from '@mui/material/Collapse'
 import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
@@ -22,6 +23,19 @@ import PipelineStepCard from '../components/PipelineStepCard'
 import ResponseMappingTable from '../components/ResponseMappingTable'
 import SavePreviewBox from '../components/SavePreviewBox'
 import ResponseDryRun from '../components/ResponseDryRun'
+import StepDigestBox from '../components/StepDigestBox'
+import NeedsCodeAlert from '../components/NeedsCodeAlert'
+import FieldExamples from '../components/FieldExamples'
+import { useConfigSteps } from '@/hooks/apis/useConfigTools'
+import {
+  detectSellKinds,
+  detectBuyFlow,
+  stepsForFlow,
+  hasBuySectionConfig,
+  rootLevelBuyUrls,
+  FLOW_LABEL,
+  FLOW_IS_GUESSED
+} from '../buyTypes'
 import Chip from '@mui/material/Chip'
 import Tooltip from '@mui/material/Tooltip'
 import Alert from '@mui/material/Alert'
@@ -182,6 +196,14 @@ const AUTH_LABELS: Record<string, string> = {
   body: 'body'
 }
 
+/** Nhãn tiếng người cho định dạng proxy — dùng ở dòng tóm tắt khi thu khối. */
+const PROXY_FORMAT_LABELS: Record<string, string> = {
+  key: 'khoá xoay',
+  string: 'ip:port:user:pass',
+  auth_string: 'user:pass@ip:port',
+  fields: 'ip/port/user/pass tách rời'
+}
+
 /** Rút gọn URL cho dòng tóm tắt: bỏ https:// và cắt phần đuôi quá dài. */
 function shortenUrl(url?: string): string {
   const u = String(url || '').trim().replace(/^https?:\/\//, '')
@@ -235,16 +257,19 @@ function StepApiCall({ prefix, control, setValue }: BuySectionProps) {
               <MenuItem value='bearer'>Bearer token</MenuItem>
             </CustomTextField>
           )} />
+          <FieldExamples path='buy.auth_type' />
         </Grid2>
         <Grid2 size={{ xs: 6, sm: 3 }}>
           <Controller name={`${prefix}.auth_param`} control={control} render={({ field }) => (
             <CustomTextField {...field} fullWidth label={<>Tên param auth <FieldHint text='VD: key, x-api-key, token' /></>} placeholder='key' />
           )} />
+          <FieldExamples path='buy.auth_param' />
         </Grid2>
         <Grid2 size={{ xs: 6, sm: 3 }}>
           <Controller name={`${prefix}.quantity_param`} control={control} render={({ field }) => (
             <CustomTextField {...field} fullWidth label={<>Tên param số lượng <FieldHint text='VD: soluong, quantity, amount' /></>} placeholder='soluong' />
           )} />
+          <FieldExamples path='buy.quantity_param' />
         </Grid2>
 
         {/* URL */}
@@ -511,6 +536,7 @@ function StepProxyExtract({ prefix, control, setValue }: BuySectionProps & { set
                   <MenuItem value='fields'>Nhiều trường riêng (ip, port, user, pass)</MenuItem>
                 </CustomTextField>
               )} />
+              <FieldExamples path='response.proxy_format' />
             </Grid2>
 
             <Grid2 size={{ xs: 12 }}>
@@ -609,22 +635,56 @@ function StepProxyExtract({ prefix, control, setValue }: BuySectionProps & { set
 
 // ─── Deferred fetch config (poll lấy proxy) — UI card 4 nhóm, mỗi nhóm memo riêng ──
 
-/** Card bọc 1 nhóm field — viền màu trái + icon + tiêu đề. Children là các <Grid2> item. */
+/**
+ * Card bọc 1 nhóm field — viền màu trái + icon + tiêu đề. Children là các <Grid2> item.
+ *
+ * Thu/bung được, thu lại hiện 1 dòng TÓM TẮT GIÁ TRỊ THẬT (cùng ngôn ngữ với PipelineStepCard).
+ * ⚠ Dùng <Collapse> giữ children mounted (unmountOnExit={false}) — nếu unmount thì thu khối
+ * lại sẽ MẤT DỮ LIỆU FORM.
+ */
 function FieldGroup({
-  color, bg, icon, title, subtitle, children
-}: { color: string; bg: string; icon: React.ReactNode; title: string; subtitle?: string; children: React.ReactNode }) {
+  color, bg, icon, title, subtitle, summary, defaultOpen = true, children
+}: {
+  color: string
+  bg: string
+  icon: React.ReactNode
+  title: string
+  subtitle?: string
+  summary?: React.ReactNode
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
   return (
-    <Box sx={{ border: '1px solid #e2e8f0', borderLeft: `3px solid ${color}`, borderRadius: 1.5, p: 1.75, background: '#fff' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+    <Box sx={{ border: '1px solid #e2e8f0', borderLeft: `3px solid ${color}`, borderRadius: 1.5, background: '#fff' }}>
+      <Box
+        onClick={() => setOpen(o => !o)}
+        sx={{
+          display: 'flex', alignItems: 'flex-start', gap: 1, p: 1.75, pb: open ? 0 : 1.75,
+          cursor: 'pointer', userSelect: 'none', '&:hover': { filter: 'brightness(0.99)' }
+        }}
+      >
         <Box sx={{ width: 26, height: 26, borderRadius: 1, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>
           {icon}
         </Box>
-        <Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: '#1e293b', lineHeight: 1.2 }}>{title}</Typography>
-          {subtitle && <Typography sx={{ fontSize: 10.5, color: '#94a3b8' }}>{subtitle}</Typography>}
+          {subtitle && <Typography className='provider-guide' sx={{ fontSize: 10.5, color: '#94a3b8' }}>{subtitle}</Typography>}
+          {!open && summary && (
+            <Typography sx={{ fontSize: 11.5, color: '#334155', mt: 0.5, wordBreak: 'break-word' }}>{summary}</Typography>
+          )}
         </Box>
+        <ChevronDown
+          size={16}
+          style={{ color, flexShrink: 0, marginTop: 4, transform: open ? 'rotate(180deg)' : undefined, transition: 'transform .15s' }}
+        />
       </Box>
-      <Grid2 container spacing={1.5}>{children}</Grid2>
+      <Collapse in={open} unmountOnExit={false}>
+        <Box sx={{ px: 1.75, pb: 1.75, pt: 1.5 }}>
+          <Grid2 container spacing={1.5}>{children}</Grid2>
+        </Box>
+      </Collapse>
     </Box>
   )
 }
@@ -632,10 +692,17 @@ function FieldGroup({
 // Nhóm 1: Kết nối API — chỉ watch order_code_mode
 const NhomKetNoiApi = memo(function NhomKetNoiApi({ prefix, control }: BuySectionProps) {
   const mode = useWatch({ control, name: `${prefix}.fetch_proxies.order_code_mode` })
+  const url = useWatch({ control, name: `${prefix}.fetch_proxies.url` })
+  const method = useWatch({ control, name: `${prefix}.fetch_proxies.method` })
   const isParam = mode === 'param'
 
+  const summary = [
+    `${method || 'GET'} ${shortenUrl(url) || 'chưa đặt URL'}`,
+    isParam ? 'mã đơn gửi qua params' : 'mã đơn trong URL'
+  ].join(' · ')
+
   return (
-    <FieldGroup color='#3b82f6' bg='#eff6ff' icon={<Link2 size={15} />} title='Kết nối API' subtitle='Cách hệ thống gọi API NCC để lấy proxy'>
+    <FieldGroup color='#3b82f6' bg='#eff6ff' icon={<Link2 size={15} />} title='Kết nối API' subtitle='Cách hệ thống gọi API NCC để lấy proxy' summary={summary}>
       <Grid2 size={{ xs: 12, sm: 3 }}>
         <Controller name={`${prefix}.fetch_proxies.order_code_mode`} control={control} render={({ field }) => (
           <CustomTextField {...field} fullWidth select label='Cách truyền mã đơn'>
@@ -697,10 +764,18 @@ const NhomKetNoiApi = memo(function NhomKetNoiApi({ prefix, control }: BuySectio
 // Nhóm 2: Kiểm tra response — chỉ watch response_type
 const NhomKiemTraResponse = memo(function NhomKiemTraResponse({ prefix, control }: BuySectionProps) {
   const respType = useWatch({ control, name: `${prefix}.fetch_proxies.response_type` })
+  const successField = useWatch({ control, name: `${prefix}.fetch_proxies.success_field` })
+  const successValue = useWatch({ control, name: `${prefix}.fetch_proxies.success_value` })
+  const proxiesPath = useWatch({ control, name: `${prefix}.fetch_proxies.proxies_path` })
   const isObject = !respType || respType === 'object'
 
+  const summary = [
+    successField ? `thành công khi ${successField}${successValue ? ` = ${successValue}` : ''}` : 'không kiểm tra thành công',
+    isObject && proxiesPath ? `proxy ở "${proxiesPath}"` : ''
+  ].filter(Boolean).join(' · ')
+
   return (
-    <FieldGroup color='#f59e0b' bg='#fffbeb' icon={<ShieldCheck size={15} />} title='Kiểm tra response' subtitle='Xác định đơn thành công + vị trí danh sách proxy'>
+    <FieldGroup color='#f59e0b' bg='#fffbeb' icon={<ShieldCheck size={15} />} title='Kiểm tra response' subtitle='Xác định đơn thành công + vị trí danh sách proxy' summary={summary}>
       <Grid2 size={{ xs: 12, sm: 5 }}>
         <Controller name={`${prefix}.fetch_proxies.response_type`} control={control} render={({ field }) => (
           <CustomTextField {...field} fullWidth select label='Dạng kết quả trả về'>
@@ -734,9 +809,15 @@ const NhomKiemTraResponse = memo(function NhomKiemTraResponse({ prefix, control 
 // Nhóm 3: Trích xuất proxy — chỉ watch proxy_format
 const NhomTrichXuat = memo(function NhomTrichXuat({ prefix, control }: BuySectionProps) {
   const format = useWatch({ control, name: `${prefix}.fetch_proxies.proxy_format` })
+  const keyField = useWatch({ control, name: `${prefix}.fetch_proxies.proxy_key_field` })
+
+  const summary = [
+    format ? `dạng ${PROXY_FORMAT_LABELS[format] ?? format}` : 'chưa chọn định dạng',
+    (format === 'key' || format === 'string') && keyField ? `đọc ở "${keyField}"` : ''
+  ].filter(Boolean).join(' · ')
 
   return (
-    <FieldGroup color='#10b981' bg='#ecfdf5' icon={<PackageOpen size={15} />} title='Trích xuất proxy' subtitle='Đọc từng proxy từ response theo đúng format NCC'>
+    <FieldGroup color='#10b981' bg='#ecfdf5' icon={<PackageOpen size={15} />} title='Trích xuất proxy' subtitle='Đọc từng proxy từ response theo đúng format NCC' summary={summary}>
       <Grid2 size={{ xs: 12, sm: 4 }}>
         <Controller name={`${prefix}.fetch_proxies.proxy_format`} control={control} render={({ field }) => (
           <CustomTextField {...field} fullWidth select label='Format proxy'>
@@ -778,9 +859,14 @@ const NhomTrichXuat = memo(function NhomTrichXuat({ prefix, control }: BuySectio
 // Nhóm 4: Phân trang — chỉ watch pagination_enabled
 const NhomPhanTrang = memo(function NhomPhanTrang({ prefix, control }: BuySectionProps) {
   const enabled = useWatch({ control, name: `${prefix}.fetch_proxies.pagination_enabled` })
+  const pageParam = useWatch({ control, name: `${prefix}.fetch_proxies.page_param` })
+
+  const summary = enabled
+    ? `bật · trang gửi qua "${pageParam || 'chưa đặt'}"`
+    : 'tắt — lấy 1 lần, NCC trả nhiều trang thì sẽ thiếu proxy'
 
   return (
-    <FieldGroup color='#8b5cf6' bg='#f5f3ff' icon={<Layers size={15} />} title='Phân trang' subtitle='Bật nếu NCC trả proxy nhiều trang — hệ thống tự gom hết'>
+    <FieldGroup color='#8b5cf6' bg='#f5f3ff' icon={<Layers size={15} />} title='Phân trang' subtitle='Bật nếu NCC trả proxy nhiều trang — hệ thống tự gom hết' summary={summary} defaultOpen={!!enabled}>
       <Grid2 size={{ xs: 12, sm: 3 }}>
         <Controller name={`${prefix}.fetch_proxies.pagination_enabled`} control={control} render={({ field: { value, onChange, ...field } }) => (
           <CustomTextField {...field} value={value ? 'true' : 'false'} onChange={(e) => onChange(e.target.value === 'true')} fullWidth select label='Phân trang'>
@@ -1319,7 +1405,34 @@ function StepAdvancedOptions({ prefix, control }: BuySectionProps) {
 
 // ─── Main Buy Config Section ────────────────────────
 
-function BuyConfigSection({ control, setValue }: { control: BuySectionProps['control']; setValue?: any }) {
+/**
+ * Mục Mua — chỉ hiện đúng phần NCC này thực dùng (§3, §4 spec chặng 1).
+ *
+ * Trước: luôn bày cả "Proxy xoay" lẫn "Proxy tĩnh" + đủ 6 bước cho MỌI NCC.
+ * Đo trên config prod: 3/4 NCC chỉ dùng một loại → nửa màn hình là đồ thừa,
+ * nhưng phải bấm vào mới biết rỗng.
+ *
+ * Giờ: suy từ cấu hình đang có → loại nào không dùng thì ẩn hẳn, bước nào không
+ * thuộc kiểu mua của NCC thì không hiện.
+ *
+ * ⚠ ẨN ≠ XOÁ: dữ liệu vẫn nằm nguyên trong RHF store và vẫn submit như cũ.
+ * Việc bật/tắt thật sự vẫn là cờ `enabled` sẵn có, không đẻ cơ chế thứ hai.
+ */
+function BuyConfigSection({
+  control,
+  setValue,
+  providerConfig,
+  providerCode
+}: {
+  control: BuySectionProps['control']
+  setValue?: any
+
+  /** GỐC api_config ĐÃ LƯU — để nhận kiểu mua (dấu hiệu stage1/stage2 nằm ở gốc). */
+  providerConfig?: any
+
+  /** Mã NCC — để lấy "4 câu" mỗi bước từ BE. */
+  providerCode?: string
+}) {
   const [activeType, setActiveType] = useState<'rotating' | 'static'>('rotating')
 
   // Lazy-render: chỉ mount pipeline đã được mở (mặc định 'rotating'). Pipeline kia chờ user bấm mới mount.
@@ -1334,62 +1447,104 @@ function BuyConfigSection({ control, setValue }: { control: BuySectionProps['con
   const rotatingEnabled = useWatch({ control, name: 'buy_rotating.enabled' })
   const staticEnabled = useWatch({ control, name: 'buy_static.enabled' })
 
+  // "4 câu" mỗi bước — BE dựng từ config ĐÃ LƯU, chỉ hiển thị, không tự suy diễn.
+  const { data: steps } = useConfigSteps(providerCode)
+
+  // NCC này bán gì — suy từ cấu hình đang có, không hỏi lại cái máy tự biết
+  const sellKinds = useMemo(
+    () => detectSellKinds({ rotatingEnabled: !!rotatingEnabled, staticEnabled: !!staticEnabled }),
+    [rotatingEnabled, staticEnabled]
+  )
+
+  const visibleTypes = (['rotating', 'static'] as const).filter(t => sellKinds.includes(t))
+
+  // Chỉ 1 loại thì vào thẳng loại đó — không để activeType kẹt ở loại đang ẩn
+  useEffect(() => {
+    if (visibleTypes.length && !visibleTypes.includes(activeType)) {
+      selectType(visibleTypes[0])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleTypes.join(','), activeType])
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {/* Toggle Rotating / Static — GHIM trên đầu vùng cuộn: cuộn sâu vào form vẫn biết
-          mình đang sửa proxy xoay hay proxy tĩnh (trước đây trôi mất là mất luôn ngữ cảnh). */}
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 0.5,
-          background: '#f1f5f9',
-          borderRadius: 1.5,
-          p: 0.5,
-          position: 'sticky',
-          top: 0,
-          zIndex: 3
-        }}
-      >
-        {[
-          { key: 'rotating' as const, label: 'Proxy xoay', enabled: rotatingEnabled },
-          { key: 'static' as const, label: 'Proxy tĩnh', enabled: staticEnabled },
-        ].map(t => (
-          <Button
-            key={t.key}
-            size='small'
-            variant={activeType === t.key ? 'contained' : 'text'}
-            onClick={() => selectType(t.key)}
-            sx={{
-              flex: 1,
-              textTransform: 'none',
-              fontSize: 13,
-              fontWeight: activeType === t.key ? 600 : 400,
-              color: activeType === t.key ? '#fff' : '#64748b',
-              boxShadow: activeType === t.key ? 1 : 0,
-            }}
-          >
-            {t.label}
-            {t.enabled && (
-              <Box component='span' sx={{
-                ml: 0.75, width: 6, height: 6, borderRadius: '50%',
-                background: activeType === t.key ? '#a5d6a7' : '#4caf50',
-                display: 'inline-block',
-              }} />
-            )}
-          </Button>
-        ))}
-      </Box>
+      {/* Thanh chọn loại — CHỈ hiện khi NCC bán cả hai. Bán một loại thì bày ra là đồ thừa.
+          GHIM trên đầu vùng cuộn: cuộn sâu vào form vẫn biết đang sửa loại nào. */}
+      {visibleTypes.length > 1 && (
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 0.5,
+            background: '#f1f5f9',
+            borderRadius: 1.5,
+            p: 0.5,
+            position: 'sticky',
+            top: 0,
+            zIndex: 3
+          }}
+        >
+          {visibleTypes.map(key => {
+            const label = key === 'rotating' ? 'Proxy xoay' : 'Proxy tĩnh'
+            const enabled = key === 'rotating' ? rotatingEnabled : staticEnabled
+
+            return (
+              <Button
+                key={key}
+                size='small'
+                variant={activeType === key ? 'contained' : 'text'}
+                onClick={() => selectType(key)}
+                sx={{
+                  flex: 1,
+                  textTransform: 'none',
+                  fontSize: 13,
+                  fontWeight: activeType === key ? 600 : 400,
+                  color: activeType === key ? '#fff' : '#64748b',
+                  boxShadow: activeType === key ? 1 : 0
+                }}
+              >
+                {label}
+                {enabled && (
+                  <Box
+                    component='span'
+                    sx={{
+                      ml: 0.75,
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: activeType === key ? '#a5d6a7' : '#4caf50',
+                      display: 'inline-block'
+                    }}
+                  />
+                )}
+              </Button>
+            )
+          })}
+        </Box>
+      )}
 
       {/* Render cả 2 tab, ẩn tab không active — giữ form fields mounted */}
       {(['rotating', 'static'] as const).map(type => {
         // Lazy: type chưa được mở lần nào → chưa mount (data vẫn an toàn trong store)
         if (!visitedTypes.has(type)) return null
 
-        const prefix = type === 'rotating' ? 'buy_rotating' : 'buy_static' as const
+        const prefix = type === 'rotating' ? 'buy_rotating' : ('buy_static' as const)
         const enabled = type === 'rotating' ? rotatingEnabled : staticEnabled
+        const isVisible = visibleTypes.includes(type)
+
+        // Kiểu mua — đọc từ config ĐÃ LƯU (nhãn nói rõ điều này)
+        const flow = detectBuyFlow(providerConfig, prefix)
+        const visibleSteps = stepsForFlow(flow)
+        const digest = steps?.[prefix]
+        const fetchDigest = steps?.[`${prefix}.fetch_proxies`]
+
+        // Ca thật: proxyma.io để stage1/stage2 ở GỐC api_config, không có khối buy_* nào.
+        // Không nhận ra thì màn hình vẽ 6 bước RỖNG, admin tưởng NCC chưa cấu hình gì.
+        const rootUrls = rootLevelBuyUrls(providerConfig)
+        const configElsewhere =
+          providerConfig && !hasBuySectionConfig(providerConfig, prefix) && rootUrls.length > 0
 
         return (
-          <Box key={type} sx={{ display: activeType === type ? 'block' : 'none' }}>
+          <Box key={type} sx={{ display: activeType === type && isVisible ? 'block' : 'none' }}>
             {/* Enable/Disable */}
             <Controller
               name={`${prefix}.enabled`}
@@ -1398,8 +1553,10 @@ function BuyConfigSection({ control, setValue }: { control: BuySectionProps['con
                 <CustomTextField
                   {...field}
                   value={value ? 'true' : 'false'}
-                  onChange={(e) => onChange(e.target.value === 'true')}
-                  fullWidth select label={`Bật cấu hình mua ${type === 'rotating' ? 'proxy xoay' : 'proxy tĩnh'}`}
+                  onChange={e => onChange(e.target.value === 'true')}
+                  fullWidth
+                  select
+                  label={`Bật cấu hình mua ${type === 'rotating' ? 'proxy xoay' : 'proxy tĩnh'}`}
                 >
                   <MenuItem value='false'>Tắt</MenuItem>
                   <MenuItem value='true'>Bật</MenuItem>
@@ -1407,15 +1564,80 @@ function BuyConfigSection({ control, setValue }: { control: BuySectionProps['con
               )}
             />
 
-            {/* Pipeline Steps */}
+            {/* Kiểu mua + cảnh báo cấu hình nằm chỗ khác */}
+            {enabled && (
+              <Box sx={{ mt: 2 }}>
+                <Alert severity='info' icon={false} sx={{ py: 0.75, '& .MuiAlert-message': { py: 0 } }}>
+                  <Typography sx={{ fontSize: 12.5, fontWeight: 600 }}>
+                    {FLOW_LABEL[flow]}
+                    {FLOW_IS_GUESSED[flow] && (
+                      <Typography component='span' sx={{ fontSize: 11, fontWeight: 400, color: 'text.secondary', ml: 0.5 }}>
+                        (nhận ra theo cấu hình hiện có)
+                      </Typography>
+                    )}
+                  </Typography>
+                  <Typography className='provider-guide' sx={{ fontSize: 11, color: 'text.secondary' }}>
+                    Kiểu này đọc từ bản đã lưu — sửa xong bấm Cập nhật rồi mở lại mới đổi theo.
+                  </Typography>
+                </Alert>
+
+                {configElsewhere && (
+                  <Alert severity='warning' sx={{ mt: 1.5, py: 0.75 }}>
+                    <Typography sx={{ fontSize: 12.5, fontWeight: 600 }}>
+                      Cấu hình mua của NCC này nằm ngoài khu vực bên dưới
+                    </Typography>
+                    <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+                      Các ô bên dưới đang trống, nhưng NCC vẫn chạy bình thường bằng cấu hình ở cấp gốc:
+                      {rootUrls.map(u => (
+                        <Box key={u.label} component='span' sx={{ display: 'block', mt: 0.25 }}>
+                          • {u.label}: {shortenUrl(u.url)}
+                        </Box>
+                      ))}
+                      Sửa phần này cần lập trình viên — đừng điền vào ô bên dưới nếu chưa rõ.
+                    </Typography>
+                  </Alert>
+                )}
+              </Box>
+            )}
+
+            {/* Pipeline Steps — chỉ hiện bước thuộc kiểu mua của NCC này */}
             {enabled && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-                <StepApiCall prefix={prefix} control={control} setValue={setValue} />
-                <StepSuccessCheck prefix={prefix} control={control} />
-                <StepProxyExtract prefix={prefix} control={control} setValue={setValue} />
-                <StepDataStorage prefix={prefix} control={control} />
-                <StepErrorHandling prefix={prefix} control={control} />
-                <StepParamsMapping prefix={prefix} control={control} />
+                {digest?.needs_code && (
+                  <NeedsCodeAlert reason={digest.needs_code.reason} detail={digest.needs_code.detail} />
+                )}
+                <StepDigestBox digest={digest} />
+
+                {visibleSteps.includes('api_call') && (
+                  <StepApiCall prefix={prefix} control={control} setValue={setValue} />
+                )}
+                {visibleSteps.includes('success_check') && <StepSuccessCheck prefix={prefix} control={control} />}
+                {visibleSteps.includes('proxy_extract') && (
+                  <StepProxyExtract prefix={prefix} control={control} setValue={setValue} />
+                )}
+
+                {/* "Lấy proxy sau" — trước đây bị CHÔN trong bước Trích xuất proxy, giờ là bước ngang hàng:
+                    với NCC kiểu deferred thì đây mới là chỗ proxy thật sự về. */}
+                {visibleSteps.includes('fetch_later') && (
+                  <PipelineStepCard
+                    step={3}
+                    title='Lấy proxy sau khi mua'
+                    description='Mua xong NCC chỉ trả mã đơn. Hệ thống gọi tiếp API này để lấy proxy thật về.'
+                    summary={fetchDigest ? `${fetchDigest.call} · ${fetchDigest.receive}` : undefined}
+                  >
+                    {fetchDigest?.needs_code && (
+                      <NeedsCodeAlert reason={fetchDigest.needs_code.reason} detail={fetchDigest.needs_code.detail} />
+                    )}
+                    <StepDigestBox digest={fetchDigest} />
+                    <Grid2 container spacing={1.5}>
+                      <DeferredFetchConfig prefix={prefix} control={control} />
+                    </Grid2>
+                  </PipelineStepCard>
+                )}
+
+                {visibleSteps.includes('data_storage') && <StepDataStorage prefix={prefix} control={control} />}
+                {visibleSteps.includes('error_handling') && <StepErrorHandling prefix={prefix} control={control} />}
+                {visibleSteps.includes('params_mapping') && <StepParamsMapping prefix={prefix} control={control} />}
                 <StepAdvancedOptions prefix={prefix} control={control} />
                 <ResponseDryRun prefix={prefix} control={control} setValue={setValue} />
               </Box>

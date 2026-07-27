@@ -584,7 +584,14 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                 {/* Tab 1: Mua proxy */}
                 {renderedTabs.has(1) && (
                   <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
-                    <BuyConfigSection control={control} setValue={setValue} />
+                    {/* providerConfig = bản ĐÃ LƯU, dùng để nhận kiểu mua (dấu hiệu stage1/stage2 nằm ở gốc
+                        api_config, không nằm trong khối buy_*). Không phải giá trị form đang sửa. */}
+                    <BuyConfigSection
+                      control={control}
+                      setValue={setValue}
+                      providerConfig={providerData?.api_config}
+                      providerCode={configCode}
+                    />
                   </Box>
                 )}
 
