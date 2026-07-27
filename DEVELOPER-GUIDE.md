@@ -847,6 +847,83 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+46 🔴 Mở NCC ra bấm Lưu (không sửa gì) làm MẤT dữ liệu config (27/07/2026)
+
+**Vấn đề (lỗi CÓ SẴN, phát hiện bằng nghiệm thu vàng của chặng 1):** chụp JSON trước → mở modal →
+bấm Cập nhật mà không chạm gì → so lại thì `proxyma-isp` bị:
+- MẤT `fetch_proxies.handler` (=`ProxymaIspHandler`) → **đơn ISP hỏng**, không tách được `ip:port` + ghép user/pass
+- MẤT `fetch_proxies.item_shared_fields` → proxy mất login/password cấp gói
+- MẤT `fetch_proxies.log_redact_paths` → **token NCC lọt vào log** (đúng lỗi bảo mật đã sửa 23/07)
+- ĐỔI `success_value: true` → `1` (sửa kiểu dữ liệu ngoài ý muốn)
+- THÊM `proxy_format`/`proxy_key_field` — bịa field admin không hề đặt
+
+**Nguyên nhân:** `buildBuySection` dựng lại `fetch_proxies` từ ĐẦU theo danh sách field nó biết →
+mọi field lạ bị bỏ rơi. Serializer không hề biết 3 field trên tồn tại (grep = 0 kết quả).
+
+**Sửa:**
+- `buildBuySection`/`buildApiConfig` nhận thêm config ĐÃ LƯU, giữ `FETCH_PRESERVE_KEYS`
+  (`handler`, `log_redact_paths`, `delay_seconds`, `max_attempts`, `item_shared_fields`) và `response.item_shared_fields`
+- Chế độ `deferred`: KHÔNG ghi `proxy_format`/`proxy_key_field`/`proxy_fields` — response lúc mua chỉ có mã đơn
+- Bước có `handler` riêng: không ghi `proxy_format`/`proxy_fields` — handler quyết định cách đọc
+- `success_value` giữ nguyên kiểu của config cũ khi giá trị không đổi
+
+**Verify:** mở modal bấm Lưu không sửa gì trên 4 NCC → JSON **GIỐNG HỆT từng khoá**.
+Khoá `ip_config` của bestproxy.vn (giao diện không vẽ) cũng còn nguyên.
+
+**Files:** `ProviderFormSerializer.ts`, `ModalAddProvider.tsx`
+
+⚠ Lỗi này ĐANG CÓ TRÊN PROD — ai mở proxyma-isp ra bấm Lưu là đơn ISP hỏng ngay.
+
+---
+
+#### 13.N+45 Thêm NCC nhanh hơn — chặng 1 (27/07/2026)
+
+**Vấn đề:** mục Mua bày ra mọi thứ cho mọi NCC. Đo trên config prod: **3/4 NCC chỉ dùng một loại**
+(proxyma.io chỉ xoay, proxyma-isp chỉ tĩnh, demo-proxy chỉ xoay) → nửa màn hình là đồ thừa nhưng phải
+bấm vào mới biết rỗng. 6 bước cố định kể cả bước không liên quan; cấu hình "lấy proxy sau" của NCC
+deferred bị **chôn bên trong** bước Trích xuất proxy, luôn mở, không thu được. Máy không học được gì
+từ NCC đã thêm — `ConfigSchema` có 83 field nhưng chỉ 4 field có ví dụ (gõ tay, không tự cập nhật).
+
+**Sửa:**
+- **Lọc theo loại hàng**: thanh "Proxy xoay | Proxy tĩnh" chỉ hiện khi NCC bán CẢ HAI.
+  ẨN ≠ XOÁ — dữ liệu vẫn trong RHF store, vẫn submit như cũ, vẫn dùng cờ `enabled` sẵn có.
+- **Lọc bước theo kiểu mua** (trả ngay / lấy sau / mua gói rồi tạo) thay vì luôn 6 bước.
+- **"Lấy proxy sau" thành BƯỚC NGANG HÀNG** — với NCC deferred thì đó mới là chỗ proxy thật sự về.
+  4 nhóm con trong đó giờ thu/bung được + 1 dòng tóm tắt giá trị thật (`<Collapse unmountOnExit={false}>`
+  giữ children mounted → thu khối KHÔNG mất dữ liệu).
+- **Mỗi bước nói đủ 4 câu**: gọi đâu · gửi payload gì · nhận response gì · **để lại gì cho bước sau**
+  (câu cuối đang thiếu hẳn → người xem không nối được 2 bước).
+- **Cảnh báo "cần lập trình viên"** ngay tại bước vướng, chỉ khi trúng 1 trong 3 dấu hiệu chắc chắn.
+- **Ví dụ từ NCC khác** dưới ô nhập (trong khối `provider-guide` → theo công tắc Hướng dẫn).
+- Ca `proxyma.io` (stage1/stage2 ở gốc, không có khối `buy_*`): hiện cảnh báo "cấu hình nằm ngoài khu vực
+  bên dưới" kèm 2 URL đó, thay vì để admin nhìn 6 bước rỗng tưởng chưa cấu hình.
+
+**Files:** `buyTypes.ts` (mới), `components/{StepDigestBox,NeedsCodeAlert,FieldExamples}.tsx` (mới),
+`sections/BuyConfigSection.tsx`, `hooks/apis/useConfigTools.ts`, `ModalAddProvider.tsx`
+
+---
+
+#### 13.N+45b Lưu nháp NCC đang sửa + chép cấu hình từ NCC có sẵn (27/07/2026)
+
+**Vấn đề:** đang sửa NCC mà phải đi đâu đó hoặc máy tắt → quay lại quên mất đang sửa dở cái gì.
+Và thêm NCC thứ N vẫn phải gõ lại từ đầu như NCC thứ 1.
+
+**Sửa:**
+- **Lưu nháp** vào localStorage (KHÔNG lên server — nháp là thứ chưa quyết, đẩy lên DB là đụng config
+  đang bán hàng). 3 luật: không lưu token · **KHÔNG tự khôi phục** (admin bấm mới khôi phục, tự đè sẽ
+  nuốt thay đổi người khác vừa lưu) · cảnh báo khi NCC bị sửa SAU lúc lưu nháp. Ghi cùng nhịp debounce
+  500ms sẵn có. Lưu thành công → xoá nháp. ⚠ Đổi máy/xoá cache trình duyệt là mất nháp (đã ghi trong UI).
+- **Chép từ NCC có sẵn** — chỉ khi tạo mới, không chép token, chỉ điền vào form, KHÔNG tự lưu.
+
+**Bẫy đã vấp:** `formState` của react-hook-form là **Proxy** — chỉ theo dõi field được ĐỌC LÚC RENDER.
+Đọc `isDirty` bên trong callback `watch` thì mãi `false` → nháp không bao giờ được ghi.
+Phải destructure ở thân component.
+
+**Files:** `useProviderDraft.ts` (mới), `components/{DraftBanner,CopyFromProviderDialog}.tsx` (mới),
+`ModalAddProvider.tsx`
+
+---
+
 #### 13.N+44 Modal Provider: dải tóm tắt cho các tab Xoay / IP Whitelist / Gia hạn (26/07/2026)
 
 **Vấn đề:** 13.N+43 mới áp cách trình bày mới cho tab Mua proxy (khối thu/bung + tóm tắt giá trị thật).
