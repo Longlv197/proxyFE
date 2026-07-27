@@ -16,6 +16,7 @@ import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Tooltip from '@mui/material/Tooltip'
+import Alert from '@mui/material/Alert'
 import useMediaQuery from '@mui/material/useMediaQuery'
 
 import { toast } from 'react-toastify'
@@ -37,6 +38,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import DialogCloseButton from '@/components/modals/DialogCloseButton'
 
 import {
+  useProviders,
   useCreateProvider,
   useUpdateProvider,
   useProviderStatistics,
@@ -53,6 +55,9 @@ import type { ResidentialBuildRef } from './ResidentialProviderSection'
 
 import BasicInfoSection from './sections/BasicInfoSection'
 import BuyConfigSection from './sections/BuyConfigSection'
+import DraftBanner from './components/DraftBanner'
+import CopyFromProviderDialog from './components/CopyFromProviderDialog'
+import { useProviderDraft } from './useProviderDraft'
 import RotateSection from './sections/RotateSection'
 import IpWhitelistSection from './sections/IpWhitelistSection'
 import RenewSection from './sections/RenewSection'
@@ -244,8 +249,38 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     reset,
     watch,
     setValue,
-    formState: { errors }
+    getValues,
+    formState
   } = useForm<FormValues>({ defaultValues })
+
+  // ⚠ formState của react-hook-form là Proxy: chỉ theo dõi field nào được ĐỌC LÚC RENDER.
+  // Đọc isDirty ở đây (không phải trong callback) thì nó mới thực sự cập nhật —
+  // đọc trong callback thì mãi là false và nháp không bao giờ được ghi.
+  const { errors, isDirty } = formState
+
+  // Nháp NCC đang sửa — chống mất công khi đóng máy giữa chừng. Lưu ở trình duyệt, KHÔNG lên server.
+  const {
+    draft,
+    save: saveDraft,
+    clear: clearDraft
+  } = useProviderDraft({
+    providerCode: type === 'edit' ? providerData?.provider_code : undefined,
+    updatedAt: providerData?.updated_at
+  })
+
+  /** Đã xử lý dải nháp (khôi phục hoặc bỏ) → không hiện lại trong phiên mở này. */
+  const [draftHandled, setDraftHandled] = useState(false)
+
+  /** Đã chép cấu hình từ NCC nào — hiện nhắc để admin nhớ sửa lại cho đúng NCC mới. */
+  const [copiedFrom, setCopiedFrom] = useState<string | null>(null)
+  const [copyOpen, setCopyOpen] = useState(false)
+
+  // Danh sách NCC để chép — chỉ nạp khi TẠO MỚI và admin đã mở hộp chọn (không tải thừa).
+  const { data: allProviders } = useProviders()
+
+  const copySourceProviders = (Array.isArray(allProviders) ? allProviders : []).filter(
+    (p: any) => p?.api_config && (p.api_config.buy || p.api_config.buy_static || p.api_config.buy_rotating)
+  )
 
   // Trạng thái chấm trên rail tab — tính lại trong cùng nhịp debounce với JSON preview
   // (không đăng ký thêm useWatch cho từng field → không re-render cả modal mỗi lần gõ phím).
@@ -266,6 +301,10 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
         const config = buildApiConfig(values as FormValues, providerData?.api_config)
         setJsonPreview(config ? JSON.stringify(config, null, 2) : '// Chưa có cấu hình API')
         setTabStatus(computeTabStatus(values, providerData))
+
+        // Ghi nháp cùng nhịp debounce sẵn có — không thêm vòng lặp/timer mới.
+        // Chỉ ghi khi admin đã thực sự sửa gì đó (dirty), tránh đè nháp cũ bằng dữ liệu vừa nạp.
+        if (isDirty) saveDraft(values)
       }, 500)
     })
 
@@ -273,7 +312,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       subscription.unsubscribe()
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [watch, providerData])
+  }, [watch, providerData, isDirty, saveDraft])
 
   // Load data on edit
   useEffect(() => {
@@ -282,6 +321,11 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     // Modal KHÔNG unmount giữa 2 lần mở → timer debounce của provider TRƯỚC có thể còn treo và
     // bắn sau, ghi đè trạng thái tab bằng giá trị form cũ. Huỷ nó trước khi nạp provider mới.
     if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    // Cùng lý do: cờ "đã xử lý nháp" của NCC trước phải reset, không thì mở NCC sau
+    // sẽ không thấy dải nháp của nó.
+    setDraftHandled(false)
+    setCopiedFrom(null)
 
     if (type === 'edit' && providerData) {
       const parsed = parseApiConfig(providerData.api_config)
@@ -411,11 +455,16 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       onSuccess: () => {
         toast.info(type === 'create' ? 'Thêm nhà cung cấp thành công!' : 'Cập nhật thành công!')
 
+        // Lưu được rồi thì nháp vô nghĩa — giữ lại chỉ tổ lần sau mở ra hỏi khôi phục nhầm.
+        clearDraft()
+
         // Config vừa đổi → kết quả kiểm + thẻ tóm tắt cũ đã sai (cache 30s). Không xoá thì admin sửa lỗi
         // xong vào tab Kiểm tra vẫn thấy báo đỏ như cũ → tưởng sửa không ăn.
         if (configCode) {
           queryClient.invalidateQueries({ queryKey: ['configValidate', configCode] })
           queryClient.invalidateQueries({ queryKey: ['configCard', configCode] })
+          queryClient.invalidateQueries({ queryKey: ['configSteps', configCode] })
+          queryClient.invalidateQueries({ queryKey: ['configExamples'] })
         }
       },
       onError: (error: any) => {
@@ -453,6 +502,22 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
               Hướng dẫn
             </Button>
           </Tooltip>
+          {/* Chép cấu hình mua từ NCC có sẵn — chỉ khi TẠO MỚI (sửa NCC cũ mà chép là đè mất config đang chạy). */}
+          {type === 'create' && (
+            <Tooltip title='Điền sẵn phần Mua theo một NCC gần giống. Không chép khoá API.'>
+              <Button
+                type='button'
+                size='small'
+                variant='tonal'
+                color='secondary'
+                onClick={() => setCopyOpen(true)}
+                startIcon={<i className='tabler-copy' style={{ fontSize: 16 }} />}
+                sx={{ textTransform: 'none' }}
+              >
+                Chép từ NCC có sẵn
+              </Button>
+            </Tooltip>
+          )}
           {activeTab <= 4 && (
             <Button
               type='button'
@@ -476,6 +541,32 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
           cuộn trúng là rail tab + thanh Proxy xoay/tĩnh trôi mất. Giờ chỉ từng cột tự cuộn bên trong. */}
       <DialogContent sx={{ display: { md: 'flex' }, overflow: { xs: 'auto', md: 'hidden' }, minHeight: 0 }}>
         <Grid2 container spacing={0} sx={{ width: '100%', height: { md: '100%' }, minHeight: 0 }}>
+          {/* Dải nháp — KHÔNG tự khôi phục, admin bấm mới khôi phục (tự đè sẽ nuốt thay đổi người khác vừa lưu) */}
+          {draft && !draftHandled && (
+            <Grid2 size={{ xs: 12 }}>
+              <DraftBanner
+                draft={draft}
+                onRestore={() => {
+                  reset({ ...getValues(), ...draft.values }, { keepDirty: true })
+                  setDraftHandled(true)
+                }}
+                onDiscard={() => {
+                  clearDraft()
+                  setDraftHandled(true)
+                }}
+              />
+            </Grid2>
+          )}
+
+          {copiedFrom && (
+            <Grid2 size={{ xs: 12 }}>
+              <Alert severity='info' sx={{ mb: 2 }} onClose={() => setCopiedFrom(null)}>
+                Đã chép cấu hình mua từ <b>{copiedFrom}</b> — sửa lại cho đúng NCC mới rồi mới bấm Lưu.
+                Khoá API không được chép.
+              </Alert>
+            </Grid2>
+          )}
+
           {/* ═══════ BÊN TRÁI: Vertical Tabs (đứng yên, không cuộn theo nội dung) ═══════ */}
           <Grid2 size={{ xs: 12, md: 'auto' }} sx={{ height: { md: '100%' }, overflowY: { md: 'auto' } }}>
             <Tabs
@@ -696,6 +787,19 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
           {isPending ? 'Đang xử lý...' : type === 'create' ? 'Thêm mới' : 'Cập nhật'}
         </Button>
       </DialogActions>
+
+      {/* Chép cấu hình mua từ NCC có sẵn — chỉ điền vào form, KHÔNG tự lưu, KHÔNG chép token */}
+      <CopyFromProviderDialog
+        open={copyOpen}
+        providers={copySourceProviders}
+        onClose={() => setCopyOpen(false)}
+        onPick={(cfg, fromCode) => {
+          Object.entries(cfg).forEach(([section, body]) => {
+            if (body) setValue(section as any, parseApiConfig({ [section]: body })[section as never], { shouldDirty: true })
+          })
+          setCopiedFrom(fromCode)
+        }}
+      />
     </Dialog>
   )
 }
