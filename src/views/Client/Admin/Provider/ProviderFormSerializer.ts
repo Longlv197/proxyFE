@@ -349,7 +349,26 @@ export function parseApiConfig(apiConfig: any): Partial<FormValues> {
 
 // ─── Build (Form → DB) ─────────────────────────────
 
-export function buildBuySection(buy: ApiConfigBuy): object | null {
+/**
+ * Field trong `fetch_proxies` mà FORM KHÔNG QUẢN — phải bê nguyên từ config cũ sang,
+ * nếu không mở modal ra bấm Lưu (không sửa gì) là MẤT.
+ *
+ * Đo được bằng nghiệm thu vàng 27/07 trên proxyma-isp: mở ra Lưu là mất
+ * `handler` (đơn ISP hỏng), `item_shared_fields` (proxy mất user/pass),
+ * `log_redact_paths` (token NCC lọt vào log — đúng lỗi bảo mật đã sửa 23/07).
+ *
+ * Lỗi này CÓ SẴN, không phải do chặng 1 gây ra — nhưng vi phạm đúng luật
+ * "không làm mất khoá máy không hiểu" nên sửa luôn.
+ */
+const FETCH_PRESERVE_KEYS = ['handler', 'log_redact_paths', 'delay_seconds', 'max_attempts', 'item_shared_fields']
+
+const FETCH_RESPONSE_PRESERVE_KEYS = ['item_shared_fields']
+
+/**
+ * @param buy       giá trị form
+ * @param prevBuy   khối buy_* trong api_config ĐÃ LƯU — để giữ field form không quản
+ */
+export function buildBuySection(buy: ApiConfigBuy, prevBuy?: any): object | null {
   if (!buy.enabled) return null
 
   // Ưu tiên duration_units (mới). Fallback duration_urls (legacy field UI cũ nếu vẫn còn).
@@ -445,13 +464,31 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
     }
   }
 
-  const resp: any = {
-    type: buy.response.type,
-    proxy_format: buy.response.proxy_format,
-  }
+  const resp: any = { type: buy.response.type }
+
+  // Chế độ "lấy proxy sau": response lúc MUA chỉ có mã đơn, không có proxy → mọi field mô tả
+  // proxy khai ở đây đều là bịa. Config gốc proxyma-isp không có; ghi vào là sửa dữ liệu
+  // admin không yêu cầu. (Đo bằng nghiệm thu vàng 27/07.)
+  const isDeferred = buy.response_mode === 'deferred'
+
+  if (!isDeferred) resp.proxy_format = buy.response.proxy_format
 
   if (buy.response.success_field) resp.success_field = buy.response.success_field
-  if (buy.response.success_value !== '') resp.success_value = Number(buy.response.success_value)
+
+  if (buy.response.success_value !== '') {
+    // GIỮ NGUYÊN KIỂU của config cũ: ép Number() biến `true` thành `1`.
+    // BE so bằng `!=` nên không đổi hành vi, nhưng vẫn là sửa dữ liệu admin không yêu cầu.
+    const prevValue = prevBuy?.response?.success_value
+    const isSameText = prevValue !== undefined && String(prevValue) === String(buy.response.success_value)
+
+    if (isSameText) {
+      resp.success_value = prevValue
+    } else {
+      const num = Number(buy.response.success_value)
+
+      resp.success_value = isNaN(num) ? buy.response.success_value : num
+    }
+  }
   if (buy.response.type === 'array_last_status' && buy.response.success_check) {
     resp.success_check = buy.response.success_check
   }
@@ -476,21 +513,26 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
 
   if (buy.response.type === 'object' && buy.response.proxies_path) resp.proxies_path = buy.response.proxies_path
 
-  if (buy.response.proxy_format === 'key' && buy.response.proxy_key_field) {
-    resp.proxy_key_field = buy.response.proxy_key_field
-  }
+  // Deferred: response lúc MUA chỉ có mã đơn — mọi field mô tả proxy ở đây đều vô nghĩa.
+  // Form luôn có sẵn giá trị mặc định (proxy_key_field='keyxoay'...) nên không chặn thì
+  // mở modal ra bấm Lưu là config bị thêm field admin không hề đặt.
+  if (!isDeferred) {
+    if (buy.response.proxy_format === 'key' && buy.response.proxy_key_field) {
+      resp.proxy_key_field = buy.response.proxy_key_field
+    }
 
-  if (buy.response.proxy_format === 'string' && buy.response.proxy_key_field) {
-    resp.proxy_string_field = buy.response.proxy_key_field
-  }
+    if (buy.response.proxy_format === 'string' && buy.response.proxy_key_field) {
+      resp.proxy_string_field = buy.response.proxy_key_field
+    }
 
-  if (buy.response.proxy_format === 'fields') {
-    resp.proxy_fields = {} as any
-    if (buy.response.proxy_fields_ip) resp.proxy_fields.ip = buy.response.proxy_fields_ip
-    if (buy.response.proxy_fields_port) resp.proxy_fields.port = buy.response.proxy_fields_port
-    if (buy.response.proxy_fields_user) resp.proxy_fields.user = buy.response.proxy_fields_user
-    if (buy.response.proxy_fields_pass) resp.proxy_fields.pass = buy.response.proxy_fields_pass
-    if (buy.response.proxy_fields_type) resp.proxy_fields.type = buy.response.proxy_fields_type
+    if (buy.response.proxy_format === 'fields') {
+      resp.proxy_fields = {} as any
+      if (buy.response.proxy_fields_ip) resp.proxy_fields.ip = buy.response.proxy_fields_ip
+      if (buy.response.proxy_fields_port) resp.proxy_fields.port = buy.response.proxy_fields_port
+      if (buy.response.proxy_fields_user) resp.proxy_fields.user = buy.response.proxy_fields_user
+      if (buy.response.proxy_fields_pass) resp.proxy_fields.pass = buy.response.proxy_fields_pass
+      if (buy.response.proxy_fields_type) resp.proxy_fields.type = buy.response.proxy_fields_type
+    }
   }
 
   if (buy.response.item_id_field) resp.item_id_field = buy.response.item_id_field
@@ -552,25 +594,53 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
         fpResp.success_value = isNaN(numVal) ? fp.success_value : numVal
       }
       if (fp.response_type === 'object' && fp.proxies_path) fpResp.proxies_path = fp.proxies_path
-      fpResp.proxy_format = fp.proxy_format || 'fields'
 
-      if (fp.proxy_format === 'key' && fp.proxy_key_field) {
-        fpResp.proxy_key_field = fp.proxy_key_field
-      }
-      if (fp.proxy_format === 'string' && fp.proxy_key_field) {
-        fpResp.proxy_string_field = fp.proxy_key_field
-      }
-      if (fp.proxy_format === 'fields') {
-        fpResp.proxy_fields = {} as any
-        if (fp.proxy_fields_ip) fpResp.proxy_fields.ip = fp.proxy_fields_ip
-        if (fp.proxy_fields_port) fpResp.proxy_fields.port = fp.proxy_fields_port
-        if (fp.proxy_fields_user) fpResp.proxy_fields.user = fp.proxy_fields_user
-        if (fp.proxy_fields_pass) fpResp.proxy_fields.pass = fp.proxy_fields_pass
-        if (fp.proxy_fields_type) fpResp.proxy_fields.type = fp.proxy_fields_type
+      // Bước này có handler riêng → chính handler quyết định cách đọc proxy, không phải config.
+      // Ghi proxy_format/proxy_fields vào là BỊA: config gốc proxyma-isp không hề có
+      // (proxy do ProxymaIspHandler tách "ip:port" rồi ghép user/pass).
+      const hasCustomHandler = !!prevBuy?.fetch_proxies?.handler
+
+      if (!hasCustomHandler) {
+        fpResp.proxy_format = fp.proxy_format || 'fields'
+
+        if (fp.proxy_format === 'key' && fp.proxy_key_field) {
+          fpResp.proxy_key_field = fp.proxy_key_field
+        }
+
+        if (fp.proxy_format === 'string' && fp.proxy_key_field) {
+          fpResp.proxy_string_field = fp.proxy_key_field
+        }
+
+        if (fp.proxy_format === 'fields') {
+          fpResp.proxy_fields = {} as any
+          if (fp.proxy_fields_ip) fpResp.proxy_fields.ip = fp.proxy_fields_ip
+          if (fp.proxy_fields_port) fpResp.proxy_fields.port = fp.proxy_fields_port
+          if (fp.proxy_fields_user) fpResp.proxy_fields.user = fp.proxy_fields_user
+          if (fp.proxy_fields_pass) fpResp.proxy_fields.pass = fp.proxy_fields_pass
+          if (fp.proxy_fields_type) fpResp.proxy_fields.type = fp.proxy_fields_type
+        }
       }
       if (fp.item_id_field) fpResp.item_id_field = fp.item_id_field
 
+      // Giữ field response mà form không quản (VD item_shared_fields của proxyma-isp)
+      const prevFetchResp = prevBuy?.fetch_proxies?.response
+
+      if (prevFetchResp) {
+        for (const key of FETCH_RESPONSE_PRESERVE_KEYS) {
+          if (prevFetchResp[key] !== undefined && fpResp[key] === undefined) fpResp[key] = prevFetchResp[key]
+        }
+      }
+
       fetchResult.response = fpResp
+
+      // Giữ field fetch_proxies mà form không quản (handler, log_redact_paths, ...)
+      const prevFetch = prevBuy?.fetch_proxies
+
+      if (prevFetch) {
+        for (const key of FETCH_PRESERVE_KEYS) {
+          if (prevFetch[key] !== undefined && fetchResult[key] === undefined) fetchResult[key] = prevFetch[key]
+        }
+      }
 
       if (fp.pagination_enabled) {
         fetchResult.pagination = {
@@ -590,11 +660,15 @@ export function buildBuySection(buy: ApiConfigBuy): object | null {
   return result
 }
 
-export function buildApiConfig(form: FormValues): object | null {
+/**
+ * @param form      giá trị form
+ * @param prevConfig api_config ĐÃ LƯU — để giữ field form không quản (xem FETCH_PRESERVE_KEYS)
+ */
+export function buildApiConfig(form: FormValues, prevConfig?: any): object | null {
   const config: any = {}
 
-  const buyRotating = buildBuySection(form.buy_rotating)
-  const buyStatic = buildBuySection(form.buy_static)
+  const buyRotating = buildBuySection(form.buy_rotating, prevConfig?.buy_rotating ?? prevConfig?.buy)
+  const buyStatic = buildBuySection(form.buy_static, prevConfig?.buy_static)
 
   // Chỉ gửi section có data — section không gửi → BE merge giữ nguyên cũ
   if (buyRotating) config.buy_rotating = buyRotating

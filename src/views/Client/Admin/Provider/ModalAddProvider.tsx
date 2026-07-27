@@ -263,7 +263,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     const subscription = watch(values => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
       debounceRef.current = setTimeout(() => {
-        const config = buildApiConfig(values as FormValues)
+        const config = buildApiConfig(values as FormValues, providerData?.api_config)
         setJsonPreview(config ? JSON.stringify(config, null, 2) : '// Chưa có cấu hình API')
         setTabStatus(computeTabStatus(values, providerData))
       }, 500)
@@ -308,7 +308,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
 
       reset(values)
 
-      const config = buildApiConfig(values as FormValues)
+      const config = buildApiConfig(values as FormValues, providerData?.api_config)
       setJsonPreview(config ? JSON.stringify(config, null, 2) : '// Chưa có cấu hình API')
       setTabStatus(computeTabStatus(values, providerData))
     } else {
@@ -370,7 +370,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
     if (!validateDurationUrls('buy_rotating', 'Mua proxy xoay')) return
     if (!validateDurationUrls('buy_static', 'Mua proxy tĩnh')) return
 
-    const apiConfig = buildApiConfig(data)
+    const apiConfig = buildApiConfig(data, providerData?.api_config)
 
     const payload: any = {
       title: data.title,
