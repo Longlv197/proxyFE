@@ -37,6 +37,27 @@ export interface ConfigCard {
 }
 
 /**
+ * "4 câu" của MỘT bước cấu hình (§4.2b spec): gọi đâu · gửi payload gì · nhận response gì ·
+ * để lại gì cho bước sau. BE (StepDigest) dựng sẵn — FE chỉ hiển thị, không tự suy diễn.
+ *
+ * needs_code ≠ null nghĩa là bước đó cần lập trình viên viết thêm, chưa bán được.
+ * BE chỉ trả khi trúng 1 trong 3 dấu hiệu chắc chắn — FE KHÔNG được tự sinh cảnh báo.
+ */
+export interface StepDigestData {
+  call: string
+  send: string
+  receive: string
+  produces: string
+  needs_code: { reason: string; detail: string } | null
+}
+
+/** Map section config (`buy`/`buy_static`/`buy_rotating`, kèm `<section>.fetch_proxies`) → digest. */
+export type ConfigSteps = Record<string, StepDigestData>
+
+/** Map đường dẫn field (`buy.auth_type`) → các NCC đang điền gì. BE đã bỏ field bí mật. */
+export type ConfigExamples = Record<string, Array<{ provider: string; value: string }>>
+
+/**
  * Mức cảnh báo tổng hợp — dùng vẽ chấm màu trên nhãn tab "Kiểm tra" để admin THẤY NGAY
  * khi mở modal, không phải bấm vào tab mới biết có vấn đề.
  *   red    = có lỗi 🔴 hoặc thay đổi trọng yếu mức đỏ (đổi URL/handler)
@@ -85,6 +106,44 @@ export const useConfigCard = (code?: string, enabled = true) => {
       const res = await axiosAuth.get(`/admin/config-tool/${code}/doc`)
 
       return res?.data?.data
+    },
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false
+  })
+}
+
+/**
+ * Kho ví dụ SỐNG — "NCC khác đang điền field này là gì" (§5 spec).
+ * Rút từ config các NCC đang chạy, KHÔNG phải ví dụ gõ tay trong code.
+ * Dùng chung mọi provider → không có {code}, cache lâu hơn.
+ */
+export const useConfigExamples = (enabled = true) => {
+  const axiosAuth = useAxiosAuth()
+
+  return useQuery({
+    queryKey: ['configExamples'],
+    enabled,
+    queryFn: async (): Promise<ConfigExamples> => {
+      const res = await axiosAuth.get('/admin/config-tool/examples')
+
+      return res?.data?.data ?? {}
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false
+  })
+}
+
+/** "4 câu" từng bước mua của 1 NCC + cảnh báo cần-code. GET, không gọi mạng NCC. */
+export const useConfigSteps = (code?: string, enabled = true) => {
+  const axiosAuth = useAxiosAuth()
+
+  return useQuery({
+    queryKey: ['configSteps', code],
+    enabled: !!code && enabled,
+    queryFn: async (): Promise<ConfigSteps> => {
+      const res = await axiosAuth.get(`/admin/config-tool/${code}/steps`)
+
+      return res?.data?.data ?? {}
     },
     staleTime: 30 * 1000,
     refetchOnWindowFocus: false
