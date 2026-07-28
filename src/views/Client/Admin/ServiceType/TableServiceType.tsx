@@ -30,6 +30,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 
 import {
+  Autocomplete,
   Button,
   Dialog,
   DialogTitle,
@@ -44,6 +45,8 @@ import { toast } from 'react-toastify'
 
 import useAxiosAuth from '@/hocs/useAxiosAuth'
 import { useCopyServiceType, useDeleteServiceType } from '@/hooks/apis/useServiceType'
+import { useProviders } from '@/hooks/apis/useProviders'
+import CustomTextField from '@/@core/components/mui/TextField'
 const ServiceFormModal = lazy(() => import('@/views/Client/Admin/ServiceType/ServiceFormModal'))
 const ChildServiceFormModal = lazy(() => import('@/views/Client/Admin/ServiceType/ChildServiceFormModal'))
 import CustomPriceModal from '@/views/Client/Admin/ServiceType/CustomPriceModal'
@@ -146,6 +149,7 @@ export default function TableServiceType() {
   const [searchText, setSearchText] = useState('')
   const [filterType, setFilterType] = useState<'' | 'static' | 'rotating'>('')
   const [filterStatus, setFilterStatus] = useState<'' | 'active' | 'inactive'>('')
+  const [filterProvider, setFilterProvider] = useState('') // '' = tất cả NCC; giữ dạng chuỗi vì <select> trả chuỗi
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -176,7 +180,9 @@ export default function TableServiceType() {
   const reorderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isReorderingRef = useRef(false)
 
-  const isFilterActive = !!(searchText || filterType || filterStatus)
+  // Đang lọc thì KHOÁ kéo-thả sắp xếp — nếu thiếu filterProvider ở đây, kéo-thả lúc đang lọc
+  // sẽ gửi lên /reorder-service-types danh sách ids thiếu → hỏng cột `order` của các SP bị ẩn.
+  const isFilterActive = !!(searchText || filterType || filterStatus || filterProvider)
 
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   const keyboardSensor = useSensor(KeyboardSensor)
@@ -313,6 +319,9 @@ export default function TableServiceType() {
     staleTime: 0
   })
 
+  // ─── Danh sách NCC cho ô lọc — CHỈ site mẹ (site con không được biết nguồn hàng) ───
+  const { data: providersRaw = [] } = useProviders(undefined, !isChild)
+
   // Keep orderedIds in sync with server data
   useEffect(() => {
     if (!isReorderingRef.current && dataServices.length > 0) {
@@ -342,13 +351,20 @@ export default function TableServiceType() {
     )
   }
 
-  const filteredData = useMemo(() => {
+  // Tầng 1: mọi bộ lọc TRỪ nhà cung cấp. Con số "(6)" trong ô lọc NCC đếm trên tầng này,
+  // nên khi đang bật Tĩnh/Xoay/Active thì số hiện ra đúng bằng số dòng sẽ thấy sau khi chọn NCC.
+  const filteredExceptProvider = useMemo(() => {
     let result = sortedDataServices
 
     if (searchText) {
       const lower = searchText.toLowerCase()
 
-      result = result.filter((item: any) => item.name?.toLowerCase().includes(lower) || item.code?.toLowerCase().includes(lower))
+      // Khớp tên/mã SP; riêng site mẹ khớp thêm tên NCC (site con không được match theo nguồn hàng)
+      result = result.filter((item: any) =>
+        item.name?.toLowerCase().includes(lower) ||
+        item.code?.toLowerCase().includes(lower) ||
+        (!isChild && item.provider?.title?.toLowerCase().includes(lower))
+      )
     }
 
     if (filterType === 'static') {
@@ -361,9 +377,55 @@ export default function TableServiceType() {
       result = result.filter((item: any) => item.status === filterStatus)
     }
 
-    
-return result
-  }, [sortedDataServices, searchText, filterType, filterStatus])
+    return result
+  }, [sortedDataServices, searchText, filterType, filterStatus, isChild])
+
+  // Số sản phẩm của từng NCC — tính từ dữ liệu thật, không hardcode
+  const countByProvider = useMemo(() => {
+    const m = new Map<string, number>()
+
+    for (const item of filteredExceptProvider as any[]) {
+      const pid = item?.provider?.id ?? item?.provider_id
+
+      if (pid === null || pid === undefined) continue
+
+      const key = String(pid)
+
+      m.set(key, (m.get(key) ?? 0) + 1)
+    }
+
+    return m
+  }, [filteredExceptProvider])
+
+  // NCC có hàng lên trước (nhiều → ít), NCC không còn dòng nào xuống cuối theo tên
+  const providerOptions = useMemo(() => {
+    if (isChild) return []
+
+    return (providersRaw as any[])
+      .map(p => ({ id: String(p.id), title: p.title ?? `NCC #${p.id}`, count: countByProvider.get(String(p.id)) ?? 0 }))
+      .sort((a, b) => (b.count - a.count) || a.title.localeCompare(b.title, 'vi'))
+  }, [providersRaw, countByProvider, isChild])
+
+  // Autocomplete nhận cả ĐỐI TƯỢNG chứ không nhận id — null = chưa lọc ("Tất cả nhà cung cấp")
+  const selectedProviderOption = useMemo(
+    () => providerOptions.find(p => p.id === filterProvider) ?? null,
+    [providerOptions, filterProvider]
+  )
+
+  // Tầng 2: lọc theo NCC
+  const filteredData = useMemo(() => {
+    if (isChild || !filterProvider) return filteredExceptProvider
+
+    return filteredExceptProvider.filter((item: any) => String(item.provider?.id ?? item.provider_id ?? '') === filterProvider)
+  }, [filteredExceptProvider, filterProvider, isChild])
+
+  // NCC đang lọc bị xoá ở tab khác → bỏ lọc, tránh bảng trống trơn mà ô lọc trông như chưa chọn gì.
+  // Chỉ chạy khi danh sách NCC đã tải xong (tránh reset oan lúc đang loading).
+  useEffect(() => {
+    if (!filterProvider || providerOptions.length === 0) return
+
+    if (!providerOptions.some(p => p.id === filterProvider)) setFilterProvider('')
+  }, [providerOptions, filterProvider])
 
   const handleUpdateOrder = useCallback(async (itemId: number, newOrder: number) => {
     try {
@@ -825,7 +887,54 @@ return (
                 </button>
               ))}
             </div>
-            {(searchText || filterType || filterStatus) && (
+            {/* Lọc theo nhà cung cấp — CHỈ site mẹ, site con không được lộ nguồn hàng.
+                Gõ để tìm: khớp ở GIỮA tên (thẻ select gốc chỉ nhảy theo chữ cái đầu) → chịu được nhiều NCC. */}
+            {!isChild && (
+              <Autocomplete
+                size='small'
+                options={providerOptions}
+                value={selectedProviderOption}
+                onChange={(_e, opt) => { setFilterProvider(opt?.id ?? ''); setPagination(p => ({ ...p, pageIndex: 0 })) }}
+                getOptionLabel={o => `${o.title} (${o.count})`}
+                isOptionEqualToValue={(o, v) => o.id === v.id}
+                filterOptions={(options, { inputValue }) => {
+                  const q = inputValue.trim().toLowerCase()
+
+                  return q ? options.filter(o => o.title.toLowerCase().includes(q)) : options
+                }}
+                noOptionsText='Không có nhà cung cấp nào khớp'
+                sx={{
+                  // CustomTextField là biến thể *filled* (MuiFilledInput), KHÔNG có fieldset/notchedOutline
+                  // → phải đổi màu ngay trên InputBase; `&&` để thắng styleOverrides của theme.
+                  // Nó còn ép `background-color: transparent !important`, nên lúc ĐANG lọc phải ép lại mới
+                  // tô được nền nhạt cho đồng bộ với nút Tĩnh/Xoay khi bật; lúc rảnh để nguyên trong suốt
+                  // (nền thẻ vốn đã trắng) để khỏi chọi với component dùng chung.
+                  width: 210,
+                  '&& .MuiInputBase-root': {
+                    height: 35,
+                    fontSize: 13,
+                    borderRadius: '6px',
+                    backgroundColor: filterProvider
+                      ? 'color-mix(in srgb, var(--primary-hover, #e63946) 10%, white) !important'
+                      : undefined,
+                    borderColor: filterProvider ? 'var(--primary-hover, #e63946)' : '#e2e8f0'
+                  },
+                  '&& .MuiInputBase-input': {
+                    fontWeight: filterProvider ? 600 : 500,
+                    color: filterProvider ? 'var(--primary-hover, #e63946)' : '#64748b'
+                  },
+                  '&& .MuiInputBase-input::placeholder': { color: '#64748b', opacity: 1 }
+                }}
+                renderInput={params => (
+                  <CustomTextField
+                    {...params}
+                    placeholder='Tất cả nhà cung cấp'
+                    inputProps={{ ...params.inputProps, 'aria-label': 'Lọc theo nhà cung cấp' }}
+                  />
+                )}
+              />
+            )}
+            {(searchText || filterType || filterStatus || filterProvider) && (
               <span style={{ fontSize: '12px', color: '#94a3b8' }}>
                 {filteredData.length} / {dataServices.length} dịch vụ
               </span>

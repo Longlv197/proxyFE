@@ -847,6 +847,51 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+47 Admin sản phẩm: thêm ô lọc theo nhà cung cấp (29/07/2026)
+
+**Vấn đề:** trang `admin/service-type` (site mẹ) chỉ có 3 bộ lọc — tìm theo tên, Tĩnh/Xoay,
+Active/Inactive. **Không có** bộ lọc nhà cung cấp, và ô tìm kiếm chỉ khớp `name`/`code` nên gõ
+tên NCC ("proxyma") cũng không ra gì → dễ tưởng bộ lọc hỏng. Đây là tính năng CHƯA TỪNG CÓ,
+không phải regression (`git log -S` không có commit nào từng thêm rồi xoá).
+
+**Sửa (thuần FE, không đụng BE):**
+- Ô **gõ-để-tìm** (MUI Autocomplete) "Tất cả nhà cung cấp" đặt trong thanh lọc, liệt kê đủ NCC kèm
+  **số sản phẩm** (`bestproxy.vn (6)`), sắp nhiều → ít, NCC chưa có hàng hiện `(0)` xuống cuối.
+  Số đếm tính từ chính bảng đang hiển thị — không hardcode. Khớp ở **giữa tên** (`ma` → Proxyma ISP,
+  Proxyma) vì thẻ `<select>` gốc chỉ nhảy theo chữ cái đầu — không chịu nổi khi số NCC tăng.
+- ⚠ `CustomTextField` là biến thể **filled** (`MuiFilledInput`), KHÔNG có `fieldset`/`notchedOutline`,
+  lại ép `background-color: transparent !important`. Muốn ô lọc đổi màu như nút Tĩnh/Xoay lúc đang bật
+  thì phải đặt màu trên `.MuiInputBase-root` với `&&`, và nền phải `!important`. Nhớ khi style ô này chỗ khác.
+- Ô tìm kiếm khớp thêm `provider.title` (chỉ site mẹ).
+- Lọc client-side: dữ liệu NCC đã sẵn trong mỗi dòng (BE eager-load `with('provider:id,title')`).
+- `useProviders(params, enabled)` — thêm tham số `enabled` (mặc định `true`), backward compatible
+  với 9 chỗ gọi cũ. Trang này truyền `!isChild` để **site con không gọi `/get-provider`**.
+
+**Bẫy đã xử lý:** `isFilterActive` (khoá kéo-thả sắp xếp khi đang lọc) PHẢI gồm `filterProvider` —
+thiếu thì kéo-thả lúc đang lọc sẽ gửi `/reorder-service-types` danh sách ids thiếu → hỏng cột `order`.
+NCC đang lọc bị xoá ở tab khác → tự bỏ lọc, tránh bảng trống mà ô lọc trông như chưa chọn gì.
+
+**Verify (Playwright, local DB 4 NCC / 15 SP):**
+- Danh sách ra `DemoProxy (10) · bestproxy.vn (2) · Proxyma ISP (2) · Proxyma (1)` — khớp `GROUP BY provider_id` trong DB.
+- Gõ `ma` → còn `Proxyma ISP (2)`, `Proxyma (1)`; gõ `best` → còn `bestproxy.vn (2)`; gõ `xyz` → "Không có nhà cung cấp nào khớp".
+- Chọn `bestproxy.vn` → 2 dòng + `2 / 15 dịch vụ`; bấm dấu X → về 10 dòng, icon kéo-thả trở lại 11.
+- Lúc đang lọc: nền + viền + màu chữ của ô **trùng khít** nút đang bật (`rgb(26,37,128)` + nền nhạt cùng công thức).
+- Chọn từng NCC → 2 / 2 / 1 / 10 dòng, dòng đếm `x / 15 dịch vụ` đúng; icon kéo-thả từ 11 → **0** khi lọc, về 11 khi bỏ lọc.
+- Bật "Tĩnh" → `DemoProxy (10)` đổi thành `(5)`, chọn vào ra **đúng 5 dòng** (số đếm không hứa lố).
+- Gõ "proxyma" → 3 dòng, trong đó `ISP 5 IP` / `ISP 1 IP` khớp nhờ **tên NCC** chứ không phải tên SP.
+- **Chế độ site con** (tạm bỏ `SITE_MASTER_KEY` rồi khôi phục, md5 `.env` khớp 100%): ô lọc **không render**,
+  không tên NCC nào trên trang, `/get-provider` gọi **0 lần**.
+- 1600×960 và 1366×768: thanh lọc vẫn **1 hàng**, không tràn ngang; ô lọc cao 35px bằng nút bên cạnh.
+- `tsc --noEmit` sạch; `eslint` số lỗi theo từng rule y hệt bản gốc.
+
+**Files:** `TableServiceType.tsx`, `hooks/apis/useProviders.ts`
+
+⚠ Ghi nhận trong lúc làm (CHƯA sửa, cần quyết): `GET /api/get-provider` chỉ nằm trong nhóm `auth:api`,
+`ProviderController::getAllProvider()` **không kiểm tra quyền admin** nhưng lại `makeVisible(['token_api','api_config'])`
+→ user thường đã đăng nhập cũng lấy được token API của mọi NCC. Lỗi có sẵn, không do thay đổi này.
+
+---
+
 #### 13.N+46 🔴 Mở NCC ra bấm Lưu (không sửa gì) làm MẤT dữ liệu config (27/07/2026)
 
 **Vấn đề (lỗi CÓ SẴN, phát hiện bằng nghiệm thu vàng của chặng 1):** chụp JSON trước → mở modal →

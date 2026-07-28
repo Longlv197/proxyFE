@@ -5,11 +5,14 @@ import axios from 'axios'
 
 import useAxiosAuth from '@/hocs/useAxiosAuth'
 
-export const useProviders = (params?: { search?: string; status?: string }) => {
+// `enabled` (mặc định true) để nơi gọi TẮT hẳn request khi không được phép lấy danh sách NCC
+// — cụ thể: site con KHÔNG được biết nguồn hàng, xem TableServiceType.tsx
+export const useProviders = (params?: { search?: string; status?: string }, enabled: boolean = true) => {
   const axiosAuth = useAxiosAuth()
   const queryClient = useQueryClient()
 
   const query = useQuery({
+    enabled,
     queryKey: ['providers', params?.search ?? '', params?.status ?? ''],
     queryFn: async () => {
       const searchParams = new URLSearchParams()
