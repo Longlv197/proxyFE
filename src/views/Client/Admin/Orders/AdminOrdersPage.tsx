@@ -245,7 +245,8 @@ export default function AdminOrdersPage() {
   const retryFetchMutation = useRetryFetch()
   const refundMutation = useRefundPartial()
 
-  const { data: providers = [] } = useProviders()
+  // Site con KHÔNG được biết nguồn hàng → không gọi API danh sách NCC luôn (xem ô lọc bên dưới)
+  const { data: providers = [] } = useProviders(undefined, !isChild)
   const cancelMutation = useCancelOrder()
   const resendMutation = useResendOrder()
 
@@ -983,23 +984,26 @@ export default function AdminOrdersPage() {
                 ))}
               </CustomTextField>
 
-              <CustomTextField
-                select
-                size='small'
-                value={providerInput}
-                onChange={e => setProviderInput(e.target.value)}
-                sx={{ flex: '0 1 auto', minWidth: 120, ...inputSx }}
-                slotProps={{ select: { displayEmpty: true } }}
-              >
-                <MenuItem value=''>
-                  <em>Tất cả nhà cung cấp</em>
-                </MenuItem>
-                {providers.map((p: any) => (
-                  <MenuItem key={p.id} value={String(p.id)}>
-                    {p.title}
+              {/* Lọc theo NCC — CHỈ site mẹ. Site con thấy dropdown này là lộ luôn danh sách nguồn hàng. */}
+              {!isChild && (
+                <CustomTextField
+                  select
+                  size='small'
+                  value={providerInput}
+                  onChange={e => setProviderInput(e.target.value)}
+                  sx={{ flex: '0 1 auto', minWidth: 120, ...inputSx }}
+                  slotProps={{ select: { displayEmpty: true } }}
+                >
+                  <MenuItem value=''>
+                    <em>Tất cả nhà cung cấp</em>
                   </MenuItem>
-                ))}
-              </CustomTextField>
+                  {providers.map((p: any) => (
+                    <MenuItem key={p.id} value={String(p.id)}>
+                      {p.title}
+                    </MenuItem>
+                  ))}
+                </CustomTextField>
+              )}
 
               <CustomTextField
                 select

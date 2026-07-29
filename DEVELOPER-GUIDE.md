@@ -847,6 +847,32 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+48 🔴 Site con lộ tên NCC ở trang Đơn hàng + xoá route công khai /api/partners (29/07/2026)
+
+**Vấn đề (lỗi CÓ SẴN):**
+- Menu "Quản lý đơn hàng" **không** có `!isChild` (`VerticalMenu.tsx` ~452) → site con vào được.
+  `AdminOrdersPage.tsx:248` gọi `useProviders()` không chặn, dòng ~986 vẽ dropdown
+  "Tất cả nhà cung cấp" liệt kê `p.title` — **không có** `!isChild`. Trang này chỉ chặn ở cột NCC
+  (dòng ~594), quên mất cái dropdown. Dựng site con local: dropdown hiện, `/get-provider` bị gọi.
+- `src/app/api/partners/route.ts` — route Next **không xác thực**, proxy thẳng sang `/get-provider`
+  ("Fetch directly from Laravel API without auth"). Hiện trả 401 vì BE đòi `auth:api` nên chưa lộ,
+  và **không có chỗ nào gọi** — nhưng là mìn: BE nới quyền là thành cửa công khai.
+
+**Sửa:**
+- `AdminOrdersPage.tsx`: `useProviders(undefined, !isChild)` → site con không gọi API NCC; bọc
+  dropdown trong `!isChild`.
+- **Xoá** `src/app/api/partners/route.ts` (đã kiểm: không có caller nào trong `src`).
+  Đã soát các route Next còn lại — chỉ `api/countries` không kèm xác thực, mà đó là dữ liệu công khai.
+
+**Verify (Playwright):** site con → không có dropdown, `/get-provider` gọi **0 lần**, không tên NCC nào
+trên trang. Site mẹ → dropdown trở lại, `/get-provider` gọi 1 lần, ô lọc NCC ở trang sản phẩm vẫn chạy
+(gõ "best" → 1 kết quả → chọn ra 2 dòng). `tsc` không lỗi ở file đã sửa; `eslint` khớp bản gốc từng rule.
+
+**Files:** `AdminOrdersPage.tsx`, xoá `src/app/api/partners/route.ts`
+
+> Phần BE đi kèm (chặn quyền admin 8 endpoint NCC + cắt `provider_name` cho site con):
+> `BE/DEVELOPER-GUIDE.md` mục **15.N+37**.
+
 #### 13.N+47 Admin sản phẩm: thêm ô lọc theo nhà cung cấp (29/07/2026)
 
 **Vấn đề:** trang `admin/service-type` (site mẹ) chỉ có 3 bộ lọc — tìm theo tên, Tĩnh/Xoay,
