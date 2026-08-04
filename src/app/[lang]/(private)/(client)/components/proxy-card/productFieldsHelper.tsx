@@ -3,6 +3,7 @@ import React from 'react'
 import { MapPin, Shield, Wifi, Zap, Users, Globe } from 'lucide-react'
 
 import { fixCountryCode, getCountryName as getCountryNameFromCode } from '@/configs/tagConfig'
+import { resolveCountryLabel } from '@/utils/countryI18n'
 
 interface ProductField {
   key: string
@@ -40,8 +41,23 @@ export function renderFeatureRow(
   protocolList: string[],
   convertIpVersion: (v: string) => string,
   convertAuthType: (t: string) => string,
-  getCountryName: () => string | null
+  getCountryName: () => string | null,
+  locale: string = 'vi'
 ): React.ReactNode {
+  // Giải nhãn của TỪNG LỰA CHỌN theo ngôn ngữ — dùng đúng cách màn thanh toán đang làm
+  // (CheckoutModal:202-213). Trước đây thẻ sản phẩm KHÔNG dịch: khách vào /en thấy nhãn tiếng Việt
+  // trên thẻ, bấm Mua thì màn thanh toán lại hiện tiếng Anh — cùng một trường mà hai nơi hai kiểu.
+  const nhanLuaChon = (o: any): string => {
+    const ma = (o?.flag || o?.key || o?.value || '').toString()
+
+    if (ma && o?.flag) return resolveCountryLabel(ma, locale, o?.label)   // quốc gia: có từ điển sẵn
+    if (o?.label_i18n && typeof o.label_i18n === 'object') {
+      return o.label_i18n[locale] || o.label_i18n.en || o.label
+    }
+
+    return o?.label
+  }
+
   switch (key) {
     case 'ip_type': {
       const rawCountryVal = provider?.country || provider?.country_code || ''
@@ -196,8 +212,8 @@ export function renderFeatureRow(
                         <img
                           key={o.key || o.value}
                           src={`https://flagcdn.com/w20/${fixCountryCode(o.flag)}.png`}
-                          alt={o.label}
-                          title={o.label}
+                          alt={nhanLuaChon(o)}
+                          title={nhanLuaChon(o)}
                           style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
                         />
                       ))}
@@ -224,7 +240,7 @@ export function renderFeatureRow(
             } else if (opts.length === 0 && parentOpts.length > 0) {
               displayValue = `${parentOpts.length} lựa chọn (theo lựa chọn ở trên)`
             } else if (opts.length > 0 && opts.length <= 3) {
-              displayValue = opts.map((o: any) => o.label).join(', ')
+              displayValue = opts.map((o: any) => nhanLuaChon(o)).join(', ')
             } else if (opts.length > 3) {
               displayValue = `${opts.length} lựa chọn`
             }

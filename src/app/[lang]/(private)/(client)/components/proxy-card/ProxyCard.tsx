@@ -6,6 +6,7 @@ import '@/app/[lang]/(private)/(client)/components/proxy-card/styles.css'
 
 import { ShoppingCart } from 'lucide-react'
 
+import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useTranslation } from 'react-i18next'
 
@@ -32,6 +33,11 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
   const session = useSession()
   const { openAuthModal } = useModalContext()
   const { t } = useTranslation()
+
+  // Ngôn ngữ lấy từ URL [lang] — GIỐNG CheckoutModal:197-198. KHÔNG dùng i18n.language vì
+  // nó không chắc bám theo đoạn [lang] của URL (localStorage i18nextLng đang rỗng).
+  const routeParams = useParams<{ lang?: string }>()
+  const locale = (routeParams?.lang as string) || 'vi'
   const { show_product_code, product_fields } = useBranding()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
 
@@ -387,7 +393,7 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
           {/* Product info as feature rows — rendered by product_fields config */}
           <div style={{ marginBottom: '8px' }}>
             {getVisibleFields(product_fields).map(f => {
-              const row = renderFeatureRow(f.key, provider, protocolList, convertIpVersion, convertAuthType, getCountryName)
+              const row = renderFeatureRow(f.key, provider, protocolList, convertIpVersion, convertAuthType, getCountryName, locale)
 
               return row ? <React.Fragment key={f.key}>{row}</React.Fragment> : null
             })}

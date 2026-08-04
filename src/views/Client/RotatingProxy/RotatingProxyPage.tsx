@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react'
 
+import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 
 import { useForm, Controller, useWatch } from 'react-hook-form'
@@ -329,6 +330,9 @@ const RadioFeatureRow = ({ feature, control, planId, plan }) => {
 
 // Component chính cho mỗi thẻ plan
 const PlanCard = ({ plan }) => {
+  // Ngôn ngữ lấy từ URL [lang] — giống CheckoutModal
+  const routeParams = useParams<{ lang?: string }>()
+  const locale = (routeParams?.lang as string) || 'vi'
   const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   const { openAuthModal } = useModalContext()
@@ -580,7 +584,8 @@ const PlanCard = ({ plan }) => {
               protocolList,
               (v: string) => v?.toUpperCase() === 'IPV4' ? 'V4' : v?.toUpperCase() === 'IPV6' ? 'V6' : v || '',
               (t: string) => t === 'userpass' ? 'User:Pass' : t === 'ip_whitelist' ? 'IP Whitelist' : t === 'both' ? 'User:Pass + IP' : t,
-              () => getCountryName(plan.country || plan.country_code || '')
+              () => getCountryName(plan.country || plan.country_code || ''),
+              locale
             )
 
             return row ? <React.Fragment key={f.key}>{row}</React.Fragment> : null
