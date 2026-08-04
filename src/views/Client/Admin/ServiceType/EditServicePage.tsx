@@ -91,7 +91,9 @@ return true
       }
     }),
   proxy_type: yup.string().nullable().required('Proxy type là bắt buộc'),
-  country: yup.string().nullable().required('Quốc gia là bắt buộc'),
+
+  // Quốc gia KHÔNG bắt buộc — xem chú thích ở ServiceFormModal.tsx
+  country: yup.string().nullable(),
   note: yup
     .string()
     .nullable()

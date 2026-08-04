@@ -29,7 +29,7 @@ export interface Product {
   name: string
   price: number
   type: string // "0" = static, "1" = rotating
-  country: string
+  country: string | null   // BE tra null khi san pham khong khai quoc gia
   ip_version: string
   protocols: string[]
   auth_type: string

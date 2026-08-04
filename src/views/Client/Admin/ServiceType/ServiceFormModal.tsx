@@ -34,7 +34,8 @@ import * as yup from 'yup'
 import CustomTextField from '@/@core/components/mui/TextField'
 
 // RichTextEditor removed — using plain textarea for note
-import { TAG_CONFIG, PREDEFINED_TAGS, getTagStyle } from '@/configs/tagConfig'
+import { TAG_CONFIG, PREDEFINED_TAGS, getTagStyle, fixCountryCode } from '@/configs/tagConfig'
+import { truongCoQuocGia, gomCoTheoNuoc } from '@/app/[lang]/(private)/(client)/components/proxy-card/productFieldsHelper'
 import { useProviders } from '@/hooks/apis/useProviders'
 import { useCountries } from '@/hooks/apis/useCountries'
 import { useServiceType, useCreateServiceType, useUpdateServiceType } from '@/hooks/apis/useServiceType'
@@ -169,7 +170,10 @@ return true
       }
     }),
   proxy_type: yup.string().nullable().required('Proxy type là bắt buộc'),
-  country: yup.mixed().nullable().required('Quốc gia là bắt buộc'),
+
+  // Quốc gia KHÔNG bắt buộc: sản phẩm có thể khai quốc gia ở "Tuỳ chọn mua hàng"
+  // (ô chọn có cờ / combo có thành phần country) → ô này để trống được.
+  country: yup.mixed().nullable(),
   note: yup
     .string()
     .nullable()
@@ -419,6 +423,45 @@ interface PurchaseOption {
   // Bước dùng field (NCC 2-stage như residential): 'buy' = gửi khi mua | 'fetch' = gửi khi tạo proxy.
   // Mặc định (không set) = 'buy' → hành vi cũ. Chỉ residential cần phân biệt.
   stage?: 'buy' | 'fetch'
+}
+
+/**
+ * Chú thích dưới ô "Quốc gia" — cho admin THẤY TRƯỚC thẻ sản phẩm sẽ hiện gì.
+ *
+ * Ô Quốc gia ở Thông tin cơ bản và ô chọn quốc gia ở Tuỳ chọn mua hàng là HAI nguồn khác nhau,
+ * mà thẻ chỉ lấy MỘT (ưu tiên ô chọn, vì đó mới là thứ khách chọn được khi mua). Không nói ra
+ * thì lần sau vào sửa phải tự đoán — đúng thứ đã gây lỗi ở SP #42 (cột ghi vn,us nhưng ô chọn
+ * bán 8 nước khác, khách nhìn thẻ thấy cờ Việt Nam mà mua thì không có).
+ *
+ * Dùng THẲNG `truongCoQuocGia`/`maCoCuaLuaChon` của productFieldsHelper — không chép lại luật.
+ * Chép ra là lệch: đúng kiểu lệch đó (thẻ nhận 1 dấu hiệu, màn thanh toán nhận 3) mới sinh ra lỗi #42.
+ */
+function OChonQuocGiaHint({ options }: { options: PurchaseOption[] }) {
+  const oQuocGia = (options || []).find(truongCoQuocGia)
+
+  if (!oQuocGia) return null
+
+  // Dùng chung hàm gộp của thẻ → chú thích và thẻ không thể lệch nhau.
+  const { danhSach, soNuoc, soViTri } = gomCoTheoNuoc(oQuocGia.options || [])
+
+  return (
+    <div style={{ marginTop: 6, padding: '6px 8px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, fontSize: '11.5px', color: '#166534', lineHeight: 1.5 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+        <strong>Thẻ sản phẩm sẽ hiện:</strong>
+        {danhSach.length > 0
+          ? danhSach.map(({ ma, dem }) => (
+            <img key={ma} src={`https://flagcdn.com/w20/${fixCountryCode(ma)}.png`}
+              alt={ma.toUpperCase()} title={dem > 1 ? `${ma.toUpperCase()} (${dem} vị trí)` : ma.toUpperCase()}
+              style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 2 }} />
+          ))
+          : <em>{oQuocGia.options?.length || 0} lựa chọn</em>}
+        {soViTri > soNuoc && <span>({soNuoc} nước · {soViTri} vị trí)</span>}
+      </div>
+      <div style={{ marginTop: 2 }}>
+        Lấy từ ô <strong>“{oQuocGia.label || oQuocGia.key}”</strong> ở mục Tuỳ chọn mua hàng — ô Quốc gia này <strong>để trống được</strong>.
+      </div>
+    </div>
+  )
 }
 
 // Locales FE hỗ trợ — đồng bộ với configi18n.ts
@@ -2030,6 +2073,7 @@ return { values: {}, errors: formattedErrors }
                       )
                     }}
                   />
+                  <OChonQuocGiaHint options={purchaseOptions} />
                 </Grid2>
 
                 <Grid2 size={{ xs: 12, sm: 4 }}>

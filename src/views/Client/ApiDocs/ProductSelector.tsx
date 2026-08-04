@@ -20,8 +20,8 @@ const formatPrice = (p: Product) => {
   return `${p.price.toLocaleString('vi-VN')}đ`
 }
 
-const countryFlags = (country: string) =>
-  country
+const countryFlags = (country: string | null | undefined) =>
+  (country || '')
     .split(',')
     .slice(0, 3)
     .map(c => c.trim().toUpperCase())

@@ -22,6 +22,59 @@ const DEFAULT_FIELDS: ProductField[] = [
   { key: 'custom_fields', label: 'Tuỳ chỉnh', visible: true }
 ]
 
+/**
+ * Trường ở "Tuỳ chọn mua hàng" có mang thông tin QUỐC GIA hay không.
+ *
+ * Trước đây chỉ nhận đúng `display_type === 'country_flag'`. Sản phẩm #42 "Rotate IPv4 Global"
+ * đặt `display_type: 'dropdown'` nên KHÔNG được nhận → thẻ rơi về cột `country` (`vn,us`),
+ * trong khi ô chọn thật sự bán 8 nước US/GB/TH/KR/JP/ES/TW/PT — không hề có Việt Nam.
+ * Khách nhìn thẻ thấy cờ Việt Nam, bấm mua thì không có Việt Nam.
+ *
+ * 5 dấu hiệu dưới đây bao trọn cả luật của màn thanh toán (CheckoutModal:709-711),
+ * nên thẻ sản phẩm và màn thanh toán không còn lệch nhau.
+ */
+export const truongCoQuocGia = (f: any): boolean =>
+  f?.display_type === 'country_flag' ||
+  f?.source === 'api_countries' ||
+  (f?.key || f?.param) === 'country' ||
+  (Array.isArray(f?.components) && f.components.some((c: any) => c?.key === 'country')) ||
+  (Array.isArray(f?.options) && f.options.some((o: any) => o?.flag || o?.values?.country))
+
+/** Mã cờ của 1 lựa chọn: ô cờ quốc gia để ở `flag`, combo gói sẵn thì nằm trong `values.country`. */
+export const maCoCuaLuaChon = (o: any): string =>
+  (o?.flag || o?.values?.country || '').toString().trim().toLowerCase()
+
+/**
+ * Gộp các lựa chọn về MỨC QUỐC GIA — mỗi nước đúng 1 lá cờ.
+ *
+ * Ô chọn có thể chi tiết hơn mức nước: #42 khoá lựa chọn là `united-state-alaska`,
+ * `united-kingdom-liverpool`… tức mức thành phố. Vẽ 1 cờ cho MỖI lựa chọn thì hôm nay
+ * chưa lộ (8 lựa chọn = 8 nước khác nhau), nhưng thêm 1 vị trí Mỹ nữa là thẻ hiện
+ * 2 lá cờ Mỹ giống hệt cạnh nhau.
+ *
+ * Thẻ là chỗ liếc qua để so sánh nhanh → gộp về nước; chọn đúng vị trí là việc của màn thanh toán.
+ * Khi số vị trí nhiều hơn số nước thì `soViTri > soNuoc`, nơi gọi ghi thêm đuôi cho khách biết
+ * trong một nước còn chọn sâu được.
+ */
+export function gomCoTheoNuoc(options: any[]) {
+  const dauTien = new Map<string, any>()
+  const dem = new Map<string, number>()
+
+  for (const o of options || []) {
+    const ma = maCoCuaLuaChon(o)
+
+    if (!ma) continue
+    if (!dauTien.has(ma)) dauTien.set(ma, o)
+    dem.set(ma, (dem.get(ma) || 0) + 1)
+  }
+
+  return {
+    danhSach: Array.from(dauTien.entries()).map(([ma, o]) => ({ ma, o, dem: dem.get(ma) || 1 })),
+    soNuoc: dauTien.size,
+    soViTri: Array.from(dem.values()).reduce((a, b) => a + b, 0),
+  }
+}
+
 export function getVisibleFields(product_fields: ProductField[] | null | undefined): ProductField[] {
   if (!product_fields || product_fields.length === 0) return DEFAULT_FIELDS.filter(f => f.visible)
 
@@ -48,9 +101,9 @@ export function renderFeatureRow(
   // (CheckoutModal:202-213). Trước đây thẻ sản phẩm KHÔNG dịch: khách vào /en thấy nhãn tiếng Việt
   // trên thẻ, bấm Mua thì màn thanh toán lại hiện tiếng Anh — cùng một trường mà hai nơi hai kiểu.
   const nhanLuaChon = (o: any): string => {
-    const ma = (o?.flag || o?.key || o?.value || '').toString()
+    const maCo = maCoCuaLuaChon(o)
 
-    if (ma && o?.flag) return resolveCountryLabel(ma, locale, o?.label)   // quốc gia: có từ điển sẵn
+    if (maCo) return resolveCountryLabel(maCo, locale, o?.label)   // quốc gia: có từ điển sẵn
     if (o?.label_i18n && typeof o.label_i18n === 'object') {
       return o.label_i18n[locale] || o.label_i18n.en || o.label
     }
@@ -196,27 +249,38 @@ export function renderFeatureRow(
       return (
         <>
           {provider.metadata.custom_fields.map((field: any) => {
-            // Country flag display
-            if (field.display_type === 'country_flag' && field.options?.length) {
-              const flagOptions = field.options.filter((o: any) => o.flag)
+            // Vẽ cờ theo ĐÚNG các nước ô chọn đang bán — không lấy từ cột `country` nữa,
+            // và gộp về mức quốc gia để 2 vị trí cùng nước không thành 2 lá cờ giống hệt.
+            const { danhSach, soNuoc, soViTri } = truongCoQuocGia(field)
+              ? gomCoTheoNuoc(field.options || [])
+              : { danhSach: [], soNuoc: 0, soViTri: 0 }
 
-              if (!flagOptions.length) return null
-
+            if (danhSach.length) {
               return (
                 <div className='feature-row' key={field.key || field.param}>
                   <div className='feature-icons'><Globe size={14} color='#059669' /></div>
                   <div className='feature-content'>
                     <span className='feature-label'>{field.label}:</span>
-                    <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
-                      {flagOptions.map((o: any) => (
-                        <img
-                          key={o.key || o.value}
-                          src={`https://flagcdn.com/w20/${fixCountryCode(o.flag)}.png`}
-                          alt={nhanLuaChon(o)}
-                          title={nhanLuaChon(o)}
-                          style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
-                        />
-                      ))}
+                    <span className='feature-value' style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '3px' }}>
+                      {danhSach.map(({ ma, o, dem }) => {
+                        const ten = nhanLuaChon(o)
+                        const nhan = dem > 1 ? `${ten} (${dem} vị trí)` : ten
+
+                        return (
+                          <img
+                            key={ma}
+                            src={`https://flagcdn.com/w20/${fixCountryCode(ma)}.png`}
+                            alt={nhan}
+                            title={nhan}
+                            style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
+                          />
+                        )
+                      })}
+                      {soViTri > soNuoc && (
+                        <span style={{ fontSize: '10.5px', color: '#64748b' }}>
+                          {soNuoc} nước · {soViTri} vị trí
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -262,9 +326,12 @@ export function renderFeatureRow(
       )
 
     case 'country': {
-      // Ẩn nếu đã có custom_field country_flag (tránh trùng)
-      const hasCountryFlag = provider?.metadata?.custom_fields?.some((f: any) => f.display_type === 'country_flag')
-      if (hasCountryFlag) return null
+      // Ô chọn ở "Tuỳ chọn mua hàng" là NGUỒN ĐÚNG (đó mới là thứ khách chọn được khi mua),
+      // nên hễ có ô chọn mang quốc gia thì ẩn hẳn dòng lấy từ cột `country` — tránh vừa trùng
+      // vừa mâu thuẫn (SP #42: cột ghi vn,us nhưng ô chọn bán 8 nước khác, không có VN).
+      const daCoOChonQuocGia = provider?.metadata?.custom_fields?.some(truongCoQuocGia)
+
+      if (daCoOChonQuocGia) return null
 
       const rawVal = provider?.country || provider?.country_code || ''
       const raw = Array.isArray(rawVal) ? rawVal.join(',') : String(rawVal)

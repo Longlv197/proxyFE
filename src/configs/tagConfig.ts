@@ -49,8 +49,10 @@ const COUNTRY_CODE_FIX: Record<string, string> = {
   vi: 'vn',
 }
 
-export function fixCountryCode(code: string): string {
-  const lower = code.toLowerCase().trim()
+export function fixCountryCode(code: string | null | undefined): string {
+  // Tự chắn null: cột country của sản phẩm nay để trống được, mà 2 hàm này nhận
+  // thẳng giá trị đó ở nhiều nơi. Thiếu chắn ở đây là cả trang trắng.
+  const lower = (code || '').toLowerCase().trim()
 
   return COUNTRY_CODE_FIX[lower] || lower
 }
@@ -64,6 +66,8 @@ const COUNTRY_NAMES: Record<string, string> = {
   vi: 'Việt Nam',
 }
 
-export function getCountryName(code: string): string {
-  return COUNTRY_NAMES[code.toLowerCase().trim()] || code.toUpperCase()
+export function getCountryName(code: string | null | undefined): string {
+  const lower = (code || '').toLowerCase().trim()
+
+  return COUNTRY_NAMES[lower] || lower.toUpperCase()
 }

@@ -17,6 +17,10 @@ interface ProductField {
 
 const DEFAULT_FIELDS: ProductField[] = [
   { key: 'ip_type', label: 'Loại IP', visible: true },
+
+  // Thiếu 'country' ở đây nên dòng Quốc gia trên thẻ LUÔN hiện, admin không có nút nào tắt —
+  // trong khi productFieldsHelper vẫn vẽ nó. Bổ sung cho hai danh sách khớp nhau.
+  { key: 'country', label: 'Quốc gia', visible: true },
   { key: 'protocol', label: 'Hỗ trợ (HTTP/SOCKS5)', visible: true },
   { key: 'auth_type', label: 'Xác thực', visible: true },
   { key: 'bandwidth', label: 'Băng thông', visible: true },

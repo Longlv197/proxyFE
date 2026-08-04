@@ -847,6 +847,72 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+51 🔴 Thẻ sản phẩm hiện SAI quốc gia + bỏ bắt buộc ô Quốc gia (05/08/2026)
+
+**Vấn đề nặng nhất — SP #42 "Rotate IPv4 Global" (đang bán) hiện sai nước cho khách:**
+
+| | Giá trị thật |
+|---|---|
+| Cột `country` (Thông tin cơ bản) | `vn, us` |
+| Ô "Vị trí" (Tuỳ chọn mua hàng) — **cái khách thực sự chọn** | US, GB, TH, KR, JP, ES, TW, PT |
+
+Thẻ lấy theo cột → hiện cờ 🇻🇳 🇺🇸. **Khách thấy cờ Việt Nam, bấm mua thì không có Việt Nam**,
+còn 6 nước thật sự bán thì không hề hiện.
+
+**Nguyên nhân:** luật ẩn dòng Quốc gia chỉ nhận đúng `display_type === 'country_flag'`.
+Ô "Vị trí" của #42 đặt `display_type: 'dropdown'` → không được nhận → không ẩn → hiện cả hai dòng.
+Luật này còn **hẹp hơn màn thanh toán** (`CheckoutModal:709-711` nhận thêm `source='api_countries'`
+và `key='country'`) → hai màn lệch nhau.
+
+**Sửa — 3 lớp:**
+
+0. **Gộp về mức quốc gia** (`gomCoTheoNuoc()`): ô chọn có thể chi tiết hơn mức nước — #42 khoá lựa chọn
+   là `united-state-alaska`, `united-kingdom-liverpool`… tức **mức thành phố**. Vẽ 1 cờ cho MỖI lựa chọn
+   thì hôm nay chưa lộ (8 lựa chọn = 8 nước khác nhau), nhưng thêm 1 vị trí Mỹ nữa là thẻ hiện **2 lá cờ Mỹ
+   giống hệt cạnh nhau**. Nay mỗi nước đúng 1 cờ; khi số vị trí > số nước thì ghi thêm đuôi
+   *"8 nước · 10 vị trí"* và tooltip cờ ghi *"(3 vị trí)"*. Thẻ là chỗ liếc qua so sánh nhanh — chọn đúng
+   vị trí là việc của màn thanh toán.
+   *Kiểm bằng tình huống giả:* thêm Texas + Florida vào #42 → `us×3 gb th kr jp es tw pt [8 nước · 10 vị trí]`,
+   cờ Mỹ hiện **1 lần**.
+
+1. **Tự động đúng** (`productFieldsHelper.tsx`): thêm `truongCoQuocGia()` nhận **5 dấu hiệu** —
+   `display_type='country_flag'` · `source='api_countries'` · `key='country'` · combo có thành phần
+   `country` · có lựa chọn mang `flag`/`values.country`. Bao trọn luật của màn thanh toán nên hai màn
+   không còn lệch. Vẽ cờ từ **chính các lựa chọn đó** (`maCoCuaLuaChon()` đọc `flag` hoặc `values.country`).
+2. **Cho admin thấy trước** (`ServiceFormModal.tsx`): thêm `<OChonQuocGiaHint>` ngay dưới ô Quốc gia —
+   hiện đúng dãy cờ thẻ sẽ ra, nói rõ lấy từ ô nào và "ô này để trống được".
+   `truongCoQuocGia`/`maCoCuaLuaChon` được **export và dùng chung**, KHÔNG chép lại luật sang modal —
+   chép ra là lệch, mà lệch chính là thứ đẻ ra lỗi này.
+3. **Cho tắt được** (`ProductSettingForm.tsx`): danh sách bật/tắt thiếu đúng key `country` trong khi
+   `productFieldsHelper` vẫn vẽ nó → dòng Quốc gia **luôn hiện, admin không có nút nào tắt**. Đã bổ sung.
+   Cấu hình site đã lưu (thiếu `country`) được merge tự thêm, mặc định bật → không đổi hành vi.
+
+**Bỏ bắt buộc ô Quốc gia — 3 file, không phải 1:** `ServiceFormModal.tsx`, `CreateServicePage.tsx`,
+`EditServicePage.tsx` (cả 3 đều là trang đang chạy). `ChildServiceFormModal` vốn không có yup nên không đụng.
+
+**Chắn null — bắt buộc đi kèm, nếu không là đổi phiền phức thành sập trang:**
+- `ProductSelector.tsx:23` — `country.split(',')` **không chắn null**, dòng 77 gọi thẳng. Đây là trang
+  **tài liệu API công khai** (không cần đăng nhập) → 1 sản phẩm `country = null` là **trắng trang**.
+- `usePublicProducts.ts:32` — khai `country: string` (sai) nên TypeScript không cảnh báo. Đổi `string | null`.
+- `tagConfig.ts` — `fixCountryCode()` / `getCountryName()` không tự chắn null. Mọi nơi gọi hiện đều
+  lọc trước nên chưa vỡ, nhưng đã thêm chắn nội bộ vì cùng cụm rủi ro.
+
+**Verify (chạy thật, không suy luận):**
+- Đối chiếu luật cũ vs mới trên **24 sản phẩm thật của prod**: **23 giữ nguyên, đúng 1 đổi** — là #42:
+  `[cột] vn us` → `[Vị trí] us gb th kr jp es tw pt`.
+- `tsc --noEmit`: 516 dòng lỗi trước = 516 sau, **0 lỗi mới** (5 dòng lệch chỉ là dời số dòng).
+- `eslint` 8 file: **112 trước → 111 sau** (giảm 1).
+- Vòng lưu–nạp: form `[]` → gửi `''` → BE lưu `''` → nạp về `[]` → thẻ ẩn dòng. Giá trị cũ `vn,us` đi qua y nguyên.
+
+**CỐ Ý KHÔNG đụng `CheckoutModal.tsx:709,1348`:** luật nhận diện ở đó là **tập con** của luật mới,
+nên không còn nguy cơ thẻ hiện cờ mà thanh toán bỏ sót. Với #42, màn thanh toán vẫn vẽ dropdown tên nước
+("United State"…) — đúng cho combo, đổi thành bộ chọn cờ là đổi luôn cách khách mua, không thuộc đợt này.
+
+**Files:** `components/proxy-card/productFieldsHelper.tsx`, `Admin/ServiceType/{ServiceFormModal,CreateServicePage,EditServicePage}.tsx`,
+`Admin/SiteSettings/ProductSettingForm.tsx`, `ApiDocs/ProductSelector.tsx`, `hooks/apis/usePublicProducts.ts`, `configs/tagConfig.ts`
+
+---
+
 #### 13.N+50 Thẻ sản phẩm không dịch nhãn lựa chọn theo ngôn ngữ (04/08/2026)
 
 **Vấn đề:** khách vào `/en` xem danh sách sản phẩm → thẻ hiện nhãn **tiếng Việt**
