@@ -38,6 +38,7 @@ import { TAG_CONFIG, PREDEFINED_TAGS, getTagStyle } from '@/configs/tagConfig'
 import { useProviders } from '@/hooks/apis/useProviders'
 import { useCountries } from '@/hooks/apis/useCountries'
 import { useServiceType, useCreateServiceType, useUpdateServiceType } from '@/hooks/apis/useServiceType'
+import { useComposingInput } from '@/hooks/useComposingInput'
 import MultiInputModal from '@/views/Client/Admin/ServiceType/MultiInputModal'
 // PriceByDurationModal removed — giá theo thời gian giờ inline trong form
 import CollapsibleSection from '@/views/Client/Admin/ServiceType/CollapsibleSection'
@@ -285,6 +286,28 @@ const DiscountTierRow = memo(function DiscountTierRow({ tier, idx, basePrice, ba
   )
 })
 
+// Mã kỹ thuật chỉ nhận [a-zA-Z0-9_]. Trước đây gõ tiếng Việt bị XOÁ THẲNG ký tự có dấu:
+// "Quốc gia Việt Nam" ra "QucgiaVitNam" — mất chữ mà không báo gì, admin tưởng ô hỏng.
+// Giờ bỏ dấu + đổi khoảng trắng thành _ → "Quoc_gia_Viet_Nam". Không mất chữ nào.
+const toKeyCode = (s: string) =>
+  s
+    .normalize('NFD')                    // tách chữ và dấu thành 2 ký tự
+    .replace(/[̀-ͯ]/g, '')     // bỏ phần dấu
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')                  // đ/Đ không có dấu tách rời nên phải xử riêng
+    .replace(/\s+/g, '_')                // khoảng trắng → _
+    .replace(/[^a-zA-Z0-9_]/g, '')       // còn lại thì bỏ
+
+// Ô nhập CHỮ có xử lý BỘ GÕ TIẾNG VIỆT.
+// Đo trên bản production: gõ CÓ DẤU 53 ms/chữ vs KHÔNG DẤU 18 ms/chữ — bộ gõ bắn nhiều event mỗi chữ,
+// mỗi event là một lần cập nhật state + vẽ lại. Hook chỉ commit khi gõ XONG 1 chữ (compositionend).
+// Thứ tự spread quan trọng: {...field} trước, {...bind} sau — để onChange của bind ghi đè của RHF.
+const ComposingTextField = ({ field, ...rest }: any) => {
+  const bind = useComposingInput(field.onChange)
+
+  return <CustomTextField {...field} {...rest} {...bind} />
+}
+
 // ─── Preview component (cô lập re-render khỏi form chính) ───
 const PREVIEW_FIELDS = ['name', 'type', 'tag', 'status', 'rotation_mode', 'rotation_type', 'protocols', 'auth_type', 'bandwidth',
   'rotation_interval', 'pool_size', 'request_limit', 'concurrent_connections', 'note', 'code',
@@ -300,7 +323,22 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
   timeUnit?: string
   priceDisplayUnit?: string
 }) {
-  const previewData = useWatch({ control, name: PREVIEW_FIELDS as any })
+  // Khối xem trước theo dõi 19 field, gồm cả các ô gõ chữ (tên, mã, mô tả, tag) — gần như MỌI ô
+  // chữ của form đều nằm trong đây. Trước khi sửa, gõ 1 ký tự là vẽ lại cả thẻ sản phẩm.
+  // Đo bằng cách tắt hẳn khối này: 36 ms/ký tự → 19 ms/ký tự, tức nó chiếm ~17ms.
+  // (Đã thử useDeferredValue trước: KHÔNG ăn thua — nó chỉ hạ ưu tiên chứ vẫn vẽ mỗi ký tự.)
+  // Hoãn 250ms: gõ liên tục thì thẻ chỉ vẽ lại 1 lần sau khi ngừng, thay vì mỗi ký tự một lần.
+  const previewDataRaw = useWatch({ control, name: PREVIEW_FIELDS as any })
+  const [previewData, setPreviewData] = useState(previewDataRaw)
+
+  useEffect(() => {
+    // clearTimeout ngay đầu effect — modal KHÔNG unmount giữa 2 lần mở, timer sót lại
+    // từng gây lỗi ở modal NCC (ghi đè trạng thái bằng giá trị của lần mở trước).
+    const t = setTimeout(() => setPreviewData(previewDataRaw), 250)
+
+    return () => clearTimeout(t)
+  }, [previewDataRaw])
+
   const previewObj = useMemo(() => {
     const obj: any = {}
 
@@ -363,7 +401,9 @@ const ServicePreview = memo(function ServicePreview({ control, serviceId, priceF
 interface PurchaseOption {
   key: string; param_name: string; label: string
   type: 'select' | 'text' | 'number' | 'combo'; required: boolean; default: string
-  display_type?: 'country_flag' | ''
+  // 'dropdown' dùng cho trường combo (chọn cách bày cho khách: thẻ cờ hay dropdown).
+  // Khai thiếu giá trị này nên chỗ dùng ở dòng ~622 báo lỗi kiểu.
+  display_type?: 'country_flag' | 'dropdown' | ''
   options: Array<{
     provider_value: string; label: string
     key?: string; flag?: string; value?: string
@@ -548,23 +588,27 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
             {/* ─── Section 1: Field info ──────────────────── */}
             <div style={{ padding: 12 }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
-                Thông tin field
+                Thông tin ô chọn
               </div>
               <Grid2 container spacing={1.5}>
                 <Grid2 size={{ xs: 3 }}>
+                  {/* Nhãn cũ "Key (gửi đi)" SAI NGHĨA: ô này KHÔNG gửi sang NCC, nó là mã nội bộ
+                      mà khách / site con dùng khi gửi lựa chọn lên. Cái gửi NCC là ô "Tên tham số gửi NCC". */}
                   <CustomTextField fullWidth size='small'
-                    label={opt.type === 'combo' ? 'Mã field (khách chọn)' : 'Key (gửi đi)'}
+                    label={opt.type === 'combo' ? 'Mã nội bộ (khách chọn)' : 'Mã nội bộ'}
                     placeholder={opt.type === 'combo' ? 'location' : 'country'} value={opt.key}
-                    onChange={(e: any) => update(optIdx, { key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
+                    helperText='Gõ tiếng Việt cũng được — máy tự bỏ dấu (Quốc gia → Quoc_gia). Khách & site con gửi lựa chọn theo mã này, KHÔNG gửi sang NCC. Đổi là hỏng đơn cũ.'
+                    onChange={(e: any) => update(optIdx, { key: toKeyCode(e.target.value) })} />
                 </Grid2>
                 {opt.type !== 'combo' && (
                   <Grid2 size={{ xs: 3 }}>
-                    <CustomTextField fullWidth size='small' label='Param gửi NCC' placeholder='country_code' value={opt.param_name}
-                      onChange={(e: any) => update(optIdx, { param_name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })} />
+                    <CustomTextField fullWidth size='small' label='Tên tham số gửi NCC' placeholder='country_code' value={opt.param_name}
+                      helperText='Tên NCC đòi trong request (máy tự bỏ dấu). Để trống thì tự dùng Mã nội bộ.'
+                      onChange={(e: any) => update(optIdx, { param_name: toKeyCode(e.target.value) })} />
                   </Grid2>
                 )}
                 <Grid2 size={{ xs: opt.type === 'combo' ? 6 : 3 }}>
-                  <CustomTextField fullWidth size='small' label='Label hiển thị' placeholder='Quốc gia' value={opt.label}
+                  <CustomTextField fullWidth size='small' label='Tên hiển thị cho khách' placeholder='Quốc gia' value={opt.label}
                     onChange={(e: any) => update(optIdx, { label: e.target.value })} />
                 </Grid2>
                 <Grid2 size={{ xs: 1.5 }}>
@@ -738,7 +782,10 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 </div>
                 <Grid2 container spacing={1.5} sx={{ mb: 1.5 }}>
                   <Grid2 size={{ xs: 4 }}>
+                    {/* displayEmpty: MUI coi value='' là "chưa chọn gì" và bỏ trống ô — phải bật cờ này
+                        thì dòng "Text (mặc định)" mới hiện ra thay vì ô rỗng trông như chưa chọn. */}
                     <CustomTextField fullWidth size='small' select label='Cách hiển thị' value={opt.display_type || ''}
+                      slotProps={{ select: { displayEmpty: true } }}
                       onChange={(e: any) => update(optIdx, { display_type: e.target.value || '' })}>
                       <MenuItem value=''>Text (mặc định)</MenuItem>
                       <MenuItem value='country_flag'>Cờ quốc gia</MenuItem>
@@ -748,7 +795,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
               <>
                 {opt.display_type === 'country_flag' ? (
                   <>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Quốc gia — Provider Value:</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Quốc gia — giá trị gửi NCC:</div>
                     {opt.options.map((option, valIdx) => (
                       <div key={valIdx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 140 }}>
@@ -757,7 +804,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                           )}
                           <span style={{ fontSize: 12, fontWeight: 500, color: '#1e293b' }}>{option.label || '—'}</span>
                         </div>
-                        <CustomTextField size='small' placeholder='Provider value' value={(option as any).provider_value || ''} sx={{ width: 140 }}
+                        <CustomTextField size='small' placeholder='Giá trị gửi NCC' value={(option as any).provider_value || ''} sx={{ width: 140 }}
                           onChange={(e: any) => {
                             const newOpts = [...opt.options]
 
@@ -806,7 +853,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                       return (
                         <div key={valIdx} style={{ marginBottom: 4 }}>
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <CustomTextField size='small' placeholder='Provider value' value={(option as any).provider_value || ''} sx={{ flex: 1 }}
+                            <CustomTextField size='small' placeholder='Giá trị gửi NCC' value={(option as any).provider_value || ''} sx={{ flex: 1 }}
                               onChange={(e: any) => {
                                 const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], provider_value: e.target.value }
                                 if (!newOpts[valIdx].label) newOpts[valIdx].label = e.target.value
@@ -1326,6 +1373,12 @@ return { values: {}, errors: formattedErrors }
           })),
           stage: f.stage === 'fetch' ? 'fetch' : 'buy',
           components: Array.isArray(f.components) ? f.components : undefined,
+
+          // ⚠ GIỮ NGUYÊN BẢN GỐC — form chỉ hiểu một phần các khoá.
+          // Khoá form không biết (source, depends_on, options_by_parent…) phải sống sót qua vòng
+          // mở-ra-rồi-Lưu. Trước đây form dựng lại field từ danh sách trắng nên chúng bị xoá sạch:
+          // SP "Proxyma Residential" mất hẳn 2 tuỳ chọn Khu vực / Thành phố.
+          __raw: f,
         }))
         setPurchaseOptions(loaded)
       } else {
@@ -1410,31 +1463,62 @@ return { values: {}, errors: formattedErrors }
     const autoCostPrice = costs.length > 0 ? Math.min(...costs) : data.cost_price || 0
 
     // Build metadata từ purchase options.
+    // Giữ field nếu: không phải select · HOẶC có option đã điền · HOẶC là dropdown PHỤ THUỘC
+    // (Khu vực/Thành phố dùng options_by_parent chứ không dùng options phẳng → điều kiện cũ
+    //  `options.some(provider_value)` xoá trắng chúng mỗi lần Lưu).
+    const isDependentField = (o: any) => {
+      const raw = o.__raw || {}
+
+      return !!(raw.options_by_parent || raw.depends_on || o.depends_on)
+    }
+
     const validOptions = purchaseOptions.filter(o =>
       o.key && o.label && (
         o.type !== 'select' ||
-        o.options.some(opt => (opt as any).provider_value)
+        o.options.some(opt => (opt as any).provider_value) ||
+        isDependentField(o)
       )
     )
 
-    const metadata = validOptions.length > 0 ? {
-      custom_fields: validOptions.map(o => ({
-        key: o.key,
-        param_name: o.param_name || o.key,
-        label: o.label,
-        type: o.type || 'select',
-        required: o.required,
-        default: o.default || (o.type === 'select' ? o.options[0]?.value || '' : ''),
-        ...(o.type === 'select' ? { options: o.options.filter(opt => (opt as any).provider_value).map(opt => {
-          const entry: any = { provider_value: (opt as any).provider_value, label: opt.label }
+    // Ghi field: BẮT ĐẦU TỪ BẢN GỐC rồi mới đắp giá trị form lên.
+    // Khoá nào form quản lý thì ghi đè hẳn (kể cả xoá khi admin bỏ trống); khoá form KHÔNG biết
+    // thì giữ nguyên văn. Đây là luật "không hiểu thì để nguyên" — chống lặp lại sự cố mất
+    // Khu vực/Thành phép khi mở ra bấm Lưu.
+    const buildField = (o: any) => {
+      const out: any = { ...(o.__raw || {}) }
 
-          entry.key = (opt as any).key || (opt as any).flag || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
-          if ((opt as any).flag) entry.flag = (opt as any).flag
+      out.key = o.key
+      out.param_name = o.param_name || o.key
+      out.label = o.label
+      out.type = o.type || 'select'
+      out.required = o.required
+      out.default = o.default || (o.type === 'select' ? o.options[0]?.value || '' : '')
+
+      if (o.display_type) out.display_type = o.display_type
+      else delete out.display_type
+
+      if (o.stage === 'fetch') out.stage = 'fetch'
+      else delete out.stage
+
+      if (o.type === 'select') {
+        const built = o.options.filter((opt: any) => opt.provider_value).map((opt: any) => {
+          // Giữ luôn khoá lạ của từng lựa chọn (vd cờ, mã vùng NCC thêm sau)
+          const OPT_KNOWN = ['provider_value', 'value', 'label', 'key', 'flag', 'label_i18n', 'values']
+          const optExtra: any = {}
+
+          Object.keys(opt || {}).forEach(k => { if (!OPT_KNOWN.includes(k)) optExtra[k] = opt[k] })
+
+          const entry: any = { ...optExtra, provider_value: opt.provider_value, label: opt.label }
+
+          entry.key = opt.key || opt.flag || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
+          if (opt.flag) entry.flag = opt.flag
 
           // Preserve label_i18n nếu admin đã nhập (chỉ giữ các locale có giá trị thật)
-          const i18n = (opt as any).label_i18n
+          const i18n = opt.label_i18n
+
           if (i18n && typeof i18n === 'object') {
             const filtered: Record<string, string> = {}
+
             Object.entries(i18n).forEach(([loc, val]) => {
               if (typeof val === 'string' && val.trim()) filtered[loc] = val.trim()
             })
@@ -1442,21 +1526,30 @@ return { values: {}, errors: formattedErrors }
           }
 
           return entry
-        }) } : {}),
-        ...(o.display_type ? { display_type: o.display_type } : {}),
-        ...(o.stage === 'fetch' ? { stage: 'fetch' } : {}),
-        // Combo: lưu components (map param NCC) + options gói (key tự sinh từ label + values)
-        ...(o.type === 'combo' ? {
-          components: (o.components || []).filter(c => c.key && c.param_name),
-          options: (o.options || []).filter(opt => opt.label).map(opt => {
-            const key = (opt as any).key || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
-            const entry: any = { key, label: opt.label, values: (opt as any).values || {} }
-            if ((opt as any).flag) entry.flag = (opt as any).flag
-            return entry
-          }),
-        } : {}),
-      }))
-    } : null
+        })
+
+        // CHỈ đè khi form thật sự dựng được danh sách. Dropdown phụ thuộc (Khu vực/Thành phố) không có
+        // options phẳng → built rỗng → GIỮ NGUYÊN options gốc thay vì ghi đè thành mảng rỗng.
+        if (built.length > 0) out.options = built
+      }
+
+      // Combo: lưu components (map param NCC) + options gói (key tự sinh từ label + values)
+      if (o.type === 'combo') {
+        out.components = (o.components || []).filter((c: any) => c.key && c.param_name)
+        out.options = (o.options || []).filter((opt: any) => opt.label).map((opt: any) => {
+          const key = opt.key || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
+          const entry: any = { key, label: opt.label, values: opt.values || {} }
+
+          if (opt.flag) entry.flag = opt.flag
+
+          return entry
+        })
+      }
+
+      return out
+    }
+
+    const metadata = validOptions.length > 0 ? { custom_fields: validOptions.map(buildField) } : null
 
     // Merge allow_custom_auth vào metadata
     const metadataFinal = {
@@ -1786,8 +1879,8 @@ return { values: {}, errors: formattedErrors }
                     name='name'
                     control={control}
                     render={({ field }) => (
-                      <CustomTextField
-                        {...field}
+                      <ComposingTextField
+                        field={field}
                         required
                         fullWidth
                         label='Tên dịch vụ'
@@ -2078,8 +2171,8 @@ return <Chip key={val} label={p?.label || val} size='small' />
                     name='note'
                     control={control}
                     render={({ field }) => (
-                      <CustomTextField
-                        {...field}
+                      <ComposingTextField
+                        field={field}
                         value={field.value || ''}
                         fullWidth
                         multiline

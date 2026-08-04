@@ -847,6 +847,44 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+49 🔴 Mở sản phẩm bấm Lưu làm MẤT tuỳ chọn mua hàng dạng phụ thuộc (04/08/2026)
+
+**Vấn đề:** mở sản phẩm ra, bấm Lưu **không sửa gì** → tuỳ chọn mua hàng từ **4 còn 2**.
+Mất hẳn `region` (Khu vực) + `city` (Thành phố), mất `source` (`api_tariffs`/`api_countries`),
+mất `options_by_parent` (danh sách bang/tỉnh 5 nước).
+`CheckoutModal.tsx:716-720` dùng đúng `depends_on` + `options_by_parent` để vẽ dropdown nối tầng
+→ mất là **khách không chọn được Khu vực/Thành phố khi mua**.
+
+**Nguyên nhân (giống hệt lỗi modal NCC 27/07, khác chỗ):**
+- Lúc nạp (~1312): chỉ đọc 10 thuộc tính cố định → `source`/`depends_on`/`options_by_parent` rơi **ngay khi mở form**
+- Lúc lưu (~1421): dựng lại từ danh sách trắng → khoá đã rơi không quay lại
+- Bộ lọc (~1415): `select` nào không có `options[].provider_value` thì **bị loại hẳn** — `region`/`city`
+  dùng `options_by_parent` chứ không dùng `options` phẳng → **bị xoá trắng**
+
+**Sửa — luật "không hiểu thì để nguyên", áp cho CẢ 2 form:**
+- Lúc nạp: giữ bản gốc trong `__raw`
+- Lúc lưu: `buildField()` **bắt đầu từ `__raw`** rồi mới đắp giá trị form lên. Khoá form quản lý thì ghi đè
+  hẳn (kể cả xoá khi admin bỏ trống); khoá form không biết thì giữ nguyên văn
+- `options` **chỉ đè khi form dựng được danh sách** — rỗng thì giữ nguyên bản gốc (dropdown phụ thuộc
+  không có options phẳng)
+- Bộ lọc giữ thêm field có `options_by_parent`/`depends_on`
+- Giữ luôn khoá lạ của **từng lựa chọn** bên trong `options`
+
+**Verify (clone prod đầy đủ MySQL + Mongo):**
+- Gieo lại đúng cấu trúc thật (4 tuỳ chọn, có `region`/`city` phụ thuộc) → mở + Lưu →
+  **vẫn đủ 4, so từng khoá GIỐNG HỆT**. Trước khi vá, đúng ca này còn 2.
+- Quét 15 sản phẩm: trước khi vá **11/11 bị đổi**; sau khi vá còn 3, và **không còn mất khoá nào**
+  (3 ca còn lại là *thêm* khoá + tính lại `price`, xem mục "còn tồn tại")
+- `tsc`: **72 lỗi trước, 72 lỗi sau** — không thêm lỗi mới (repo vốn có sẵn)
+
+**Files:** `ServiceFormModal.tsx`, `ChildServiceFormModal.tsx`
+
+**Còn tồn tại (CHƯA sửa, không phải mất dữ liệu):** form vẫn tự **thêm** khoá admin không đặt
+(`allow_custom_auth`, `kind: "residential"` suy từ `proxy_type`, `rotation`, `rotation_interval`)
+và **tính lại** cột `price` từ mốc giá đầu. Cần anh Long quyết có chặn không.
+
+> Phần BE đi kèm (mất `qty`/`unit` do thiếu luật validate): `BE/DEVELOPER-GUIDE.md` mục **15.N+38**.
+
 #### 13.N+48 🔴 Site con lộ tên NCC ở trang Đơn hàng + xoá route công khai /api/partners (29/07/2026)
 
 **Vấn đề (lỗi CÓ SẴN):**

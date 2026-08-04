@@ -313,7 +313,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                     required: f.required || false,
                     default: f.default || '',
                     display_type: f.display_type || '',
-                    options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' }))
+                    options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' })),
+                    __raw: f // giữ nguyên khoá form không hiểu (depends_on, options_by_parent, source…)
                   }))
                 )
               }
@@ -374,7 +375,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
             required: f.required || false,
             default: f.default || '',
             display_type: f.display_type || '',
-            options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' }))
+            options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' })),
+            __raw: f // giữ nguyên khoá form không hiểu (depends_on, options_by_parent, source…)
           }))
         )
       } else {
@@ -690,25 +692,45 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
               ...(t.price ? { price: t.price } : {})
             }))
         })(),
+
+        // Luật "không hiểu thì để nguyên": bắt đầu từ bản gốc (__raw) rồi đắp giá trị form lên.
+        // Trước đây dựng lại từ danh sách trắng nên dropdown phụ thuộc (Khu vực/Thành phố) bị xoá
+        // khỏi BẢN SAO của site con → khách site con không còn ô để chọn → site mẹ chặn đơn.
         custom_fields: purchaseOptions
-          .filter(o => o.key && o.label && (o.type !== 'select' || o.options.some(opt => (opt as any).provider_value)))
-          .map(o => ({
-            key: o.key,
-            param_name: o.param_name || o.key,
-            label: o.label,
-            type: o.type || 'select',
-            required: o.required,
-            default: o.default || (o.type === 'select' ? o.options[0]?.value || '' : ''),
-            ...(o.type === 'select' ? { options: o.options.filter(opt => (opt as any).provider_value).map(opt => {
-              const entry: any = { provider_value: (opt as any).provider_value, label: opt.label }
+          .filter(o => o.key && o.label && (
+            o.type !== 'select' ||
+            o.options.some(opt => (opt as any).provider_value) ||
+            !!((o as any).__raw?.options_by_parent || (o as any).__raw?.depends_on)
+          ))
+          .map(o => {
+            const out: any = { ...((o as any).__raw || {}) }
 
-              entry.key = (opt as any).key || opt.flag || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
-              if (opt.flag) entry.flag = opt.flag
+            out.key = o.key
+            out.param_name = o.param_name || o.key
+            out.label = o.label
+            out.type = o.type || 'select'
+            out.required = o.required
+            out.default = o.default || (o.type === 'select' ? o.options[0]?.value || '' : '')
 
-              return entry
-            }) } : {}),
-            ...(o.display_type ? { display_type: o.display_type } : {}),
-          })),
+            if (o.display_type) out.display_type = o.display_type
+            else delete out.display_type
+
+            if (o.type === 'select') {
+              const built = o.options.filter(opt => (opt as any).provider_value).map(opt => {
+                const entry: any = { provider_value: (opt as any).provider_value, label: opt.label }
+
+                entry.key = (opt as any).key || opt.flag || opt.label.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
+                if (opt.flag) entry.flag = opt.flag
+
+                return entry
+              })
+
+              // Chỉ đè khi form dựng được danh sách — dropdown phụ thuộc không có options phẳng
+              if (built.length > 0) out.options = built
+            }
+
+            return out
+          }),
         provider_prices:
           pricingMode === 'per_unit'
             ? { per_unit: parseInt(costPerUnit) || 0 }
