@@ -1594,8 +1594,33 @@ return { values: {}, errors: formattedErrors }
 
     const metadata = validOptions.length > 0 ? { custom_fields: validOptions.map(buildField) } : null
 
+    // ⚠ GIỮ NGUYÊN KHOÁ metadata FORM KHÔNG QUẢN LÝ — cùng luật __raw đã dùng cho custom_fields.
+    //
+    // metadataFinal trước đây dựng lại từ danh sách trắng, nên khoá nào form không biết là mất sạch
+    // khi Lưu. SP #43 "ISP 1 IP" và #44 "ISP 5 IP" có `kind='isp'` + 6 khoá `isp_*`
+    // (isp_ports, isp_country, isp_plan_id, isp_cost_usd, isp_tariff_id, isp_purpose_id)
+    // → mở ra bấm Lưu KHÔNG SỬA GÌ là bay toàn bộ cấu hình ISP.
+    // BE ghi đè nguyên khối (`'metadata' => $validated['metadata'] ?? null`), KHÔNG gộp — nên mất là mất thật.
+    // (Form site con không dính: nó đã `...existingMeta` sẵn — ChildServiceFormModal:669.)
+    //
+    // `kind` và `proxy_host` CỐ Ý không nằm trong danh sách dưới: form chỉ ghi chúng cho residential,
+    // nên phải để chúng sống sót từ bản cũ rồi mới cho phần residential ghi đè bên dưới.
+    const KHOA_FORM_QUAN_LY = [
+      'custom_fields', 'price_quantity_mode', 'track_package_usage', 'allow_custom_auth',
+      'require_ip', 'max_ips', 'renewable', 'renewal_duration', 'allow_expired_renew',
+      'renew_override_params', 'discount_tiers', 'cost_discount_tiers', 'quantity_tiers',
+      'response_mapping', 'provider_auth_type', 'provider_max_ips', 'shared_proxy_hosts', 'rotation',
+    ]
+
+    const metaGoc = (serviceData?.metadata && typeof serviceData.metadata === 'object') ? serviceData.metadata : {}
+
+    const khoaLa = Object.fromEntries(
+      Object.entries(metaGoc).filter(([k]) => !KHOA_FORM_QUAN_LY.includes(k))
+    )
+
     // Merge allow_custom_auth vào metadata
     const metadataFinal = {
+      ...khoaLa,
       ...(metadata || {}),
       price_quantity_mode: priceQuantityMode === 'package' ? 'package' : undefined, // chỉ lưu khi package, mặc định bỏ → 'multiply'
       track_package_usage: trackPackageUsage ? true : undefined, // bật → sync:package-usage cập nhật dung lượng còn lại

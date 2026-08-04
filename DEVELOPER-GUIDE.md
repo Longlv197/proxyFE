@@ -847,6 +847,35 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+52 🔴 Lưu sản phẩm ISP làm MẤT toàn bộ cấu hình NCC trong metadata (05/08/2026)
+
+**Vấn đề:** `metadataFinal` trong `ServiceFormModal` được **dựng lại từ danh sách trắng 20 khoá**
+→ khoá nào form không biết là **mất sạch** khi Lưu. BE ghi đè nguyên khối
+(`ServiceTypeController: 'metadata' => $validated['metadata'] ?? null`), KHÔNG gộp — nên mất là mất thật.
+
+SP **#43 "ISP 1 IP"** và **#44 "ISP 5 IP"** dính: mở ra bấm Lưu **không sửa gì** là bay **7 khoá**
+— `kind='isp'`, `isp_ports`, `isp_country`, `isp_plan_id`, `isp_cost_usd`, `isp_tariff_id`, `isp_purpose_id`
+— tức **toàn bộ cấu hình ISP**. Quét cả 24 SP prod: chỉ 2 SP này có khoá lạ.
+
+**⚠ Bản vá 13.N+51 làm lỗi này VỚI TỚI ĐƯỢC.** Trước đó hai SP này **không lưu nổi** vì bị chặn
+"Quốc gia là bắt buộc" (cả hai để trống quốc gia). Bỏ bắt buộc → lưu được → và lưu là mất.
+Việc dựng lại từ danh sách trắng có sẵn từ trước, nhưng chỉ sau 13.N+51 mới chạm tới được.
+Thiệt hại thực tế: **0** — cả hai đang `is_purchasable = false`, chưa ai mở ra Lưu.
+
+**Sửa:** giữ nguyên khoá form không quản lý — cùng luật `__raw` đã dùng cho `custom_fields` ở 13.N+49,
+nhưng ở **tầng metadata gốc**. `kind` và `proxy_host` CỐ Ý không nằm trong danh sách form-quản-lý:
+form chỉ ghi chúng cho residential, nên phải để chúng sống sót từ bản cũ rồi mới cho residential ghi đè.
+
+**Form site con KHÔNG dính** — `ChildServiceFormModal:669` đã `...existingMeta` sẵn từ trước.
+
+**Verify:** mô phỏng "mở ra bấm Lưu không sửa gì" trên **24 SP thật của prod** —
+luật cũ: #43/#44 mất 7 khoá · luật mới: **mất 0 khoá**, 22 SP còn lại không đổi ở cả hai luật.
+`tsc` 516 = 516 (ServiceFormModal 70 = 70) · `eslint` ServiceFormModal 107 = 107.
+
+**Files:** `views/Client/Admin/ServiceType/ServiceFormModal.tsx`
+
+---
+
 #### 13.N+51 🔴 Thẻ sản phẩm hiện SAI quốc gia + bỏ bắt buộc ô Quốc gia (05/08/2026)
 
 **Vấn đề nặng nhất — SP #42 "Rotate IPv4 Global" (đang bán) hiện sai nước cho khách:**
