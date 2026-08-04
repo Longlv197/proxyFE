@@ -847,6 +847,31 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+50 Thẻ sản phẩm không dịch nhãn lựa chọn theo ngôn ngữ (04/08/2026)
+
+**Vấn đề:** khách vào `/en` xem danh sách sản phẩm → thẻ hiện nhãn **tiếng Việt**
+(vd "Hoa Kỳ", "Chung chủ"), bấm Mua thì màn thanh toán lại hiện **tiếng Anh** cho
+đúng trường đó. Cùng một dữ liệu mà hai màn hai kiểu — khách tưởng là hai thứ khác nhau.
+
+**Nguyên nhân:** `CheckoutModal.tsx:202-213` có giải nhãn theo ngôn ngữ
+(`label_i18n[locale]`, `resolveCountryLabel`), còn `productFieldsHelper.tsx` in thẳng
+`o.label` — tức là bản tiếng Việt admin gõ lúc tạo sản phẩm.
+
+**Sửa:** thêm `nhanLuaChon()` trong `productFieldsHelper.tsx` dùng **đúng thứ tự ưu tiên
+của màn thanh toán**: có `flag` → tra từ điển quốc gia theo `locale`; có `label_i18n` →
+lấy theo `locale`, không có thì `en`, cuối cùng mới `label`. Truyền `locale` xuống từ
+`ProxyCard.tsx` và `RotatingProxyPage.tsx`.
+
+**Giới hạn (nói rõ để sau khỏi hiểu nhầm):** hiện **chưa sản phẩm nào** có `label_i18n`
+→ đường nhánh đó chưa chạy thật lần nào, chỉ nhánh cờ quốc gia là có tác dụng ngay.
+Muốn dịch được nhãn lựa chọn thì form admin phải có ô nhập `label_i18n` — **chưa làm**.
+Nhãn của **trường** (`field.label`, vd "Quốc gia") vẫn chưa dịch được, cũng chưa có ô nhập.
+
+**Files:** `components/proxy-card/productFieldsHelper.tsx`, `components/proxy-card/ProxyCard.tsx`,
+`views/Client/RotatingProxy/RotatingProxyPage.tsx`
+
+---
+
 #### 13.N+49 🔴 Mở sản phẩm bấm Lưu làm MẤT tuỳ chọn mua hàng dạng phụ thuộc (04/08/2026)
 
 **Vấn đề:** mở sản phẩm ra, bấm Lưu **không sửa gì** → tuỳ chọn mua hàng từ **4 còn 2**.
