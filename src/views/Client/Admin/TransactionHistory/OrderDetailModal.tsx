@@ -46,6 +46,7 @@ import { useOrderHistoryLogs, type HistoryLogItem } from '@/hooks/apis/useRenewa
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 import { usePingProxy } from '@/hooks/apis/usePingProxy'
+import { useProxyCheck } from '@/hooks/apis/useProxyCheck'
 import { ROTATION_MODE, ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 
 interface OrderDetailModalProps {
@@ -168,35 +169,52 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
 
   const updateItemMutation = useUpdateOrderItem()
   const pingProxy = usePingProxy()
+  const { checkAll } = useProxyCheck()
   const [pingResults, setPingResults] = useState<Record<string, string>>({})
   const orderId = orderData?.order?.id
   const { data: dataApiKeys, isLoading: loadingApiKeys } = useApiKeys(orderId, isOpen)
 
-  // Auto-ping proxy gốc cho rotate_auto khi data load xong
+  // Tự lấy IP gốc cho proxy loại tự xoay khi mở đơn.
+  // Trước là vòng lặp tuần tự từng con (10s/con) — đơn nhiều proxy admin phải ngồi chờ rất lâu.
+  // Nay chia lô, máy chủ chạy song song trong lô, kết quả điền dần theo lô.
   useEffect(() => {
     if (!dataApiKeys?.length) return
-    const items = (dataApiKeys as any[]).filter((item: any) => {
-      if (item.rotation_mode !== ROTATION_MODE.ROTATE_AUTO) return false
-      const proxyStr = getProxyText(item)
-      const itemKey = item.key || item.api_key
-      return proxyStr && proxyStr !== '-' && itemKey && !pingResults[itemKey]
-    })
-    if (!items.length) return
 
-    const pingSequential = async () => {
-      for (const item of items) {
+    const items = (dataApiKeys as any[])
+      .filter((item: any) => {
+        if (item.rotation_mode !== ROTATION_MODE.ROTATE_AUTO) return false
         const proxyStr = getProxyText(item)
         const itemKey = item.key || item.api_key
-        setPingResults(prev => ({ ...prev, [itemKey]: 'loading' }))
-        try {
-          const data = await pingProxy.mutateAsync(proxyStr)
-          setPingResults(prev => ({ ...prev, [itemKey]: data?.origin_ip || 'N/A' }))
-        } catch {
-          setPingResults(prev => ({ ...prev, [itemKey]: 'Lỗi kết nối' }))
-        }
-      }
-    }
-    pingSequential()
+
+        return proxyStr && proxyStr !== '-' && itemKey && !pingResults[itemKey]
+      })
+      .map((item: any) => ({ id: String(item.key || item.api_key), proxy: getProxyText(item) }))
+
+    if (!items.length) return
+
+    setPingResults(prev => {
+      const next = { ...prev }
+
+      items.forEach((i: any) => { next[i.id] = 'loading' })
+
+      return next
+    })
+
+    const cancel = { cancelled: false }
+
+    checkAll(items, batch => {
+      setPingResults(prev => {
+        const next = { ...prev }
+
+        batch.forEach(r => {
+          next[String(r.id)] = r.status === 'success' ? (r.exit_ip || 'N/A') : (r.message || 'Lỗi kết nối')
+        })
+
+        return next
+      })
+    }, cancel)
+
+    return () => { cancel.cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataApiKeys])
   const dataField = (dataApiKeys as any)?._dataField || 'proxy'

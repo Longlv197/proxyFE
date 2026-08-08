@@ -6,13 +6,14 @@ import CheckProxyForm from '@views/Client/CheckProxy/CheckProxyForm'
 import CheckProxyTable from '@views/Client/CheckProxy/CheckProxyTable'
 
 interface ProxyData {
-  id: number
+  id?: number
   proxy: string
   ip: string
   protocol: string
   status: string
   responseTime: number | string
   type: string
+  /** Lý do khi proxy không dùng được — bảng hiện ngay dưới nhãn trạng thái. */
   message?: string
 }
 
@@ -20,11 +21,13 @@ export default function CheckProxyPage() {
   const [checkResults, setCheckResults] = useState<ProxyData[]>([])
   const [checkedProxy, setCheckedProxy] = useState<ProxyData[]>([])
 
+  // Ghép kết quả của MỘT LÔ vừa kiểm xong vào bảng (khớp theo chuỗi proxy).
+  // Nhờ vậy bảng điền dần theo từng lô thay vì đợi chạy hết cả danh sách.
   useEffect(() => {
     if (!checkedProxy) return
 
-    // checkedProxy có thể là object (1 proxy) hoặc array
     const proxyArr = Array.isArray(checkedProxy) ? checkedProxy : [checkedProxy]
+
     if (proxyArr.length === 0) return
 
     setCheckResults(prevResults =>

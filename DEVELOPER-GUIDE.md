@@ -847,6 +847,106 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+54 Lấy IP gốc & Kiểm tra proxy: bỏ chạy tuần tự, hiện IP thật và lý do lỗi (08/08/2026)
+
+**Vấn đề.** Chi tiết đơn lấy IP gốc bằng vòng `for … await` từng con (10s/con, tự chạy khi mở đơn);
+trang Kiểm tra proxy dùng hàng đợi `maxConcurrentChecks = 1` (15s/con). 100 proxy = 16–25 phút.
+Chi tiết nguyên nhân phía máy chủ: BE 15.N+43.
+
+**Sửa — dùng chung hook `useProxyCheck`** (chia lô 10, gọi nhiều lượt, máy chủ chạy song song
+trong lô, trả kết quả về sau MỖI lô):
+
+- `OrderDetail` + `OrderDetailModal` (admin): bỏ vòng lặp tuần tự → điền IP gốc dần theo lô.
+  Có thẻ huỷ, đóng đơn giữa chừng thì dừng, không ghi trạng thái vào component đã tháo.
+- `CheckProxyForm`: bỏ toàn bộ máy hàng đợi (`queueRef`/`activeChecksRef`/mutation) → gọi theo lô.
+
+**Bốn lỗi đúng-sai sửa kèm:**
+
+1. 🔴 **Hai nút Copy chép chéo nhau.** Nút ở ô "Proxy đang hoạt động" chép danh sách **lỗi**, nút ô
+   "ngưng hoạt động" chép danh sách **thành công** — cả nội dung lẫn câu thông báo đều ngược.
+2. 🔴 **Bảng không có cột IP.** Trường `ip` có trong dữ liệu nhưng chưa bao giờ được vẽ ra, mà giá
+   trị lại là host khách vừa gõ. Thêm cột **"IP gốc"** hiện IP thoát thật đo được.
+3. 🔴 **Lý do lỗi không hiện ở đâu cả.** Máy chủ trả `message` ("sai mật khẩu", "quá thời gian chờ",
+   "IP chưa được cho phép") nhưng bảng không có chỗ hiển thị → khách chỉ thấy chữ đỏ "Ngưng hoạt
+   động" mà không biết phải sửa gì. Nay hiện ngay dưới nhãn trạng thái.
+4. **Ô "Định dạng Proxy" là điều khiển chết** — chỉ còn 1 lựa chọn. Ban đầu bỏ hẳn; **sau đó
+   08/08 làm lại thành dropdown THẬT** (xem mục dưới) theo yêu cầu anh Long. Cột "Loại" hiện thêm
+   **định dạng máy chủ nhận ra** để khách tự đối chiếu.
+
+**Bổ sung 08/08 — dropdown chọn định dạng, nhận nhiều kiểu:** khách CHỌN định dạng trước khi gửi →
+server tách chính xác, không phải đoán. 6 lựa chọn khai trong `useProxyCheck.PROXY_FORMATS` (khớp
+`ProxyFormat::FLEXIBLE_FORMATS` phía BE): Tự nhận · `host:port` · `host:port:user:pass` ·
+`user:pass@host:port` · `host:port@user:pass` · `user:pass:host:port`. Mặc định "Tự nhận" cho ai
+dán nhanh. `checkAll(...)` thêm tham số `format` (mặc định `auto` — đường lấy IP gốc ở chi tiết đơn
+giữ nguyên). Dấu phẩy / gạch đứng / tab được server nhận tự động, không cần mục riêng.
+
+**Rà lại sau khi code — tự bắt 2 lỗi của chính bản vá:**
+
+1. **Thẻ huỷ chụp sai thời điểm.** `useEffect(..., [])` chụp `cancelRef.current` lúc gắn, nhưng mỗi
+   lần bấm Kiểm tra lại cấp thẻ MỚI → lúc rời trang sẽ bật cờ trên thẻ CŨ, vòng lặp đang chạy không
+   dừng. Sửa: đọc `cancelRef.current` tại lúc dọn.
+2. **Lặng lẽ bỏ bớt dòng của khách.** Bản đầu khử trùng lặp rồi dựng bảng từ danh sách đã khử →
+   khách dán 100 dòng chỉ thấy 87. Sửa: giữ ĐỦ số dòng trong bảng, chỉ gọi kiểm 1 lần cho mỗi chuỗi
+   khác nhau (trang cha ghép theo chuỗi nên mọi dòng trùng đều nhận đúng kết quả), và ghi rõ
+   "N dòng trùng dùng chung kết quả" ở thanh tiến trình.
+
+**Verify:** `tsc --noEmit` toàn dự án — **303 lỗi trước → 294 lỗi sau**. Thay đổi này **giảm** 9 lỗi
+type có sẵn, không thêm lỗi nào (đo bằng cách stash rồi so, không đọc bằng mắt).
+
+**Files:** `src/hooks/apis/useProxyCheck.ts` (mới), `src/hooks/apis/usePingProxy.ts`,
+`src/views/Client/CheckProxy/{CheckProxyForm,CheckProxyTable}.tsx`,
+`src/app/[lang]/(private)/(client)/check-proxy/page.tsx`,
+`src/views/Client/HistoryOrder/OrderDetail.tsx`,
+`src/views/Client/Admin/TransactionHistory/OrderDetailModal.tsx`
+
+**⚠ Còn dư sau đợt này (chờ anh Long cho phép xoá):** `src/app/api/check-proxy/route.ts` không còn
+ai gọi; `src/app/[lang]/(public)/check-proxy/{CheckPorxyPage,CheckProxyPage}.tsx` là bản sao chết
+(thư mục không có `page.tsx`, không ai import).
+
+---
+
+#### 13.N+53 Sản phẩm "Tự xoay": ẩn nút xoay, thay bằng một dòng nói IP đổi thế nào (07/08/2026)
+
+**Vấn đề:** SP #42 là loại **nhà cung cấp tự đổi IP** — không có lệnh xoay nào để gọi (chi tiết ở BE 15.N+42).
+Nhưng modal proxy vẫn hiện nút "Xoay IP ngay" và công tắc "Tự động đổi IP định kỳ". Khách bấm → lỗi 502.
+Ở form admin, hai công tắc "Chế độ xoay IP" trông vẫn dùng được dù chúng không có tác dụng với loại này.
+
+**Sửa — gần như không phải đụng điều kiện hiển thị:** BE ép `allow_manual=false` + `allow_auto=false`
+nên hai khối đó **tự ẩn** theo điều kiện đã có sẵn (`ProxyDetailModal` dòng ~253 và ~273).
+Phần thêm chỉ là chỗ trống để lại:
+
+- `ProxyDetailModal`: nhận thêm `self_rotating` + `rotation_note` → hiện **đúng một dòng** thay cho 2 nút.
+  Câu chữ **bám lựa chọn của chính đơn đó**: `IP cố định, không đổi` / `IP tự đổi mỗi lần kết nối` /
+  `IP tự đổi mỗi 10 phút` — vì mỗi khách chọn một nhịp khác nhau lúc mua, nói chung một câu là **nói sai
+  với phân nửa số đơn** (đơn thật gần nhất trên prod chọn đúng mức "không đổi"). Chưa đọc được nhịp →
+  câu trung tính "Proxy này không đổi IP theo yêu cầu", **không khẳng định IP có đổi hay không**.
+  Luôn hiện để chỗ này không trống trơn sau khi 2 nút biến mất. Không nhắc gì tới nhà cung cấp.
+- `ServiceFormModal`: khi ô **Chế độ xoay = "Tự xoay"** → 3 ô trong mục "Chế độ xoay IP" chuyển xám
+  + đổi lời giải thích sang nói rõ hậu quả ("trang đơn của khách sẽ ẩn nút Xoay IP…").
+  **KHÔNG thêm khoá nào vào `metadata.rotation`** → không dính bẫy danh sách trắng của 13.N+49/13.N+52.
+- `apiDocsConfig`: `/proxies/rotate-ip` trước ghi "Xoay IP ngay — đổi sang IP mới", sai với loại này →
+  bổ sung cảnh báo + ví dụ response `rotatable=false`. Thêm tham số **`with_exit_ip=1`** vào
+  `/proxies/new`, `/proxies/current`, `/proxies/rotate-ip` — đường duy nhất để khách dùng API lấy IP gốc.
+
+**Rà soát lại sau khi code xong — tự bắt được 2 ngõ cụt giao diện:**
+
+1. **Bảo khách bấm một cái nút đã bị ẩn.** Khi chưa có proxy, modal hiện "Chưa có proxy — bấm
+   **'Lấy proxy'** bên dưới để kích hoạt". Nhưng nút đó chính là nút xoay, mà loại tự xoay đã ẩn nó →
+   khách đọc xong **không biết bấm vào đâu**. Sửa: loại tự xoay đổi câu thành "Proxy đang được chuẩn bị,
+   vui lòng đợi giây lát rồi mở lại".
+2. **Ping lỗi là mất luôn nút thử lại.** Khối "IP hiện tại" chỉ hiện khi ĐÃ có IP — mà nút ↻ nằm bên
+   TRONG khối đó. Ping đầu tiên hỏng → khối biến mất → hết đường thử lại, trong khi với loại tự xoay thì
+   IP là thứ **duy nhất** khách còn xem được. Sửa: loại tự xoay luôn hiện khối, chưa có IP thì ghi
+   "chưa lấy được — bấm ↻ để thử lại" (xám) và ẩn nút Copy. SP thường giữ nguyên hành vi cũ.
+
+**Verify:** `tsc --noEmit` — **71 lỗi trước = 71 lỗi sau** trên 3 file sửa (dự án có sẵn lỗi type từ trước;
+đã đo bằng cách stash thay đổi rồi so, không phải đọc bằng mắt). Đo lại sau cả 2 lần sửa: vẫn 71.
+
+**Files:** `src/views/Client/OrderRotatingProxy/ProxyDetailModal.tsx`,
+`src/views/Client/Admin/ServiceType/ServiceFormModal.tsx`, `src/configs/apiDocsConfig.ts`
+
+---
+
 #### 13.N+52 🔴 Lưu sản phẩm ISP làm MẤT toàn bộ cấu hình NCC trong metadata (05/08/2026)
 
 **Vấn đề:** `metadataFinal` trong `ServiceFormModal` được **dựng lại từ danh sách trắng 20 khoá**

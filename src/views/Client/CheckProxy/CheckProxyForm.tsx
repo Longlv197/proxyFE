@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 
 import {
   AlertCircle,
@@ -22,10 +22,6 @@ import MenuItem from '@mui/material/MenuItem'
 
 import { InputAdornment } from '@mui/material'
 
-import { useIsMutating, useMutation } from '@tanstack/react-query'
-
-import axios from 'axios'
-
 import { useTheme } from '@mui/material/styles'
 
 import Button from '@mui/material/Button'
@@ -39,108 +35,61 @@ import { LoadingButton } from '@mui/lab'
 import CustomTextField from '@core/components/mui/TextField'
 import CustomIconButton from '@core/components/mui/IconButton'
 import { useCopy } from '@/app/hooks/useCopy'
+import { useProxyCheck, PROXY_FORMATS, type ProxyFormatValue } from '@/hooks/apis/useProxyCheck'
 
-// Tạo schema validation bằng Yup
+// Tạo schema validation bằng Yup.
+// `format_proxy` = định dạng khách tự chọn (mặc định 'auto' = tự nhận). Khách khai rõ thì
+// server tách chính xác, hết nhập nhằng — nhất là dạng user:pass:host:port vốn không đoán nổi.
 const schema = yup.object().shape({
-  format_proxy: yup.string().required('Vui lòng chọn định dạng proxy'),
+  format_proxy: yup.string().required(),
   protocol: yup.string().required('Vui lòng chọn giao thức'),
   list_proxy: yup.string().required('Vui lòng nhập danh sách proxy')
 })
 
-const checkProxyApi = async (proxyData: any) => {
-  const { data } = await axios.post('/api/check-proxy', proxyData)
-
-  return data
+interface CheckProxyRow {
+  id?: number
+  proxy: string
+  ip: string
+  protocol: string
+  status: string
+  responseTime: number | string
+  type: string
+  message?: string
 }
 
 interface CheckProxyFormProps {
-  onItemListChange: (items: string[]) => void
-  onCheckedProxy: (items: string[]) => void
+  /** Dựng lại toàn bộ bảng (lúc bấm Kiểm tra). */
+  onItemListChange: (items: CheckProxyRow[]) => void
+  /** Kết quả của MỘT lô — trang cha ghép vào bảng theo chuỗi proxy. */
+  onCheckedProxy: (items: CheckProxyRow[]) => void
 }
 
 export default function CheckProxyForm({ onItemListChange, onCheckedProxy }: CheckProxyFormProps) {
-  const [successProxies, setSuccessProxies] = useState([])
-  const [errorProxies, setErrorProxies] = useState([])
+  const [successProxies, setSuccessProxies] = useState<string[]>([])
+  const [errorProxies, setErrorProxies] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
-  const [currentProgress, setCurrentProgress] = useState({ current: 0, total: 0 })
+  const [currentProgress, setCurrentProgress] = useState({ current: 0, total: 0, duplicates: 0 })
 
   const [, copy] = useCopy()
-  const queueRef = useRef([])
-  const activeChecksRef = useRef(0)
-  const maxConcurrentChecks = 1
+  const { checkAll, batchSize } = useProxyCheck()
 
-  const handleCopyProxysError = () => {
-    const formattedData = successProxies.join('\n')
+  // Huỷ vòng lặp khi rời trang giữa chừng — khỏi ghi trạng thái vào component đã tháo.
+  const cancelRef = useRef({ cancelled: false })
 
-    copy(formattedData, 'Đã sao chép danh sách proxy bị lỗi!')
-  }
+  // Đọc cancelRef TẠI LÚC DỌN, không chụp lại từ lúc gắn: mỗi lần bấm Kiểm tra là một thẻ huỷ
+  // mới, chụp sớm thì lúc rời trang sẽ bật cờ trên thẻ CŨ và vòng lặp đang chạy không dừng.
+  useEffect(() => {
+    return () => { cancelRef.current.cancelled = true }
+  }, [])
 
-  const handleCopyProxysSuccess = () => {
-    const formattedData = errorProxies.join('\n')
-
-    copy(formattedData, 'Đã sao chép danh sách proxy thành công!')
-  }
+  // ⚠ Hai hàm này TRƯỚC ĐÂY chép nhầm chéo nhau: nút ở ô "đang hoạt động" chép danh sách LỖI
+  // và ngược lại — cả nhãn lẫn nội dung đều ngược. Nay đặt tên theo đúng thứ nó chép.
+  const handleCopySuccess = () => copy(successProxies.join('\n'), 'Đã sao chép danh sách proxy đang hoạt động!')
+  const handleCopyError = () => copy(errorProxies.join('\n'), 'Đã sao chép danh sách proxy ngưng hoạt động!')
 
   const theme = useTheme()
 
-  // Đếm số lượng mutation có key là ['check-proxy'] đang chạy
-  const pendingMutations = useIsMutating({ mutationKey: ['check-proxy'] })
-
-  // isLoading sẽ là true nếu có ít nhất 1 mutation đang chạy
-  const isLoading = pendingMutations > 0 || isProcessing
-
-  const mutation = useMutation({
-    mutationKey: ['check-proxy'],
-    mutationFn: checkProxyApi,
-    onSuccess: dataFromApi => {
-      // Khi một proxy được check thành công, `dataFromApi` là kết quả trả về.
-      // Bây giờ, chúng ta gọi callback để báo cho component cha.
-      onCheckedProxy(dataFromApi)
-      handleProxyChecked(dataFromApi)
-      processNextInQueue()
-    },
-    onError: (error, variables) => {
-      const failedProxyData = {
-        proxy: variables.list_proxy,
-        responseTime: -1,
-        status: 'error'
-      }
-
-      onCheckedProxy(failedProxyData)
-      handleProxyChecked(failedProxyData)
-      processNextInQueue()
-    }
-  })
-
-  const processNextInQueue = () => {
-    activeChecksRef.current--
-
-    if (queueRef.current.length > 0 && activeChecksRef.current < maxConcurrentChecks) {
-      const nextProxy = queueRef.current.shift()
-
-      if (nextProxy) {
-        activeChecksRef.current++
-        mutation.mutate(nextProxy)
-      }
-    }
-
-    // Cập nhật progress
-    setCurrentProgress(prev => {
-      const newProgress = {
-        ...prev,
-        current: prev.current + 1
-      }
-
-      // Kiểm tra nếu đã hoàn thành tất cả
-      if (newProgress.current >= newProgress.total && queueRef.current.length === 0 && activeChecksRef.current === 0) {
-        setIsProcessing(false)
-
-        return { current: 0, total: 0 }
-      }
-
-      return newProgress
-    })
-  }
+  const isLoading = isProcessing
 
   const {
     control,
@@ -149,74 +98,84 @@ export default function CheckProxyForm({ onItemListChange, onCheckedProxy }: Che
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-      format_proxy: 'host:port:username:password',
+      format_proxy: 'auto',
       protocol: 'http',
       list_proxy: ''
     }
   })
 
-  // Hàm xử lý khi submit form
-  const onSubmit = data => {
-    const format_proxy = data.format_proxy
-    const protocol = data.protocol
-    const list_proxy = data.list_proxy
+  /**
+   * Kiểm tra cả danh sách.
+   *
+   * TRƯỚC: hàng đợi chạy ĐÚNG 1 LUỒNG, mỗi proxy tối đa 15 giây → 100 proxy mất tới 25 phút.
+   * NAY: chia lô, mỗi lô máy chủ chạy song song → một lượt tốn bằng con chậm nhất trong lô,
+   * và kết quả đổ về sau MỖI lô nên thanh tiến trình nhúc nhích liên tục.
+   */
+  const onSubmit = async (data: any) => {
+    const protocol: string = data.protocol
+    const format = (data.format_proxy || 'auto') as ProxyFormatValue
 
-    // Tách và lọc các dòng trống
-    const filteredLines = list_proxy.split('\n').filter(line => line.trim() !== '')
+    const lines: string[] = String(data.list_proxy)
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l !== '')
 
-    // Reset các state và refs trước khi bắt đầu
+    // Dán trùng dòng thì chỉ GỌI KIỂM 1 lần cho mỗi chuỗi khác nhau — nhưng vẫn GIỮ ĐỦ
+    // số dòng khách dán trong bảng. Trang cha ghép kết quả theo chuỗi proxy nên mọi dòng
+    // trùng đều nhận đúng kết quả, mà không tốn thêm lượt gọi nào.
+    // (Không được lặng lẽ bỏ bớt dòng của khách — họ đếm số dòng để đối chiếu.)
+    const unique = Array.from(new Set(lines))
+    const duplicates = lines.length - unique.length
+
     setSuccessProxies([])
     setErrorProxies([])
     setIsProcessing(true)
-    setCurrentProgress({ current: 0, total: filteredLines.length })
-    queueRef.current = []
-    activeChecksRef.current = 0
+    setCurrentProgress({ current: 0, total: unique.length, duplicates })
 
-    // Cập nhật state để hiển thị trên UI
-    const proxyObjectsArray = filteredLines.map((proxyString, index) => {
-      const [host] = proxyString.split(':')
+    // Huỷ lượt chạy trước (nếu còn) rồi mới cấp thẻ huỷ mới cho lượt này.
+    cancelRef.current.cancelled = true
+    cancelRef.current = { cancelled: false }
 
-      return {
+    const token = cancelRef.current
+
+    // Dựng bảng ngay để khách thấy danh sách + trạng thái "đang chờ".
+    // Cột IP để TRỐNG: đây là IP thoát thật, chỉ biết sau khi kiểm. Trước đây điền sẵn host
+    // khách vừa gõ vào rồi gọi đó là "IP" — cột ấy chưa bao giờ nói đúng điều gì.
+    onItemListChange(
+      lines.map((proxy, index) => ({
         id: index + 1,
-        proxy: proxyString,
-        ip: host,
-        protocol: protocol,
+        proxy,
+        ip: '',
+        protocol,
         status: 'checking',
         responseTime: 'checking',
-        type: format_proxy
-      }
-    })
+        type: ''
+      }))
+    )
 
-    // Gọi callback để báo cho component cha
-    onItemListChange(proxyObjectsArray)
+    await checkAll(
+      unique.map((proxy, index) => ({ id: index, proxy, protocol: protocol as 'http' | 'socks5' })),
+      results => {
+        const rows: CheckProxyRow[] = results.map(r => ({
+          proxy: unique[Number(r.id)] ?? '',
+          ip: r.exit_ip || '',
+          protocol,
+          status: r.status,
+          responseTime: r.status === 'success' ? r.latency_ms : -1,
+          type: r.format || '',
+          message: r.message || ''
+        }))
 
-    // Tạo queue cho tất cả proxy cần check
-    queueRef.current = filteredLines.map((proxy: string) => ({
-      protocol,
-      format_proxy,
-      list_proxy: proxy
-    }))
+        onCheckedProxy(rows)
+        setSuccessProxies(prev => [...prev, ...rows.filter(r => r.status === 'success').map(r => r.proxy)])
+        setErrorProxies(prev => [...prev, ...rows.filter(r => r.status !== 'success').map(r => r.proxy)])
+        setCurrentProgress(prev => ({ ...prev, current: Math.min(prev.current + rows.length, prev.total) }))
+      },
+      token,
+      format
+    )
 
-    // Bắt đầu check với số lượng tối đa 1 luồng
-    const initialBatch = Math.min(maxConcurrentChecks, filteredLines.length)
-
-    for (let i = 0; i < initialBatch; i++) {
-      if (queueRef.current.length > 0) {
-        const proxyData = queueRef.current.shift()
-
-        activeChecksRef.current++
-        mutation.mutate(proxyData)
-      }
-    }
-  }
-
-  const handleProxyChecked = checkedProxyResult => {
-    // Phân loại vào danh sách success hoặc error
-    if (checkedProxyResult.status === 'success') {
-      setSuccessProxies(prev => [...prev, checkedProxyResult.proxy])
-    } else {
-      setErrorProxies(prev => [...prev, checkedProxyResult.proxy])
-    }
+    if (!token.cancelled) setIsProcessing(false)
   }
 
   const dataLocation = [
@@ -230,26 +189,6 @@ export default function CheckProxyForm({ onItemListChange, onCheckedProxy }: Che
     }
   ]
 
-  const dataFormat = [
-    {
-      value: 'host:port:username:password',
-      label: 'host:port:username:password'
-    }
-
-    // {
-    //   value: 'username:password@host:port',
-    //   label: 'username:password@host:port'
-    // },
-    // {
-    //   value: 'host:port@username:password',
-    //   label: 'host:port@username:password'
-    // },
-    // {
-    //   value: 'host:port',
-    //   label: 'host:port'
-    // }
-  ]
-
   return (
     <>
       <form onSubmit={handleSubmit(onSubmit)} className='check-form-panel'>
@@ -258,7 +197,8 @@ export default function CheckProxyForm({ onItemListChange, onCheckedProxy }: Che
             <h3>Kiểm tra thông tin Proxy</h3>
           </div>
 
-          {/* Định dạng Proxy */}
+          {/* Định dạng proxy: khách chọn để server tách chính xác. "Tự nhận" là mặc định.
+              Dấu phân tách phẩy / gạch đứng / tab được nhận tự động cho MỌI lựa chọn. */}
           <div className='form-group-check'>
             <Controller
               name='format_proxy'
@@ -267,10 +207,7 @@ export default function CheckProxyForm({ onItemListChange, onCheckedProxy }: Che
                 <CustomTextField
                   select
                   fullWidth
-                  defaultValue='host:port:username:password'
                   id='format_proxy'
-                  error={Boolean(errors.format_proxy)}
-                  helperText={errors.format_proxy?.message}
                   {...field}
                   label={
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -278,23 +215,21 @@ export default function CheckProxyForm({ onItemListChange, onCheckedProxy }: Che
                       Định dạng Proxy
                     </span>
                   }
+                  helperText='Chọn "Tự nhận" nếu không chắc. Nhận cả dấu phẩy / gạch đứng / tab.'
                   sx={{
-                    // Nhắm đến thẻ label của component này
                     '& .MuiInputLabel-root': {
-                      color: 'var(--mui-palette-text-secondary, #4a5568)', // Đổi màu label thành màu cam
-                      fontWeight: '600', // In đậm chữ
-                      fontSize: '13px', // Thay đổi kích thước font
+                      color: 'var(--mui-palette-text-secondary, #4a5568)',
+                      fontWeight: '600',
+                      fontSize: '13px',
                       paddingBottom: '5px'
                     }
                   }}
                 >
-                  {dataFormat.map((item, index) => {
-                    return (
-                      <MenuItem key={index} value={item.value}>
-                        {item.label}
-                      </MenuItem>
-                    )
-                  })}
+                  {PROXY_FORMATS.map(item => (
+                    <MenuItem key={item.value} value={item.value}>
+                      {item.label}
+                    </MenuItem>
+                  ))}
                 </CustomTextField>
               )}
             />
@@ -406,8 +341,11 @@ export default function CheckProxyForm({ onItemListChange, onCheckedProxy }: Che
           {isProcessing && currentProgress.total > 0 && (
             <div className='form-group-check'>
               <div style={{ marginBottom: '8px', fontSize: '14px', color: 'var(--mui-palette-text-secondary, #4a5568)' }}>
-                Tiến trình: {currentProgress.current}/{currentProgress.total}
-                {/*(Giới hạn: {maxConcurrentChecks} luồng cùng lúc)*/}
+                Đã kiểm {currentProgress.current}/{currentProgress.total} proxy
+                <span style={{ opacity: 0.7 }}> · mỗi lượt {batchSize} proxy chạy cùng lúc</span>
+                {currentProgress.duplicates > 0 && (
+                  <span style={{ opacity: 0.7 }}> · {currentProgress.duplicates} dòng trùng dùng chung kết quả</span>
+                )}
               </div>
               <div
                 style={{
@@ -459,7 +397,7 @@ export default function CheckProxyForm({ onItemListChange, onCheckedProxy }: Che
                 }
               }}
             />
-            <button type='button' className='copy-btn' onClick={handleCopyProxysSuccess}>
+            <button type='button' className='copy-btn' onClick={handleCopySuccess}>
               <Copy size={14} />
             </button>
           </div>
@@ -499,7 +437,7 @@ export default function CheckProxyForm({ onItemListChange, onCheckedProxy }: Che
               color='success'
               variant='contained'
               className='copy-btn'
-              onClick={handleCopyProxysError}
+              onClick={handleCopyError}
             >
               <Copy size={14} />
             </CustomIconButton>

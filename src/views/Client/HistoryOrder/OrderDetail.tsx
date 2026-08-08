@@ -56,6 +56,7 @@ import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderH
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 import { usePingProxy } from '@/hooks/apis/usePingProxy'
+import { useProxyCheck } from '@/hooks/apis/useProxyCheck'
 import { ROTATION_MODE, ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 import '@/components/checkout-modal/styles.css'
 import ResidentialPackageBox from './ResidentialPackageBox'
@@ -110,36 +111,57 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   const packageUsage = (apiKeysData as any)?._packageUsage || null
   const { data: histories = [] } = useOrderHistories(order?.id ?? null, open)
   const pingProxy = usePingProxy()
+  const { checkAll } = useProxyCheck()
   const [pingResults, setPingResults] = useState<Record<string, string>>({})
 
-  // Auto-ping proxy gốc cho rotate_auto khi data load xong
+  // Tự lấy IP gốc cho proxy loại tự xoay khi mở đơn.
+  //
+  // TRƯỚC: vòng lặp `for … await` từng con một, mỗi con tới 10 giây → đơn 100 proxy phải
+  // chờ tới 16 phút, mà lại chạy TỰ ĐỘNG ngay khi mở đơn.
+  // NAY: chia lô, mỗi lô máy chủ chạy song song → điền dần theo từng lô, khách thấy kết quả
+  // nhỏ giọt ngay thay vì ngồi nhìn "Đang lấy IP gốc..." hàng loạt.
   useEffect(() => {
     if (!apiKeysData?.length) return
-    const items = apiKeysData.filter((item: any) => {
-      if (item.rotation_mode !== ROTATION_MODE.ROTATE_AUTO) return false
-      const proxys = item.proxy || item.proxys || {}
-      const proxyStr = extractProxyValue(proxys)
-      const itemKey = item.key || item.api_key
-      return proxyStr && proxyStr !== '-' && itemKey && !pingResults[itemKey]
-    })
+
+    const items = apiKeysData
+      .filter((item: any) => {
+        if (item.rotation_mode !== ROTATION_MODE.ROTATE_AUTO) return false
+        const proxyStr = extractProxyValue(item.proxy || item.proxys || {})
+        const itemKey = item.key || item.api_key
+
+        return proxyStr && proxyStr !== '-' && itemKey && !pingResults[itemKey]
+      })
+      .map((item: any) => ({
+        id: String(item.key || item.api_key),
+        proxy: extractProxyValue(item.proxy || item.proxys || {})
+      }))
+
     if (!items.length) return
 
-    // Ping tuần tự để tránh mutate cancel nhau
-    const pingSequential = async () => {
-      for (const item of items) {
-        const proxys = item.proxy || item.proxys || {}
-        const proxyStr = extractProxyValue(proxys)
-        const itemKey = item.key || item.api_key
-        setPingResults(prev => ({ ...prev, [itemKey]: 'loading' }))
-        try {
-          const data = await pingProxy.mutateAsync(proxyStr)
-          setPingResults(prev => ({ ...prev, [itemKey]: data?.origin_ip || 'N/A' }))
-        } catch {
-          setPingResults(prev => ({ ...prev, [itemKey]: 'Lỗi kết nối' }))
-        }
-      }
-    }
-    pingSequential()
+    setPingResults(prev => {
+      const next = { ...prev }
+
+      items.forEach((i: any) => { next[i.id] = 'loading' })
+
+      return next
+    })
+
+    // Đóng đơn giữa chừng thì dừng vòng lặp, khỏi ghi trạng thái vào component đã tháo.
+    const cancel = { cancelled: false }
+
+    checkAll(items, batch => {
+      setPingResults(prev => {
+        const next = { ...prev }
+
+        batch.forEach(r => {
+          next[String(r.id)] = r.status === 'success' ? (r.exit_ip || 'N/A') : (r.message || 'Lỗi kết nối')
+        })
+
+        return next
+      })
+    }, cancel)
+
+    return () => { cancel.cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKeysData])
   const renewals = useMemo(() => histories.filter(h => h.type === 'renewal'), [histories])

@@ -29,6 +29,11 @@ interface RotationState {
   allow_auto: boolean
   min_interval: number
   second: number
+  // Sản phẩm tự đổi IP: không có API xoay để gọi. BE ép allow_manual/allow_auto = false
+  // nên nút xoay tay và khối tự động tự ẩn theo điều kiện sẵn có — chỗ này chỉ cần dòng chữ.
+  self_rotating?: boolean
+  // Nhịp đổi IP của CHÍNH đơn này (khách chọn lúc mua). Đơn cũ chưa có ô chọn → null.
+  rotation_note?: string | null
 }
 
 interface ProxyDetailModalProps {
@@ -215,26 +220,35 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
         ) : (
           <Box sx={{ p: 2.5, mb: 2, bgcolor: '#fffbeb', borderRadius: 2, border: '1px solid #fde68a', textAlign: 'center' }}>
             <Typography variant='body2' sx={{ color: '#92400e' }}>
-              Chưa có proxy — bấm <strong>"Lấy proxy"</strong> bên dưới để kích hoạt.
+              {/* SP tự xoay KHÔNG có nút "Lấy proxy" (đã ẩn cùng nút xoay) → không được bảo khách đi bấm
+                  một cái nút không tồn tại. Loại này proxy do hệ thống tự giao, khách chỉ cần đợi. */}
+              {rot?.self_rotating
+                ? <>Proxy đang được chuẩn bị, anh/chị vui lòng đợi giây lát rồi mở lại.</>
+                : <>Chưa có proxy — bấm <strong>"Lấy proxy"</strong> bên dưới để kích hoạt.</>}
             </Typography>
           </Box>
         )}
 
         {/* IP thật ra internet (exit) — đổi mỗi lần xoay; proxy kết nối là cổng cố định.
             Ping trực tiếp qua proxy để lấy IP đang dùng THẬT (kể cả khi tự xoay định kỳ). */}
-        {(pingedIp || localProxy?.real_ip) && (
+        {/* Với SP tự xoay, IP hiện tại là thứ DUY NHẤT khách còn xem được (nút xoay đã ẩn) →
+            phải hiện khối này cả khi ping lỗi, nếu không nút ↻ nằm bên trong sẽ biến mất luôn
+            và khách hết đường thử lại. SP thường giữ nguyên: chỉ hiện khi đã có IP. */}
+        {(pingedIp || localProxy?.real_ip || rot?.self_rotating) && (
           <Box sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant='body2' color='text.secondary'>IP hiện tại:</Typography>
-              <Typography sx={{ fontFamily: 'monospace', fontWeight: 600, color: '#059669', fontSize: '0.9rem' }}>
-                {pinging ? 'Đang lấy...' : (pingedIp || localProxy?.real_ip)}
+              <Typography sx={{ fontFamily: 'monospace', fontWeight: 600, color: (pingedIp || localProxy?.real_ip) ? '#059669' : '#94a3b8', fontSize: '0.9rem' }}>
+                {pinging ? 'Đang lấy...' : (pingedIp || localProxy?.real_ip || 'chưa lấy được — bấm ↻ để thử lại')}
               </Typography>
               <Button variant='text' size='small' sx={{ minWidth: 0, px: 0.5 }} disabled={pinging}
                 onClick={() => pingIp()} title='Làm mới IP hiện tại'>
                 <RefreshCw size={13} />
               </Button>
-              <Button variant='text' size='small' startIcon={<Copy size={13} />} sx={{ minWidth: 0 }}
-                onClick={() => copy(pingedIp || localProxy?.real_ip, 'Đã copy IP!')} />
+              {(pingedIp || localProxy?.real_ip) && (
+                <Button variant='text' size='small' startIcon={<Copy size={13} />} sx={{ minWidth: 0 }}
+                  onClick={() => copy(pingedIp || localProxy?.real_ip, 'Đã copy IP!')} />
+              )}
             </Box>
             {prevIp && (pingedIp || localProxy?.real_ip) && prevIp !== (pingedIp || localProxy?.real_ip) && (
               <Typography sx={{ fontSize: 11, color: '#94a3b8', mt: 0.25, fontFamily: 'monospace' }}>
@@ -261,6 +275,17 @@ const ProxyDetailModal: React.FC<ProxyDetailModalProps> = ({ open, onClose, prox
                     : countdown > 0 ? `Có thể xoay sau ${countdown}s`
                     : proxyValue ? 'Xoay IP ngay' : 'Lấy proxy'}
                 </Button>
+              </Box>
+            )}
+
+            {/* Sản phẩm tự đổi IP: nút xoay tay + khối tự động đã tự ẩn (allow_manual/allow_auto=false),
+                thay bằng ĐÚNG MỘT DÒNG nói IP đổi thế nào — mỗi đơn một khác vì khách tự chọn nhịp lúc mua.
+                Luôn hiện, kể cả khi chưa đọc được nhịp, để chỗ này không trống trơn sau khi 2 nút biến mất. */}
+            {rot?.self_rotating && (
+              <Box sx={{ p: 1.25, bgcolor: '#f8fafc', borderRadius: 1.5, border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: '#059669' }}>
+                  {rot.rotation_note || 'Proxy này không đổi IP theo yêu cầu'}
+                </Typography>
               </Box>
             )}
 

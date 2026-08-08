@@ -51,11 +51,12 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Lấy Proxy Xoay Mới',
     method: 'GET',
     endpoint: `${PROXY_BASE}/proxies/new`,
-    description: 'Lấy proxy hiện tại từ cache (CHỈ ĐỌC, không xoay IP). second = số giây tới lần xoay kế (cooldown hoặc nhịp auto). real_ip = IP gốc (IP thoát thực tế, nếu sản phẩm có cấu hình). Đơn mới chưa kích hoạt → trả NO_PROXY_DATA; gọi /proxies/rotate-ip để lấy proxy lần đầu.',
+    description: 'Lấy proxy hiện tại từ cache (CHỈ ĐỌC, không xoay IP). second = số giây tới lần xoay kế (cooldown hoặc nhịp auto). real_ip = IP gốc (IP thoát thực tế). Đơn mới chưa kích hoạt → trả NO_PROXY_DATA; gọi /proxies/rotate-ip để lấy proxy lần đầu.',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
-      { name: 'key', type: 'string', required: true, description: 'API Key của đơn hàng proxy xoay', example: 'G5aTZVGtrHPRL1YUhBUSfPx' }
+      { name: 'key', type: 'string', required: true, description: 'API Key của đơn hàng proxy xoay', example: 'G5aTZVGtrHPRL1YUhBUSfPx' },
+      { name: 'with_exit_ip', type: 'boolean', required: false, description: 'Đặt 1 để kiểm tra IP gốc (IP thoát) đang dùng thật và trả kèm ở real_ip. Mặc định tắt vì thao tác này mất 1-3 giây. Kết quả được đệm 15 giây; với proxy đổi IP mỗi lần kết nối thì đây chỉ là IP tại thời điểm kiểm tra. Kiểm tra không thành công thì vẫn trả proxy như thường, không báo lỗi.', example: '1' }
     ],
     requestBody: undefined,
     responses: {
@@ -97,11 +98,12 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Lấy Proxy Hiện Tại',
     method: 'GET',
     endpoint: `${PROXY_BASE}/proxies/current`,
-    description: 'Lấy proxy hiện tại (alias của /proxies/new, CHỈ ĐỌC). second = số giây tới lần xoay kế. real_ip = IP gốc (IP thoát thực tế, nếu sản phẩm có cấu hình).',
+    description: 'Lấy proxy hiện tại (alias của /proxies/new, CHỈ ĐỌC). second = số giây tới lần xoay kế. real_ip = IP gốc (IP thoát thực tế). Với sản phẩm tự đổi IP, đây là cách lấy IP gốc: gọi kèm with_exit_ip=1.',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
-      { name: 'key', type: 'string', required: true, description: 'API Key của đơn hàng proxy xoay', example: 'G5aTZVGtrHPRL1YUhBUSfPx' }
+      { name: 'key', type: 'string', required: true, description: 'API Key của đơn hàng proxy xoay', example: 'G5aTZVGtrHPRL1YUhBUSfPx' },
+      { name: 'with_exit_ip', type: 'boolean', required: false, description: 'Đặt 1 để kiểm tra IP gốc (IP thoát) đang dùng thật và trả kèm ở real_ip. Mặc định tắt vì thao tác này mất 1-3 giây. Kết quả được đệm 15 giây; với proxy đổi IP mỗi lần kết nối thì đây chỉ là IP tại thời điểm kiểm tra. Kiểm tra không thành công thì vẫn trả proxy như thường, không báo lỗi.', example: '1' }
     ],
     responses: {
       '200 OK': `{
@@ -142,11 +144,12 @@ export const apiEndpoints: ApiEndpoint[] = [
     title: 'Xoay IP Proxy',
     method: 'POST',
     endpoint: `${PROXY_BASE}/proxies/rotate-ip`,
-    description: 'Xoay IP ngay — đổi sang IP mới. Có cooldown tối thiểu theo sản phẩm (mặc định 60 giây); trong cooldown trả về proxy HIỆN TẠI kèm second = số giây còn lại (không đổi IP). Field real_ip = IP gốc (IP thoát thực tế), chỉ có khi sản phẩm được cấu hình field này.',
+    description: 'Xoay IP ngay — đổi sang IP mới. Có cooldown tối thiểu theo sản phẩm (mặc định 60 giây); trong cooldown trả về proxy HIỆN TẠI kèm second = số giây còn lại (không đổi IP). Field real_ip = IP gốc (IP thoát thực tế). ⚠️ Sản phẩm TỰ ĐỔI IP không xoay theo yêu cầu được: nhịp đổi IP đã chốt lúc mua nên endpoint này trả HTTP 200 kèm rotatable=false + proxy hiện tại, KHÔNG đổi IP và KHÔNG tính cooldown. Kiểm tra rotatable trước khi coi là đã xoay xong; muốn xem IP gốc thì dùng /proxies/current?with_exit_ip=1.',
     category: 'proxy',
     auth: 'x_api_key',
     parameters: [
-      { name: 'key', type: 'string', required: true, description: 'API Key (key đơn hàng proxy xoay). Có thể gửi qua body hoặc query.', example: 'G5aTZVGtrHPRL1YUhBUSfPx' }
+      { name: 'key', type: 'string', required: true, description: 'API Key (key đơn hàng proxy xoay). Có thể gửi qua body hoặc query.', example: 'G5aTZVGtrHPRL1YUhBUSfPx' },
+      { name: 'with_exit_ip', type: 'boolean', required: false, description: 'Đặt 1 để trả kèm IP gốc (IP thoát) ở real_ip. Hữu ích với sản phẩm tự đổi IP. Xem chi tiết ở /proxies/current.', example: '1' }
     ],
     responses: {
       '200 OK': `{
@@ -168,6 +171,24 @@ export const apiEndpoints: ApiEndpoint[] = [
     "socks5": "103.45.67.89:20814:user:pass"
   }
 }`,
+      '200 TỰ ĐỔI IP': `{
+  "success": true,
+  "code": 200,
+  "status": "SUCCESS",
+  "second": 0,
+  "rotatable": false,
+  "message": "IP tự đổi mỗi 10 phút",
+  "rotation_note": "IP tự đổi mỗi 10 phút",
+  "rotation_period": 600,
+  "data": {
+    "value": "gw.example.com:10000:user:pass",
+    "protocol": "http",
+    "ip": "gw.example.com",
+    "port": "10000",
+    "user": "user",
+    "pass": "pass"
+  }
+}`,
       '404 ERROR': `{
   "success": false,
   "message": "Key not found",
@@ -182,7 +203,7 @@ export const apiEndpoints: ApiEndpoint[] = [
   "seconds": 60
 }`
     },
-    statusCodes: ['200 OK', '404 ERROR', '502 ERROR']
+    statusCodes: ['200 OK', '200 TỰ ĐỔI IP', '404 ERROR', '502 ERROR']
   },
 
   {

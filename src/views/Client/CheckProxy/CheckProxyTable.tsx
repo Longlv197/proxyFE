@@ -41,6 +41,8 @@ interface ProxyData {
   status: string
   responseTime: string
   type: string
+  /** Lý do khi proxy không dùng được — hiện ngay dưới nhãn trạng thái. */
+  message?: string
 }
 
 interface CheckProxyTableProps {
@@ -110,14 +112,34 @@ export default function CheckProxyTable({ data, checkedProxy }: CheckProxyTableP
       {
         accessorKey: 'protocol',
         header: 'Loại',
-        cell: ({ row }: any) => {
-          if (row.original.protocol === 'http') {
-            return <span>HTTP</span>
-          } else if (row.original.protocol === 'socks5') {
-            return <span>SOCKS5</span>
-          }
-        },
+        cell: ({ row }: any) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span>{row.original.protocol === 'socks5' ? 'SOCKS5' : 'HTTP'}</span>
+            {/* Máy chủ báo lại đã hiểu chuỗi theo dạng nào — thay cho ô "Định dạng proxy" cũ
+                bắt khách tự khai (khai sai cũng không ai biết). */}
+            {row.original.type && (
+              <span style={{ fontSize: 10.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>{row.original.type}</span>
+            )}
+          </div>
+        ),
         size: 40
+      },
+      {
+        // Cột này TRƯỚC ĐÂY không tồn tại: dữ liệu `ip` có sẵn nhưng chưa bao giờ được vẽ ra,
+        // mà giá trị trong đó lại là host khách vừa gõ vào chứ không phải IP thật.
+        // Nay là IP THOÁT đo được khi đi qua proxy — đúng thứ khách cần biết.
+        accessorKey: 'ip',
+        header: 'IP gốc',
+        cell: ({ row }: any) => {
+          const ip = row.original.ip
+
+          if (!ip) return <span style={{ color: '#cbd5e1' }}>—</span>
+
+          return (
+            <span style={{ fontFamily: 'monospace', fontSize: 12.5, fontWeight: 600, color: '#059669' }}>{ip}</span>
+          )
+        },
+        size: 60
       },
       {
         accessorKey: 'responseTime',
@@ -190,14 +212,22 @@ export default function CheckProxyTable({ data, checkedProxy }: CheckProxyTableP
               />
             )
           } else {
+            // Hiện LÝ DO ngay dưới nhãn: máy chủ đã trả về ("sai mật khẩu", "quá thời gian chờ",
+            // "IP chưa được cho phép"…) nhưng trước đây bảng không có chỗ nào hiển thị, nên khách
+            // chỉ thấy chữ đỏ "Ngưng hoạt động" mà không biết vì sao và phải sửa gì.
             return (
-              <Chip
-                label='Ngưng hoạt động'
-                color='error'
-                variant='tonal'
-                size='small'
-                icon={<BadgeMinus size={16} />}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Chip
+                  label='Ngưng hoạt động'
+                  color='error'
+                  variant='tonal'
+                  size='small'
+                  icon={<BadgeMinus size={16} />}
+                />
+                {row.original.message && (
+                  <span style={{ fontSize: 11, color: '#b91c1c', lineHeight: 1.35 }}>{row.original.message}</span>
+                )}
+              </div>
             )
           }
         },

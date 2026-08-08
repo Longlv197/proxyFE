@@ -2,8 +2,9 @@ import { useMutation } from '@tanstack/react-query'
 import useAxiosAuth from '@/hocs/useAxiosAuth'
 
 interface PingResult {
+  /** IP thoát THẬT đo được qua proxy. */
   origin_ip: string
-  proxy: string
+  latency_ms: number
   pinged_at: string
 }
 

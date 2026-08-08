@@ -1756,10 +1756,14 @@ return { values: {}, errors: formattedErrors }
   const isPending = createMutation.isPending || updateMutation.isPending
 
   // useWatch cô lập re-render — chỉ re-render khi các field này thay đổi
-  const [watchedType, watchedRotationType, watchedTag, watchedStatus, watchedAuthType] = useWatch({
+  const [watchedType, watchedRotationType, watchedTag, watchedStatus, watchedAuthType, watchedRotationMode] = useWatch({
     control,
-    name: ['type', 'rotation_type', 'tag', 'status', 'auth_type'],
+    name: ['type', 'rotation_type', 'tag', 'status', 'auth_type', 'rotation_mode'],
   })
+
+  // "Tự xoay" = nhà cung cấp tự đổi IP, KHÔNG có lệnh xoay để gọi → 2 công tắc bên dưới vô nghĩa.
+  // BE khoá theo chính cột này nên đây chỉ là phần nói cho admin biết, không phải nơi quyết định.
+  const isSelfRotatingProduct = watchedRotationMode === 'rotate_auto'
 
   // Duration options — useMemo thay vì useState+useEffect (tránh infinite loop)
   const { durationOptions, durationUrlMap } = useMemo(() => {
@@ -2261,13 +2265,23 @@ return <Chip key={val} label={p?.label || val} size='small' />
               {/* ========== Section: Chế độ xoay IP (chỉ Rotating) ========== */}
               {watchedType === '1' && (
               <CollapsibleSection title='Chế độ xoay IP' icon={RefreshCw} iconColor='#f59e0b' iconBg='#fffbeb'>
-                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.7 }}>
-                  Đơn mới <strong>mặc định xoay thủ công</strong> — khách bấm "Xoay IP" mới gọi NCC. Khách có thể tự bật <strong>tự động xoay</strong> ở trang đơn (nếu cho phép) và chọn chu kỳ ≥ mức tối thiểu dưới đây.
-                </div>
+                {isSelfRotatingProduct ? (
+                  <div style={{ fontSize: 12, color: '#475569', marginBottom: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', lineHeight: 1.7 }}>
+                    Ô <strong>Chế độ xoay</strong> đang đặt <strong>"Tự xoay"</strong>: IP tự đổi theo nhịp khách chọn lúc mua,
+                    hệ thống không có lệnh xoay nào để gọi. Vì vậy trang đơn của khách sẽ <strong>ẩn nút "Xoay IP" và mục tự động xoay</strong>,
+                    chỉ còn xem IP hiện tại. Ba ô dưới đây <strong>không có tác dụng</strong> với sản phẩm loại này.
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.7 }}>
+                    Đơn mới <strong>mặc định xoay thủ công</strong> — khách bấm "Xoay IP" mới gọi NCC. Khách có thể tự bật <strong>tự động xoay</strong> ở trang đơn (nếu cho phép) và chọn chu kỳ ≥ mức tối thiểu dưới đây.
+                  </div>
+                )}
                 <Grid2 container spacing={1.5} alignItems='center'>
                   <Grid2 size={{ xs: 12, sm: 6 }}>
                     <FormControlLabel
+                      disabled={isSelfRotatingProduct}
                       control={<Switch size='small' color='warning' checked={rotationConfig.allow_manual}
+                        disabled={isSelfRotatingProduct}
                         onChange={e => setRotationConfig(c => ({ ...c, allow_manual: e.target.checked }))} />}
                       label={<Typography sx={{ fontSize: 13, fontWeight: 600 }}>Cho khách xoay thủ công</Typography>}
                       sx={{ ml: 0 }}
@@ -2275,7 +2289,9 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   </Grid2>
                   <Grid2 size={{ xs: 12, sm: 6 }}>
                     <FormControlLabel
+                      disabled={isSelfRotatingProduct}
                       control={<Switch size='small' color='warning' checked={rotationConfig.allow_auto}
+                        disabled={isSelfRotatingProduct}
                         onChange={e => setRotationConfig(c => ({ ...c, allow_auto: e.target.checked }))} />}
                       label={<Typography sx={{ fontSize: 13, fontWeight: 600 }}>Cho khách bật tự động xoay</Typography>}
                       sx={{ ml: 0 }}
@@ -2283,6 +2299,7 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   </Grid2>
                   <Grid2 size={{ xs: 12, sm: 6 }}>
                     <CustomTextField select fullWidth size='small' label='Chu kỳ tối thiểu'
+                      disabled={isSelfRotatingProduct}
                       value={String(rotationConfig.min_interval)}
                       onChange={(e: any) => setRotationConfig(c => ({ ...c, min_interval: Number(e.target.value) }))}
                       helperText='Sàn chu kỳ auto + khoảng cách tối thiểu giữa 2 lần xoay tay (chống spam NCC)'>
