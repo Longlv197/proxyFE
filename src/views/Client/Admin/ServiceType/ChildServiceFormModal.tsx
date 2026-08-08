@@ -449,6 +449,25 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     if (selectedProduct.pool_size) setValue('pool_size', selectedProduct.pool_size)
     if (selectedProduct.note) setValue('note', selectedProduct.note)
 
+    // Nạp LỰA CHỌN MUA (custom_fields) từ SP site mẹ → preview hiện đúng quốc gia + cờ + các lựa chọn.
+    // Trước đây luồng import MỚI không nạp cái này (chỉ edit/auto-sync mới nạp) → preview trống
+    // quốc gia/lựa chọn, admin con thấy khác hẳn thẻ site mẹ. Map giống hệt luồng edit (khoá lạ giữ ở __raw).
+    if (Array.isArray((selectedProduct as any).custom_fields)) {
+      setPurchaseOptions(
+        (selectedProduct as any).custom_fields.map((f: any) => ({
+          key: f.key || f.param || '',
+          param_name: f.param_name || f.param || f.key || '',
+          label: f.label || '',
+          type: f.type || 'select',
+          required: f.required || false,
+          default: f.default || '',
+          display_type: f.display_type || '',
+          options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' })),
+          __raw: f
+        }))
+      )
+    }
+
     // Set pricing mode theo site mẹ
     const parentMode = selectedProduct.pricing_mode || 'fixed'
     setParentPricingMode(parentMode)

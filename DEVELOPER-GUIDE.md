@@ -847,6 +847,30 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+55 Site con: import SP mẹ — preview KHÔNG hiện quốc gia/lựa chọn (09/08/2026)
+
+**Vấn đề (admin site con, luồng IMPORT MỚI):** vào tạo SP con → chọn/nhập code SP mẹ → bấm "Kiểm tra"
+→ preview (ProxyCard) hiện **thiếu quốc gia + các lựa chọn cấu hình** (country_flag, combo location…),
+khác hẳn cách site mẹ hiển thị. "Site mẹ thế nào con phải thế ấy" nhưng con không giống.
+
+**Gốc rễ (đã trace, không đoán):** trong `ChildServiceFormModal`, useEffect chạy khi chọn SP mẹ
+(`selectedProduct = checkedProduct`) set `country` + giá + thông số kỹ thuật, **nhưng KHÔNG set
+`purchaseOptions`** (custom_fields). Preview (`previewProvider`) đọc `purchaseOptions` → rỗng → ProxyCard
+không có trường quốc gia/lựa chọn để vẽ. Chỉ nhánh EDIT / auto-sync mới set `purchaseOptions`, nên
+**luồng import MỚI bị sót** — đúng 4 handler "Kiểm tra" đều không set (vá rải rác thiếu).
+
+**Sửa:** thêm `setPurchaseOptions(...)` từ `selectedProduct.custom_fields` vào **đúng useEffect
+selectedProduct** — chỗ này chạy cho MỌI luồng Kiểm tra → một nguồn sự thật, không phải sửa 4 nơi.
+Map giống hệt nhánh edit (fallback `provider_value = value/key`, giữ khoá lạ ở `__raw`).
+
+**Verify:** tsc **294 = baseline** (0 lỗi mới). Dữ liệu: `checkByCode` trả `custom_fields`
+(location country_flag VN/US + cờ) + `country='vn,us'` → preview đủ dữ liệu để vẽ đúng như mẹ.
+⚠ Chưa chụp được preview sau vá vì màn admin cần đăng nhập — anh Long verify trên site con thật.
+
+**Files:** `src/views/Client/Admin/ServiceType/ChildServiceFormModal.tsx`
+
+---
+
 #### 13.N+54 Lấy IP gốc & Kiểm tra proxy: bỏ chạy tuần tự, hiện IP thật và lý do lỗi (08/08/2026)
 
 **Vấn đề.** Chi tiết đơn lấy IP gốc bằng vòng `for … await` từng con (10s/con, tự chạy khi mở đơn);
