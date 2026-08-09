@@ -828,11 +828,21 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                 <Grid2 container spacing={1.5} sx={{ mb: 1.5 }}>
                   <Grid2 size={{ xs: 4 }}>
                     {/* displayEmpty: MUI coi value='' là "chưa chọn gì" và bỏ trống ô — phải bật cờ này
-                        thì dòng "Text (mặc định)" mới hiện ra thay vì ô rỗng trông như chưa chọn. */}
+                        thì dòng đầu tiên mới hiện ra thay vì ô rỗng trông như chưa chọn.
+                        Nhãn nói HẬU QUẢ ("bung hết ra" / "gọn"), không nói tên kỹ thuật — admin nhìn là
+                        biết khách sẽ thấy gì. Để trống = giữ đúng cách hiện trước giờ. */}
                     <CustomTextField fullWidth size='small' select label='Cách hiển thị' value={opt.display_type || ''}
                       slotProps={{ select: { displayEmpty: true } }}
+                      helperText={
+                        opt.display_type === 'dropdown'
+                          ? 'Khách bấm mở ra mới thấy danh sách — hợp khi nhiều lựa chọn'
+                          : opt.display_type === 'country_flag'
+                            ? 'Hiện lưới thẻ có cờ, khách thấy hết các nước ngay'
+                            : `Hiện hết ${opt.options?.length || 0} lựa chọn ra màn hình`
+                      }
                       onChange={(e: any) => update(optIdx, { display_type: e.target.value || '' })}>
-                      <MenuItem value=''>Text (mặc định)</MenuItem>
+                      <MenuItem value=''>Tự động (bung hết ra)</MenuItem>
+                      <MenuItem value='dropdown'>Dropdown (gọn, chọn 1 dòng)</MenuItem>
                       <MenuItem value='country_flag'>Cờ quốc gia</MenuItem>
                     </CustomTextField>
                   </Grid2>

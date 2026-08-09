@@ -782,7 +782,22 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   </div>
                   )
                 ) : (field.type || 'select') === 'select' && fieldOptions.length ? (
-                  // Hiển thị 3 cách tuỳ data + display_type
+                  // Admin chọn "Dropdown (gọn)" thì PHẢI ra dropdown — đặt trước mọi nhánh đoán theo
+                  // số lượng bên dưới. Trước đây `display_type` chỉ được đọc cho `combo`, còn `select`
+                  // thì mọi nhánh đều bung hết ra (thẻ cờ / lưới pill / radio) → admin đặt gì cũng vô
+                  // tác dụng. Dùng lại ComboDropdown, KHÔNG dựng dropdown thứ hai.
+                  (field as any).display_type === 'dropdown' ? (
+                    <ComboDropdown
+                      options={fieldOptions.map((o: any) => ({
+                        key: o.key || o.value,
+                        label: resolveLabel(o, isCountryFlag),
+                        flag: o.flag
+                      }))}
+                      value={selectedValue || ''}
+                      onSelect={(k) => setFieldValue(fieldKey, k)}
+                    />
+                  ) :
+                  // Còn lại: đoán theo data (giữ nguyên hành vi cũ cho SP chưa khai gì)
                   isTariffCard && fieldOptions.length <= 12 ? (
                     // Tariff card — hiển thị tên + traffic + giá nổi bật
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>

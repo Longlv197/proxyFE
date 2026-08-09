@@ -236,7 +236,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       type: 'select' | 'text' | 'number'
       required: boolean
       default: string
-      display_type?: 'country_flag' | ''
+      // 'dropdown' = admin mẹ chọn hiện gọn; con nhận qua đồng bộ và tôn trọng y nguyên
+      display_type?: 'country_flag' | 'dropdown' | ''
       options: Array<{ provider_value: string; label: string; key?: string; flag?: string; value?: string }>
     }>
   >([])

@@ -847,6 +847,45 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+63 Trường `select`: admin đặt cách hiển thị nhưng màn mua vẫn BUNG HẾT ra (09/08/2026)
+
+**Vấn đề:** admin khai trường tuỳ chọn kiểu `select`, mong khách thấy một ô chọn gọn. Thực tế màn
+thanh toán **bung toàn bộ lựa chọn ra màn hình**. Kiểm code: `CheckoutModal` **không hề đọc
+`display_type` cho `select`** — chỉ đọc cho `combo` (L760). Với `select` nó tự đoán theo số lượng:
+
+| Điều kiện | Vẽ ra |
+|---|---|
+| có cờ & ≤ 30 lựa chọn | lưới thẻ cờ — bung hết |
+| > 8 lựa chọn | lưới pill + ô tìm kiếm — bung hết |
+| ≤ 8 lựa chọn | radio — bung hết |
+
+**Không có nhánh nào ra dropdown** → admin đặt gì cũng vô tác dụng. Lỗ thứ hai: ô "Cách hiển thị"
+trong form sản phẩm **còn không có mục "Dropdown"** để chọn (chỉ có *Text (mặc định)* và *Cờ quốc gia*;
+riêng `combo` mới có Dropdown).
+
+**Sửa:**
+- `CheckoutModal`: thêm nhánh `display_type === 'dropdown'` cho `select`, **đặt TRƯỚC** mọi nhánh đoán
+  theo số lượng. Dùng lại `ComboDropdown` sẵn có, không dựng dropdown thứ hai. Nhãn đi qua
+  `resolveLabel` nên trường quốc gia vẫn dịch theo ngôn ngữ.
+- `ServiceFormModal`: thêm mục **"Dropdown (gọn, chọn 1 dòng)"**. Nhãn viết theo HẬU QUẢ thay vì tên kỹ
+  thuật: `Text (mặc định)` → **"Tự động (bung hết ra)"**, kèm `helperText` đổi theo lựa chọn
+  ("Hiện hết N lựa chọn ra màn hình" / "Khách bấm mở ra mới thấy danh sách").
+- `ChildServiceFormModal`: nới kiểu `display_type` nhận `'dropdown'` — con nhận qua đồng bộ và tôn
+  trọng y nguyên cài đặt của mẹ (con không có ô sửa riêng).
+
+**Anh Long chốt: KHÔNG đảo mặc định.** Để trống = giữ đúng cách hiện trước giờ → sản phẩm đang bán
+(SP27 3 lựa chọn · SP33 2 · SP37 7 · SP42 2 · SP con `rotate_period` 9) **không đổi giao diện** cho tới
+khi admin tự bật.
+
+**Verify:** tsc 294 = baseline (có lúc 295 do `selectedValue` là `string | undefined` — đã `|| ''`).
+⚠ Chưa xem được bằng mắt: thẻ xem trước trong form admin chỉ vẽ dòng tóm tắt, không vẽ ô chọn thật —
+nên đổi mục này phải mở màn mua thật mới thấy. `helperText` là chỗ bù lại bằng chữ.
+
+**Files:** `src/components/checkout-modal/CheckoutModal.tsx`,
+`src/views/Client/Admin/ServiceType/{ServiceFormModal,ChildServiceFormModal}.tsx`
+
+---
+
 #### 13.N+61 🔴 Site con: bấm "Đồng bộ" làm MẤT lựa chọn của trường combo → thẻ hiện SAI nước (09/08/2026)
 
 **Triệu chứng thật trên `sieuthiseeding.vn`:** SP #20 "Rotate IPv4 Global test" có trường `location`
