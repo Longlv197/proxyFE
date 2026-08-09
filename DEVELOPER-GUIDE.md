@@ -847,6 +847,23 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+58 🔴 Trang mua proxy XOAY: SP gói vẫn NHÂN GIÁ theo số lượng (thiếu priceQuantityMode) (09/08/2026)
+
+**Vấn đề:** nhập số lượng cho SP gói (residential) ở trang mua proxy xoay → tổng tiền vẫn ×số lượng, dù
+BE charge + metadata đã đúng (15.N+44/45). Gốc: **`RotatingProxyPage`** render `<CheckoutModal>` mà
+**KHÔNG truyền `priceQuantityMode`** → CheckoutModal mặc định `'multiply'` → total = đơn giá × số lượng.
+(ProxyCard có truyền — nhưng trang proxy XOAY dùng RotatingProxyPage, không dùng ProxyCard → bị sót.)
+
+**Sửa:** `RotatingProxyPage` truyền `priceQuantityMode={plan.metadata?.price_quantity_mode === 'package'
+? 'package' : 'multiply'}` vào CheckoutModal. Trang proxy TĨNH đi qua ProxyCard nên đã đúng sẵn.
+
+**Verify:** tsc 294=baseline. Với metadata.price_quantity_mode='package' (đã backfill con) → CheckoutModal
+line 324 total = đơn giá (không nhân).
+
+**Files:** `src/views/Client/RotatingProxy/RotatingProxyPage.tsx`
+
+---
+
 #### 13.N+57 Site con: bảng đối chiếu cấu hình mẹ↔con khi kiểm tra/đồng bộ (Mới/Bỏ/Đổi) (09/08/2026)
 
 **Vấn đề:** con "Đồng bộ" SP mẹ → **ghi đè lặng lẽ** (set thẳng options/giá/mode), admin không thấy đã đổi

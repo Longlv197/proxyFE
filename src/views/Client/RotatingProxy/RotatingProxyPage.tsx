@@ -698,6 +698,9 @@ const PlanCard = ({ plan }) => {
         quantityTiers={plan.metadata?.quantity_tiers || []}
         customFields={plan.metadata?.custom_fields || undefined}
         maxIps={plan.metadata?.max_ips || 1}
+        // SP gói (residential): giá theo gói, KHÔNG nhân số lượng. Trước thiếu prop này → CheckoutModal
+        // mặc định 'multiply' → nhập số lượng bị NHÂN GIÁ dù đã là gói. (ProxyCard có, trang xoay thì sót.)
+        priceQuantityMode={plan.metadata?.price_quantity_mode === 'package' ? 'package' : 'multiply'}
       />
     </>
   )
