@@ -847,6 +847,31 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+60 Hiện thuộc tính khách đã chọn ở đơn hàng + trang proxy (09/08/2026)
+
+**Vấn đề:** khách mở đơn đã mua không thấy mình đã chọn gì (Nhà mạng nào, Vị trí nào) — cả ở danh sách
+đơn, chi tiết đơn lẫn trang `order-items`. FE **không vẽ ở đâu cả**, dù BE có sẵn dữ liệu.
+
+**Sửa:** BE trả `purchase_attributes` (đã là nhãn tiếng người — xem BE 15.N+48). FE thêm **một** component
+dùng chung `PurchaseAttributes` cho cả 3 màn:
+- `HistoryOrderPage` — chip dưới tên sản phẩm, quá 3 thì gộp "+N" (hover xem đủ).
+- `OrderDetail` — khối "Tuỳ chọn khi mua", mỗi thuộc tính một dòng nhãn — giá trị.
+- Trang `order-items` — cột "Thuộc tính" mới (mọi proxy cùng đơn hiện giống nhau vì khách chọn 1 lần
+  cho cả đơn).
+
+**Cố ý KHÔNG dò nhãn ở FE.** FE chỉ vẽ cái BE đã dịch. Dò lại ở FE là chép luật ra chỗ thứ hai, mà lệch
+luật chính là thứ đẻ ra bug (bài học dòng Quốc gia trên thẻ sản phẩm — 13.N+50/e9330a6).
+Cờ dùng chung `fixCountryCode` của `tagConfig`, không tự chế lại.
+
+**Verify:** tsc 294 = baseline. Gọi API thật bằng JWT: `/api/get-order` và `/api/order-items` đều trả
+`purchase_attributes` đúng nhãn tiếng Việt.
+
+**Files:** `src/components/PurchaseAttributes.tsx` (mới), `src/views/Client/HistoryOrder/
+{HistoryOrderPage,OrderDetail}.tsx`, `src/app/[lang]/(private)/(client)/order-items/page.tsx`,
+`src/hooks/apis/useOrderItems.ts`
+
+---
+
 #### 13.N+59 🔴 Ô số lượng cho gõ tới 9999 + không nói trần cho khách (09/08/2026)
 
 **Vấn đề:** cùng ổ với 13.N+58 — `RotatingProxyPage` render `<CheckoutModal>` **thiếu luôn `minQuantity`/

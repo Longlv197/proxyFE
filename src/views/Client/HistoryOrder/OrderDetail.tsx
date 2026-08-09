@@ -59,6 +59,7 @@ import { usePingProxy } from '@/hooks/apis/usePingProxy'
 import { useProxyCheck } from '@/hooks/apis/useProxyCheck'
 import { ROTATION_MODE, ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 import '@/components/checkout-modal/styles.css'
+import PurchaseAttributes from '@/components/PurchaseAttributes'
 import ResidentialPackageBox from './ResidentialPackageBox'
 import ProxyDetailModal from '@/views/Client/OrderRotatingProxy/ProxyDetailModal'
 
@@ -83,6 +84,8 @@ interface OrderDetailProps {
     service_type?: string
     ip_version?: string
     proxies?: any[]
+    /** Thuộc tính khách chọn lúc mua — BE dịch sẵn sang nhãn (OrderAttributeResolver) */
+    purchase_attributes?: Array<{ label: string; value: string; flag?: string | null }>
   } | null
 }
 
@@ -547,6 +550,18 @@ return row.original?.key || row.original?.api_key || ''
                 </Box>
                 <InfoCard icon={<Clock size={16} />} label='Loại' value={order.order_type === 1 ? 'Gia hạn' : 'Mua mới'} />
               </Box>
+
+              {/* Tuỳ chọn khách đã chọn lúc mua — trước đây không hiện ở đâu cả, khách mở đơn cũ ra
+                  không biết mình đã đặt nhà mạng nào / vị trí nào. Để nguyên hàng riêng (không nhét
+                  vào lưới thẻ) vì số lượng thuộc tính thay đổi theo sản phẩm. */}
+              {!!order.purchase_attributes?.length && (
+                <Box sx={{ px: '20px', pb: '12px' }}>
+                  <Box sx={{ p: '10px 12px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                    <Typography sx={{ fontSize: '11px', color: '#94a3b8', mb: 0.75 }}>Tuỳ chọn khi mua</Typography>
+                    <PurchaseAttributes items={order.purchase_attributes} variant='row' />
+                  </Box>
+                </Box>
+              )}
 
               {/* Tabs */}
               <Tabs

@@ -18,6 +18,12 @@ export interface OrderItemRecord {
   provider_key?: string
   provider_order_code?: string
   next_rotate_seconds?: number
+  /**
+   * Thuộc tính khách đã chọn khi mua ĐƠN chứa proxy này (Vị trí, Nhà mạng…).
+   * Không nằm trong document Mongo của item — BE nạp theo lô từ đơn rồi gắn vào
+   * (ProxyKeyController::index + OrderAttributeResolver). Mọi item cùng đơn thì giống nhau.
+   */
+  purchase_attributes?: Array<{ label: string; value: string; flag?: string | null }>
 }
 
 interface OrderItemsMeta {

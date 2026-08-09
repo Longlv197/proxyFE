@@ -33,6 +33,7 @@ import CustomTextField from '@core/components/mui/TextField'
 import { useOrderItems, useUpdateIpWhitelist, type OrderItemRecord } from '@/hooks/apis/useOrderItems'
 import { extractProxyValue, extractProtocol } from '@/utils/protocolProxy'
 import ExportModal, { type ExportColumn } from '@/components/UI/ExportModal'
+import PurchaseAttributes from '@/components/PurchaseAttributes'
 
 /* ── Constants ── */
 const STATUS_MAP: Record<number, { label: string; color: string; bg: string }> = {
@@ -251,6 +252,19 @@ export default function ProxyKeysPage() {
             {row.original.expired_at ? new Date(row.original.expired_at).toLocaleDateString('vi-VN') : '—'}
           </span>
         )
+      },
+      {
+        id: 'purchase_attributes',
+        header: 'Thuộc tính',
+        size: 150,
+        // Khách chọn thuộc tính MỘT LẦN cho cả đơn nên mọi proxy cùng đơn hiện giống nhau.
+        // Trước đây màn này không hiện gì: thuộc tính nằm ở đơn (MySQL), còn đây đọc item (Mongo).
+        cell: ({ row }) =>
+          row.original.purchase_attributes?.length ? (
+            <PurchaseAttributes items={row.original.purchase_attributes} max={2} />
+          ) : (
+            <span style={{ color: '#cbd5e1', fontSize: '11px' }}>—</span>
+          )
       },
       {
         id: 'order_code',

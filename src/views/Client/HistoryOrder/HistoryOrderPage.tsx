@@ -39,6 +39,7 @@ import CustomIconButton from '@core/components/mui/IconButton'
 import { formatDateTimeLocal } from '@/utils/formatDate'
 import { useHistoryOrders, PENDING_STATUSES } from '@/hooks/apis/useHistoryOrders'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/constants/orderStatus'
+import PurchaseAttributes from '@/components/PurchaseAttributes'
 import OrderDetail from './OrderDetail'
 
 const inputSx = {
@@ -132,6 +133,9 @@ export default function HistoryOrderPage() {
             <div style={{ lineHeight: 1.4 }}>
               <div style={{ fontWeight: 600, fontSize: '13px' }}>{o.service_name || '-'}</div>
               <div style={{ fontSize: '11px', color: '#94a3b8' }}>{o.order_code} · {fmtVND(o.total_amount)}</div>
+              {/* Thuộc tính khách đã chọn lúc mua (Vị trí, Nhà mạng…). Trước đây KHÔNG hiện ở đâu cả:
+                  đơn mua qua web chỉ lưu mã lựa chọn, BE nay dịch sẵn sang nhãn ở purchase_attributes. */}
+              <PurchaseAttributes items={o.purchase_attributes} max={3} />
             </div>
           )
         }
