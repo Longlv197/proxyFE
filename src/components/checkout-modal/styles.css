@@ -379,6 +379,24 @@
   color: var(--primary-hover, #e53e3e);
 }
 
+/* Dòng nói trần số lượng — để khách biết vì sao nút "+" mờ đi, thay vì tưởng web hỏng */
+.qty-limit-note {
+  padding: 0 14px 10px;
+  font-size: 11.5px;
+  color: #64748b;
+  text-align: center;
+}
+
+.qty-limit-note strong {
+  color: #334155;
+  font-weight: 700;
+}
+
+.qty-limit-note-hit {
+  color: #b45309;
+  font-weight: 600;
+}
+
 /* Discount code */
 .checkout-discount {
   display: flex;

@@ -847,6 +847,46 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+59 🔴 Ô số lượng cho gõ tới 9999 + không nói trần cho khách (09/08/2026)
+
+**Vấn đề:** cùng ổ với 13.N+58 — `RotatingProxyPage` render `<CheckoutModal>` **thiếu luôn `minQuantity`/
+`maxQuantity`** (ProxyCard có, trang proxy xoay thì sót) → modal lấy mặc định **1..9999**, khách gõ 500 rồi
+BE mới trả 422 "Số lượng tối đa là 100". Mặc định của modal (9999) còn **lệch 100 lần** so với mặc định BE
+(`QuantityLimitService::DEFAULT_MAX = 100`). Và khi chạm trần thì nút "+" chỉ mờ đi, ô lặng lẽ không nhận
+chữ — khách tưởng web hỏng chứ không biết là đã hết mức.
+
+**Sửa:**
+- `RotatingProxyPage`: truyền `minQuantity`/`maxQuantity` từ `plan.min_quantity`/`plan.max_quantity`.
+  Áp cho **cả sản phẩm gói GB** — gói cũng có trần do admin site mẹ đặt.
+- `CheckoutModal`: mặc định `maxQuantity` 9999 → **100** (khớp BE). `ProxyCard`: bỏ `?? 9999` → `?? 100`.
+- `CheckoutModal`: thêm dòng **nói thẳng trần** ngay dưới ô số lượng — "Mỗi đơn mua từ 1 đến 100 proxy",
+  chạm trần thì thêm "— đã chạm mức tối đa". Sản phẩm khoá cứng (min=max, ví dụ ISP) đổi câu thành
+  "bán cố định N proxy mỗi đơn". CSS `.qty-limit-note` trong `checkout-modal/styles.css`.
+- Cấu hình mâu thuẫn (tối thiểu > tối đa, thường do con đặt mức tối thiểu cao hơn trần mẹ): BE chặn mọi
+  số lượng → modal nói thật "Sản phẩm đang cấu hình sai số lượng — chưa đặt mua được", thay vì vẽ câu
+  vô nghĩa "mua từ 10 đến 5".
+- **Site con**: `ChildServiceFormModal` khi Kiểm tra/Đồng bộ SP mẹ nay **kéo trần mẹ về** (`setValue`
+  min/max_quantity) thay vì giữ mặc định 1..100 của form. `childConfigDiff` so thêm trần số lượng và
+  cảnh báo tại chỗ nếu con đang để rộng hơn mẹ ("mẹ sẽ từ chối đơn trên N") — vì con trừ tiền trước,
+  mẹ từ chối sau thì đơn treo, không tự hoàn tiền.
+- 🔴 **Modal con phải TỰ GỬI `provider_min_quantity`/`provider_max_quantity`** vào metadata. Rà soát mới
+  lộ ra: luồng tạo SP con của modal đi qua `add-service-type` (`ServiceTypeController::store`), **KHÔNG**
+  qua `import()` của BE — nên bản vá BE một mình là vô tác dụng với đường chính, SP tạo bằng modal sẽ
+  không hề bị kẹp trần. Đặt cạnh `provider_renewable` theo đúng nếp có sẵn của file.
+- Ô "SL tối đa" trong form con thêm `helperText` nói trần mẹ ("Site mẹ cho tối đa N", vượt thì cảnh báo
+  "gõ cao hơn KHÔNG có tác dụng") — không có dòng này thì đó là **ô chết**: admin gõ 500, hệ thống vẫn
+  chỉ cho 100 mà không báo gì.
+- `useSupplierProducts`: khai `min_quantity`/`max_quantity` trong type `SupplierProduct`.
+
+**Verify:** tsc **294 = baseline** (có lúc lên 298 do thiếu 2 field trong type — đã khai đủ, về lại 294).
+
+**Files:** `src/views/Client/RotatingProxy/RotatingProxyPage.tsx`, `src/components/checkout-modal/
+{CheckoutModal.tsx,styles.css}`, `src/app/[lang]/(private)/(client)/components/proxy-card/ProxyCard.tsx`,
+`src/views/Client/Admin/ServiceType/ChildServiceFormModal.tsx`, `src/utils/childConfigDiff.ts`,
+`src/hooks/apis/useSupplierProducts.ts`
+
+---
+
 #### 13.N+58 🔴 Trang mua proxy XOAY: SP gói vẫn NHÂN GIÁ theo số lượng (thiếu priceQuantityMode) (09/08/2026)
 
 **Vấn đề:** nhập số lượng cho SP gói (residential) ở trang mua proxy xoay → tổng tiền vẫn ×số lượng, dù

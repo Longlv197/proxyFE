@@ -444,6 +444,12 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setValue('auth_type', selectedProduct.auth_type)
     }
 
+    // Trần số lượng của site mẹ — kéo về đúng con số mẹ đặt (kể cả sản phẩm gói GB, gói cũng có trần).
+    // Thiếu bước này thì form con giữ mặc định 1..100, khách con chọn quá trần mẹ → mẹ trả 422 lúc
+    // đặt đơn, khách chỉ thấy "lỗi" không rõ lý do. Con được bán HẸP hơn mẹ, không được rộng hơn.
+    if (selectedProduct.min_quantity != null) setValue('min_quantity', Number(selectedProduct.min_quantity))
+    if (selectedProduct.max_quantity != null) setValue('max_quantity', Number(selectedProduct.max_quantity))
+
     // Đồng bộ thông số kỹ thuật từ site mẹ
     if (selectedProduct.bandwidth) setValue('bandwidth', selectedProduct.bandwidth)
     if (selectedProduct.request_limit) setValue('request_limit', selectedProduct.request_limit)
@@ -582,13 +588,32 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     setValue('tag', updated.join(', '))
   }
 
+  // Trần site mẹ đã chép về lúc nhập sản phẩm (chỉ có ở SP nhập sau bản vá trần số lượng).
+  // BE kẹp trần con theo 2 số này, nên form phải nói ra — không thì ô "SL tối đa" là ô chết.
+  const tranMe = (() => {
+    const m = serviceData?.metadata
+    const meta = typeof m === 'string' ? (() => { try { return JSON.parse(m || '{}') } catch { return {} } })() : (m || {})
+
+    return {
+      min: meta?.provider_min_quantity != null ? Number(meta.provider_min_quantity) : null,
+      max: meta?.provider_max_quantity != null ? Number(meta.provider_max_quantity) : null
+    }
+  })()
+
   // Metadata CON hiện tại (đọc từ SP đang sửa) → dùng để đối chiếu với cấu hình MẸ khi kiểm tra/đồng bộ.
   const currentChildMeta = () => {
     const m = serviceData?.metadata
     return typeof m === 'string' ? (() => { try { return JSON.parse(m || '{}') } catch { return {} } })() : (m || {})
   }
   // Đối chiếu con↔mẹ + hiện bảng Mới/Bỏ/Đổi. Gọi ở mọi nút Kiểm tra/Đồng bộ.
-  const runConfigDiff = (parentData: any) => setSyncDiff(computeChildConfigDiff(currentChildMeta(), parentData))
+  // Trần số lượng là CỘT (không nằm trong metadata) nên truyền riêng — lấy từ SP con đang lưu.
+  const runConfigDiff = (parentData: any) =>
+    setSyncDiff(
+      computeChildConfigDiff(currentChildMeta(), parentData, {
+        min: serviceData?.min_quantity ?? null,
+        max: serviceData?.max_quantity ?? null
+      })
+    )
 
   const onSubmit = (data: any) => {
     if (pricingMode === 'per_unit') {
@@ -708,6 +733,12 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         renewal_duration: renewalDuration,
         allow_expired_renew: allowExpiredRenew,
         provider_renewable: selectedProduct?.provider_renewable ?? existingMeta?.provider_renewable ?? null,
+        // Trần gốc site mẹ — BE (QuantityLimitService) đọc 2 khoá này để kẹp trần con, tránh khách
+        // con chọn quá mức mẹ cho phép rồi bị mẹ từ chối SAU khi con đã trừ tiền (đơn treo, không
+        // tự hoàn). Modal này tạo SP qua `add-service-type`, KHÔNG qua `import()` của BE — nên phải
+        // tự gửi lên, không thì SP tạo bằng modal sẽ không được kẹp.
+        provider_min_quantity: selectedProduct?.min_quantity ?? existingMeta?.provider_min_quantity ?? null,
+        provider_max_quantity: selectedProduct?.max_quantity ?? existingMeta?.provider_max_quantity ?? null,
         discount_tiers: pricingMode === 'per_unit' ? discountTiers.filter(t => t.min && t.discount) : undefined,
         // Lưu mốc giá nhập từ site mẹ → dùng tính giá vốn khi tạo đơn
         cost_discount_tiers: (() => {
@@ -3201,6 +3232,16 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                             type='number'
                             label='SL tối đa'
                             slotProps={{ input: { inputProps: { min: 1 } } }}
+                            // IM LẶNG khi hợp lệ — chỉ lên tiếng khi gõ VƯỢT trần site mẹ. Không có
+                            // cảnh báo này thì đây là ô CHẾT: admin gõ 500, hệ thống vẫn chỉ cho 100
+                            // (bị kẹp theo mẹ) mà không báo gì. Nhắc lại con số khi hai bên bằng nhau
+                            // thì chỉ tổ thêm chữ, không thêm thông tin.
+                            error={tranMe.max != null && Number(field.value ?? 0) > tranMe.max}
+                            helperText={
+                              tranMe.max != null && Number(field.value ?? 0) > tranMe.max
+                                ? `Site mẹ chỉ cho tối đa ${tranMe.max} — gõ cao hơn không có tác dụng, khách vẫn chỉ mua được ${tranMe.max}`
+                                : undefined
+                            }
                           />
                         )}
                       />

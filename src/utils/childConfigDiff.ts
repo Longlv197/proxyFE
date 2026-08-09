@@ -42,9 +42,41 @@ function fieldsOf(src: any): Record<string, any> {
 
 const optCount = (f: any) => (Array.isArray(f?.options) ? f.options.length : 0)
 
-export function computeChildConfigDiff(childMeta: any, parent: any): ConfigDiffItem[] {
+/** Trần số lượng bản CON đang lưu — là CỘT của bảng, không nằm trong metadata nên phải truyền riêng. */
+export interface ChildQuantityBounds {
+  min?: number | null
+  max?: number | null
+}
+
+export function computeChildConfigDiff(
+  childMeta: any,
+  parent: any,
+  childQuantity?: ChildQuantityBounds
+): ConfigDiffItem[] {
   const out: ConfigDiffItem[] = []
   const cm = childMeta || {}
+
+  // ─── Trần số lượng ────────────────────────────────────────────
+  // Con được bán HẸP hơn mẹ, KHÔNG được rộng hơn: mẹ vẫn chặn ở trần của mẹ lúc con đặt đơn,
+  // nên trần con rộng hơn = khách con chọn xong mới ăn lỗi. Áp cho cả sản phẩm gói GB.
+  if (childQuantity) {
+    const cMin = childQuantity.min ?? null
+    const cMax = childQuantity.max ?? null
+    const pMin = parent?.min_quantity ?? null
+    const pMax = parent?.max_quantity ?? null
+
+    if (pMin !== null && cMin !== null && Number(cMin) !== Number(pMin)) {
+      out.push({ kind: 'changed', label: `Số lượng tối thiểu: ${cMin} → ${pMin}` })
+    }
+    if (pMax !== null && cMax !== null && Number(cMax) !== Number(pMax)) {
+      const vuotTran = Number(cMax) > Number(pMax)
+      out.push({
+        kind: 'changed',
+        label: `Số lượng tối đa: ${cMax} → ${pMax}` +
+          (vuotTran ? ` (đang cho khách chọn quá trần site mẹ — mẹ sẽ từ chối đơn trên ${pMax})` : '')
+      })
+    }
+  }
 
   // ─── Cờ hành vi ───────────────────────────────────────────────
   // price_quantity_mode: quan trọng nhất (quyết định tính tiền)

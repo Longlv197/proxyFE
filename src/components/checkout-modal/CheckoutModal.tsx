@@ -151,7 +151,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   allowCustomAuth = false,
   maxIps = 1,
   minQuantity = 1,
-  maxQuantity = 9999,
+  // 100 = đúng mặc định BE dùng khi sản phẩm không khai trần (QuantityLimitService::DEFAULT_MAX).
+  // Trước để 9999: caller nào quên truyền là khách gõ được 9999 rồi BE mới trả 422 — lệch 100 lần.
+  maxQuantity = 100,
   priceQuantityMode = 'multiply',
   discountTiers = [],
   quantityTiers = [],
@@ -1183,6 +1185,44 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
               <span className='subtotal-cell'>{total.toLocaleString('vi-VN')}đ</span>
             </div>
+
+            {/* Nói thẳng cái trần ra, ngay dưới ô số lượng.
+                Trước đây gõ quá trần thì ô lặng lẽ không nhận và nút "+" mờ đi — khách tưởng web hỏng.
+                Trần này do admin site mẹ đặt; site con nhập sản phẩm về là mang theo đúng trần đó.
+                Sản phẩm gói GB cũng có trần, nên không loại trừ trường hợp nào. */}
+            {(() => {
+              const minQ = Math.max(1, minQuantity)
+
+              // Cấu hình mâu thuẫn (tối thiểu > tối đa — thường do site con đặt mức tối thiểu cao hơn
+              // trần site mẹ). BE từ chối MỌI số lượng, nên nói thật thay vì vẽ câu "mua từ 10 đến 5".
+              if (maxQuantity < minQ) {
+                return (
+                  <div className='qty-limit-note'>
+                    <span className='qty-limit-note-hit'>
+                      Sản phẩm đang cấu hình sai số lượng (tối thiểu {minQ} nhưng tối đa {maxQuantity})
+                      — chưa đặt mua được. Vui lòng liên hệ hỗ trợ.
+                    </span>
+                  </div>
+                )
+              }
+
+              const maxQ = maxQuantity
+              if (minQ === maxQ) {
+                return (
+                  <div className='qty-limit-note'>
+                    Sản phẩm này bán cố định <strong>{maxQ}</strong> proxy mỗi đơn.
+                  </div>
+                )
+              }
+
+              return (
+                <div className='qty-limit-note'>
+                  Mỗi đơn mua từ <strong>{minQ}</strong> đến <strong>{maxQ}</strong> proxy
+                  {quantity >= maxQ && <span className='qty-limit-note-hit'> — đã chạm mức tối đa</span>}
+                </div>
+              )
+            })()}
+
             {/* Qty discount tiers */}
             {(quantityTiers.length > 0 || fixedQtyTiers.length > 0) && (() => {
               const tiers = isPerUnit ? quantityTiers : fixedQtyTiers

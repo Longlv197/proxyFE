@@ -15,6 +15,10 @@ export interface SupplierProduct {
   provider_discount_tiers?: Array<{ min: string; max: string; discount: string }>
   auth_type?: string | null
   max_ips?: number | null
+  // Trần số lượng site mẹ đặt — con kéo về để chặn khách ngay tại ô số lượng
+  // (checkByCode trả 2 field này; sản phẩm gói GB cũng có trần).
+  min_quantity?: number | null
+  max_quantity?: number | null
   pricing_mode?: string | null
   time_unit?: string | null
   price_per_unit?: number | null

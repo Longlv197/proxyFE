@@ -701,6 +701,11 @@ const PlanCard = ({ plan }) => {
         // SP gói (residential): giá theo gói, KHÔNG nhân số lượng. Trước thiếu prop này → CheckoutModal
         // mặc định 'multiply' → nhập số lượng bị NHÂN GIÁ dù đã là gói. (ProxyCard có, trang xoay thì sót.)
         priceQuantityMode={plan.metadata?.price_quantity_mode === 'package' ? 'package' : 'multiply'}
+        // Trần số lượng của sản phẩm — cũng bị sót y như prop trên (ProxyCard có, trang xoay thì không),
+        // nên ô số lượng ở trang proxy xoay cho gõ tới 9999 rồi BE mới trả 422. Kể cả SP gói GB cũng
+        // có trần do admin site mẹ đặt → phải chặn ngay tại ô nhập, đừng để khách bấm mua mới biết.
+        minQuantity={plan.min_quantity ?? 1}
+        maxQuantity={plan.max_quantity ?? 100}
       />
     </>
   )

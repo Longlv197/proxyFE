@@ -471,7 +471,9 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
           customFields={provider.metadata?.custom_fields || undefined}
           maxIps={provider.metadata?.max_ips || 1}
           minQuantity={provider.min_quantity ?? 1}
-          maxQuantity={provider.max_quantity ?? 9999}
+          // 100 = mặc định BE (QuantityLimitService::DEFAULT_MAX). Trước để 9999 → SP không khai
+          // trần thì khách gõ được 9999 rồi mới ăn 422 "Số lượng tối đa là 100".
+          maxQuantity={provider.max_quantity ?? 100}
           priceQuantityMode={provider.metadata?.price_quantity_mode === PRICE_QUANTITY_MODE.PACKAGE ? PRICE_QUANTITY_MODE.PACKAGE : PRICE_QUANTITY_MODE.MULTIPLY}
         />
       )}
