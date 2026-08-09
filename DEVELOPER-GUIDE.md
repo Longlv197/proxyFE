@@ -847,6 +847,65 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+61 🔴 Site con: bấm "Đồng bộ" làm MẤT lựa chọn của trường combo → thẻ hiện SAI nước (09/08/2026)
+
+**Triệu chứng thật trên `sieuthiseeding.vn`:** SP #20 "Rotate IPv4 Global test" có trường `location`
+(Vị trí) khai `required: true` nhưng **không có khoá `options`** — khách mở mua thấy ô bắt buộc mà
+trống rỗng. Kéo theo: `truongCoQuocGia()` nhận diện ô quốc gia qua `options[].flag`, mất options →
+không nhận ra → thẻ **rơi về cột `country` = `vn,us`** → khách thấy cờ Việt Nam, trong khi sản phẩm
+thật bán 8 nước US/GB/TH/KR/JP/ES/TW/PT **không có Việt Nam**. Đúng lỗi 05/08 (e9330a6) nhưng vào
+bằng cửa khác.
+
+**Nguyên nhân:** `ChildServiceFormModal` hàm `applySyncData` (~L1907, chạy khi bấm **Đồng bộ**) map
+custom_fields mà **thiếu `__raw: f`**. Lúc Lưu, `out = { ...(__raw || {}) }` thành object RỖNG; nhánh
+dựng lại options chỉ chạy cho `type === 'select'`, mà `location` là **`combo`** → options bay sạch.
+Hai nhánh sync kia (L312, L467) đã có `__raw` — **chỉ nhánh này sót**. Tức nút "Đồng bộ" chính là thao
+tác phá dữ liệu.
+
+**Sửa:**
+- Thêm `__raw: f` vào nhánh sync còn sót.
+- **Chắn cuối ở chỗ Lưu**: trường không phải text/number mà kết quả ra `options` rỗng thì lấy lại từ
+  state form (giữ cả `flag`/`values`). Không nhánh nào được phép để trường đi ra ngoài mất sạch lựa chọn.
+- **Dữ liệu**: đã khôi phục 8 lựa chọn cho SP #20 trên con từ feed mẹ (script chỉ THÊM khoá `options`
+  đang thiếu, đọc + sao lưu giá trị cũ trước khi ghi, chạy thử trước). Quét toàn bộ SP con: chỉ #20 dính.
+  Kiểm sau khi sửa: feed con trả `so_option=8`, cờ `us,gb,th,kr,jp,es,tw,pt`.
+
+#### 13.N+62 Cho admin chọn thẻ sản phẩm hiện quốc gia theo NGUỒN nào (09/08/2026)
+
+**Vấn đề:** luật "có ô chọn thì ô chọn thắng, ẩn hẳn cột Quốc gia" bị **cắm cứng** trong
+`productFieldsHelper`. Khi ô chọn hỏng (13.N+61), hệ thống **âm thầm** rơi về cột `country` sai mà
+không ai biết vì sao — không có ô nào cho admin nhìn thấy hay đổi.
+
+**Sửa:** thêm `metadata.country_display` với 5 mức, khai tập trung ở `productFieldsHelper`
+(`NGUON_QUOC_GIA` + `NHAN_NGUON_QUOC_GIA` + `nguonQuocGiaCua`) — **một nguồn sự thật**, form và thẻ
+dùng chung, không chép lại luật:
+
+| Mức | Dòng từ cột `country` | Dòng từ ô chọn |
+|---|---|---|
+| `auto` (mặc định) | chỉ hiện khi KHÔNG có ô chọn quốc gia | hiện |
+| `options` | ẩn | hiện |
+| `column` | hiện | ẩn |
+| `both` | hiện | hiện |
+| `hidden` | ẩn | ẩn |
+
+Cờ chi phối **cả hai** dòng, không riêng dòng cột — có vậy "Chỉ ô Quốc gia cơ bản" và "Ẩn" mới đúng
+nghĩa. `auto` giữ **nguyên xi** hành vi cũ nên sản phẩm chưa khai gì không đổi cách hiện.
+
+**UI:** ô "Thẻ SP hiện quốc gia theo" ở `ServiceFormModal` (mẹ) và `ChildServiceFormModal` (con), kèm
+câu giải thích đổi theo lựa chọn. Form con còn nhét cờ này vào object **preview** → admin đổi là thấy
+thẻ xem trước đổi ngay, không thành điều khiển chết.
+
+⚠ **Bẫy đã tránh:** `country_display` được khai vào `KHOA_FORM_QUAN_LY` của `ServiceFormModal` **và**
+ghi lại tường minh trong `metadataFinal` — nằm trong danh sách mà không tự ghi là mở ra bấm Lưu bay mất
+(bài học 05/08, đã vấp 3 lần).
+
+**Verify:** tsc 294 = baseline.
+
+**Files:** `src/app/[lang]/(private)/(client)/components/proxy-card/productFieldsHelper.tsx`,
+`src/views/Client/Admin/ServiceType/{ServiceFormModal,ChildServiceFormModal}.tsx`
+
+---
+
 #### 13.N+60 Hiện thuộc tính khách đã chọn ở đơn hàng + trang proxy (09/08/2026)
 
 **Vấn đề:** khách mở đơn đã mua không thấy mình đã chọn gì (Nhà mạng nào, Vị trí nào) — cả ở danh sách

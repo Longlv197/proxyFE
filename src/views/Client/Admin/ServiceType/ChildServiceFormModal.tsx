@@ -49,6 +49,9 @@ import { useServiceType, useCreateServiceType, useUpdateServiceType } from '@/ho
 import { useCheckSupplierProduct, type SupplierProduct } from '@/hooks/apis/useSupplierProducts'
 import { useCountries } from '@/hooks/apis/useCountries'
 import { computeChildConfigDiff, type ConfigDiffItem } from '@/utils/childConfigDiff'
+import {
+  nguonQuocGiaCua, NHAN_NGUON_QUOC_GIA, type NguonQuocGia
+} from '@/app/[lang]/(private)/(client)/components/proxy-card/productFieldsHelper'
 
 import { PREDEFINED_TAGS, getTagStyle } from '@/configs/tagConfig'
 import '@/app/[lang]/(private)/(client)/components/proxy-card/styles.css'
@@ -213,6 +216,10 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   const [pricePerUnit, setPricePerUnit] = useState('')
   const [costPerUnit, setCostPerUnit] = useState('')
   const [allowCustomAuth, setAllowCustomAuth] = useState(false)
+
+  // Thẻ sản phẩm của site con hiện quốc gia theo nguồn nào — con tự quyết, không theo mẹ.
+  // 'auto' = hành vi cũ nên SP đã nhập trước đây không đổi cách hiện.
+  const [countryDisplay, setCountryDisplay] = useState<NguonQuocGia>('auto')
   const [renewable, setRenewable] = useState(false)
   const [renewalDuration, setRenewalDuration] = useState<string>('ncc')
   const [allowExpiredRenew, setAllowExpiredRenew] = useState(false)
@@ -362,6 +369,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setPricePerUnit(serviceData.price_per_unit?.toString() || '')
       setCostPerUnit(serviceData.cost_per_unit?.toString() || '')
       setAllowCustomAuth(!!meta.allow_custom_auth)
+      setCountryDisplay(nguonQuocGiaCua({ metadata: meta }))
       setRenewable(!!meta.renewable)
       setRenewalDuration(meta.renewal_duration || 'ncc')
       setAllowExpiredRenew(!!meta.allow_expired_renew)
@@ -551,6 +559,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
       setProviderQuantityTiers({})
       setChildQuantityTiers({})
       setAllowCustomAuth(false)
+      setCountryDisplay('auto')
       setRenewable(false)
       setRenewalDuration('ncc')
       setAllowExpiredRenew(false)
@@ -728,6 +737,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
         ...(selectedSupplierId ? { provider_product_id: selectedSupplierId } : {}),
         parent_pricing_mode: parentPricingMode,
         allow_custom_auth: allowCustomAuth,
+        // Nguồn hiển thị quốc gia trên thẻ — 'auto' là hành vi cũ nên không cần lưu.
+        // (Form con dựng metadata bằng `...existingMeta` nên khoá lạ vốn đã an toàn.)
+        country_display: countryDisplay !== 'auto' ? countryDisplay : undefined,
         max_ips: selectedProduct?.max_ips || existingMeta?.max_ips || null,
         renewable: renewable,
         renewal_duration: renewalDuration,
@@ -789,6 +801,32 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
               // Chỉ đè khi form dựng được danh sách — dropdown phụ thuộc không có options phẳng
               if (built.length > 0) out.options = built
+            }
+
+            // CHẮN CUỐI: không nhánh nào được phép để trường đi ra ngoài mà mất sạch lựa chọn.
+            // Nhánh dựng lại ở trên chỉ chạy cho `select`; `combo` (ô Vị trí) trông cậy hết vào
+            // `__raw`. Lỡ `__raw` trống (bug nhánh sync vừa vá) thì lấy lại từ state của form.
+            // Trường tự nhập (text/number) không có lựa chọn — đó là bình thường, bỏ qua.
+            const laTruongTuNhap = out.type === 'text' || out.type === 'number'
+            if (!laTruongTuNhap && !out.options?.length) {
+              const cuu = (o.options || []).filter(
+                (opt: any) => (opt.provider_value || opt.key || opt.value) && opt.label
+              )
+
+              if (cuu.length > 0) {
+                out.options = cuu.map((opt: any) => {
+                  const entry: any = {
+                    key: opt.key || opt.provider_value || opt.value,
+                    label: opt.label,
+                    provider_value: opt.provider_value ?? opt.value ?? opt.key
+                  }
+
+                  if (opt.flag) entry.flag = opt.flag
+                  if (opt.values) entry.values = opt.values
+
+                  return entry
+                })
+              }
             }
 
             return out
@@ -898,12 +936,15 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     }),
     metadata: {
       allow_custom_auth: allowCustomAuth,
+      // Có mặt ở đây thì admin đổi ô "hiện quốc gia theo" là THẤY thẻ xem trước đổi ngay.
+      // Thiếu thì ô đó thành điều khiển chết ở màn xem trước — bấm mà không có gì nhúc nhích.
+      country_display: countryDisplay,
       child_quantity_tiers: childQuantityTiers,
       custom_fields: purchaseOptions
         .filter(o => o.key && o.label)
         .map(o => ({ ...o, options: o.options?.filter(opt => (opt as any).provider_value) })),
     },
-  }), [watchAll, serviceId, validPreviewPrices, allowCustomAuth, purchaseOptions, pricingMode, pricePerUnit, timeUnit, priceDisplayUnit, childQuantityTiers])
+  }), [watchAll, serviceId, validPreviewPrices, allowCustomAuth, countryDisplay, purchaseOptions, pricingMode, pricePerUnit, timeUnit, priceDisplayUnit, childQuantityTiers])
 
   return (
     <>
@@ -1914,7 +1955,14 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                               required: f.required || false,
                               default: f.default || '',
                               display_type: f.display_type || '',
-                              options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' }))
+                              options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' })),
+                              // 🔴 THIẾU DÒNG NÀY LÀ MẤT DỮ LIỆU THẬT. Không có `__raw` thì lúc Lưu,
+                              // `out = {...(__raw || {})}` ra object RỖNG; mà nhánh dựng lại options chỉ
+                              // chạy cho type='select' → trường `combo` (ô Vị trí) bay sạch options.
+                              // Đã xảy ra thật: SP #20 site con mất cả 8 lựa chọn Vị trí → khách thấy ô
+                              // bắt buộc mà trống, thẻ thì rơi về cột country và hiện SAI nước.
+                              // Hai nhánh sync kia đã có `__raw`, chỉ nhánh này sót.
+                              __raw: f
                             }))
                           )
                         }
@@ -3245,6 +3293,24 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                           />
                         )}
                       />
+                    </Grid2>
+                    <Grid2 size={{ xs: 12 }}>
+                      {/* Nguồn hiển thị quốc gia trên thẻ. Trước đây cắm cứng "có ô chọn thì ô chọn
+                          thắng" — nên khi ô chọn hỏng, thẻ âm thầm rơi về cột Quốc gia và hiện SAI
+                          nước mà admin không biết vì sao. Cho chọn được thì lỗi lộ ra ngay. */}
+                      <CustomTextField
+                        select
+                        fullWidth
+                        size='small'
+                        label='Thẻ sản phẩm hiện quốc gia theo'
+                        value={countryDisplay}
+                        onChange={(e: any) => setCountryDisplay(e.target.value as NguonQuocGia)}
+                        helperText={NHAN_NGUON_QUOC_GIA.find(n => n.value === countryDisplay)?.mota}
+                      >
+                        {NHAN_NGUON_QUOC_GIA.map(n => (
+                          <MenuItem key={n.value} value={n.value}>{n.label}</MenuItem>
+                        ))}
+                      </CustomTextField>
                     </Grid2>
                   </Grid2>
 

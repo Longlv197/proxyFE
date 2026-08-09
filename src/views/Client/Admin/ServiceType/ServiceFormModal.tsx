@@ -35,7 +35,9 @@ import CustomTextField from '@/@core/components/mui/TextField'
 
 // RichTextEditor removed — using plain textarea for note
 import { TAG_CONFIG, PREDEFINED_TAGS, getTagStyle, fixCountryCode } from '@/configs/tagConfig'
-import { truongCoQuocGia, gomCoTheoNuoc } from '@/app/[lang]/(private)/(client)/components/proxy-card/productFieldsHelper'
+import {
+  truongCoQuocGia, gomCoTheoNuoc, nguonQuocGiaCua, NHAN_NGUON_QUOC_GIA, type NguonQuocGia
+} from '@/app/[lang]/(private)/(client)/components/proxy-card/productFieldsHelper'
 import { useProviders } from '@/hooks/apis/useProviders'
 import { useCountries } from '@/hooks/apis/useCountries'
 import { useServiceType, useCreateServiceType, useUpdateServiceType } from '@/hooks/apis/useServiceType'
@@ -1172,6 +1174,10 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
   const [pricingMode, setPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   // Residential: 'package' = giá cố định theo gói (số lượng KHÔNG nhân) | 'multiply' = × số lượng proxy (mặc định = hành vi cũ).
   const [priceQuantityMode, setPriceQuantityMode] = useState<'multiply' | 'package'>('multiply')
+
+  // Thẻ sản phẩm lấy quốc gia từ nguồn nào. Mặc định 'auto' = đúng hành vi trước giờ,
+  // nên sản phẩm cũ không khai gì cũng không đổi cách hiện.
+  const [countryDisplay, setCountryDisplay] = useState<NguonQuocGia>('auto')
   // Gói GB: bật → command sync:package-usage gọi info_package_url của NCC cập nhật dung lượng/hạn còn lại.
   const [trackPackageUsage, setTrackPackageUsage] = useState<boolean>(false)
   const [timeUnit, setTimeUnit] = useState<'day' | 'month'>('day')
@@ -1374,6 +1380,7 @@ return { values: {}, errors: formattedErrors }
           : []
       )
       setPriceQuantityMode(meta.price_quantity_mode === 'package' ? 'package' : 'multiply')
+      setCountryDisplay(nguonQuocGiaCua({ metadata: meta }))
       setTrackPackageUsage(meta.track_package_usage === true)
       // Cấu hình chế độ xoay — default cho cả 2 mode; SP cũ chưa có metadata.rotation thì lấy rotation_interval cũ làm min (sàn 60s)
       {
@@ -1453,6 +1460,7 @@ return { values: {}, errors: formattedErrors }
       setRotationConfig({ allow_manual: true, allow_auto: true, min_interval: 60 })
       setPricingMode('fixed')
       setPriceQuantityMode('multiply')
+      setCountryDisplay('auto')
       setTrackPackageUsage(false)
       setTimeUnit('day')
       setPricePerUnit('')
@@ -1610,6 +1618,9 @@ return { values: {}, errors: formattedErrors }
       'require_ip', 'max_ips', 'renewable', 'renewal_duration', 'allow_expired_renew',
       'renew_override_params', 'discount_tiers', 'cost_discount_tiers', 'quantity_tiers',
       'response_mapping', 'provider_auth_type', 'provider_max_ips', 'shared_proxy_hosts', 'rotation',
+      // Khoá MỚI (nguồn hiển thị quốc gia) — nằm trong danh sách này thì form BẮT BUỘC phải tự ghi
+      // lại ở `metadataFinal` bên dưới, không thì mở ra bấm Lưu là mất. Đúng bài học 05/08.
+      'country_display',
     ]
 
     const metaGoc = (serviceData?.metadata && typeof serviceData.metadata === 'object') ? serviceData.metadata : {}
@@ -1623,6 +1634,7 @@ return { values: {}, errors: formattedErrors }
       ...khoaLa,
       ...(metadata || {}),
       price_quantity_mode: priceQuantityMode === 'package' ? 'package' : undefined, // chỉ lưu khi package, mặc định bỏ → 'multiply'
+      country_display: countryDisplay !== 'auto' ? countryDisplay : undefined, // 'auto' = hành vi cũ → không cần lưu
       track_package_usage: trackPackageUsage ? true : undefined, // bật → sync:package-usage cập nhật dung lượng còn lại
       allow_custom_auth: allowCustomAuth,
       require_ip: requireIp || undefined,
@@ -2709,6 +2721,15 @@ return <Chip key={val} label={p?.label || val} size='small' />
                     />
                   )}
                   <Grid2 container spacing={1.5} sx={{ mt: 1.5 }}>
+                    <Grid2 size={{ xs: 12, sm: 4 }}>
+                      <CustomTextField select fullWidth size='small' label='Thẻ SP hiện quốc gia theo' value={countryDisplay}
+                        onChange={(e) => setCountryDisplay(e.target.value as NguonQuocGia)}
+                        helperText={NHAN_NGUON_QUOC_GIA.find(n => n.value === countryDisplay)?.mota}>
+                        {NHAN_NGUON_QUOC_GIA.map(n => (
+                          <MenuItem key={n.value} value={n.value}>{n.label}</MenuItem>
+                        ))}
+                      </CustomTextField>
+                    </Grid2>
                     <Grid2 size={{ xs: 12, sm: 4 }}>
                       <CustomTextField select fullWidth size='small' label='Giá theo số lượng' value={priceQuantityMode}
                         onChange={(e) => setPriceQuantityMode(e.target.value as 'multiply' | 'package')}

@@ -23,6 +23,40 @@ const DEFAULT_FIELDS: ProductField[] = [
 ]
 
 /**
+ * Thẻ sản phẩm lấy QUỐC GIA từ nguồn nào — admin tự chọn ở từng sản phẩm
+ * (`metadata.country_display`). Sản phẩm cũ không khai → `auto`, giữ nguyên hành vi cũ.
+ *
+ * Vì sao phải có ô này: trước đây luật "có ô chọn thì ô chọn thắng, ẩn hẳn cột Quốc gia" bị
+ * CẮM CỨNG. Khi ô chọn hỏng (SP #20 site con mất sạch lựa chọn Vị trí), hệ thống ÂM THẦM rơi
+ * về cột `country` = `vn,us` và hiện sai nước, không ai biết vì sao. Cho admin thấy và chọn
+ * được nguồn thì lỗi kiểu đó lộ ra ngay thay vì im lặng.
+ */
+export const NGUON_QUOC_GIA = {
+  AUTO: 'auto',       // Có ô chọn → dùng ô chọn; không có → dùng cột Quốc gia (mặc định, như cũ)
+  OPTIONS: 'options', // Luôn chỉ dùng ô chọn khi mua
+  COLUMN: 'column',   // Luôn chỉ dùng cột Quốc gia cơ bản
+  BOTH: 'both',       // Hiện cả hai dòng
+  HIDDEN: 'hidden'    // Ẩn hẳn quốc gia khỏi thẻ
+} as const
+
+export type NguonQuocGia = (typeof NGUON_QUOC_GIA)[keyof typeof NGUON_QUOC_GIA]
+
+export const NHAN_NGUON_QUOC_GIA: Array<{ value: NguonQuocGia; label: string; mota: string }> = [
+  { value: 'auto', label: 'Tự động (khuyên dùng)', mota: 'Có ô chọn khi mua thì lấy theo ô chọn, không có thì lấy cột Quốc gia' },
+  { value: 'options', label: 'Chỉ ô chọn khi mua', mota: 'Luôn lấy đúng các nước khách chọn được lúc mua' },
+  { value: 'column', label: 'Chỉ ô Quốc gia cơ bản', mota: 'Luôn lấy cột Quốc gia của sản phẩm, bỏ qua ô chọn' },
+  { value: 'both', label: 'Hiện cả hai', mota: 'Vẽ cả dòng từ cột Quốc gia lẫn dòng từ ô chọn' },
+  { value: 'hidden', label: 'Ẩn quốc gia', mota: 'Không hiện quốc gia trên thẻ sản phẩm' }
+]
+
+/** Đọc nguồn quốc gia của 1 sản phẩm — thiếu/khai sai đều rơi về `auto`. */
+export const nguonQuocGiaCua = (provider: any): NguonQuocGia => {
+  const v = provider?.metadata?.country_display
+
+  return (Object.values(NGUON_QUOC_GIA) as string[]).includes(v) ? v : NGUON_QUOC_GIA.AUTO
+}
+
+/**
  * Trường ở "Tuỳ chọn mua hàng" có mang thông tin QUỐC GIA hay không.
  *
  * Trước đây chỉ nhận đúng `display_type === 'country_flag'`. Sản phẩm #42 "Rotate IPv4 Global"
@@ -249,9 +283,21 @@ export function renderFeatureRow(
       return (
         <>
           {provider.metadata.custom_fields.map((field: any) => {
+            // Nguồn quốc gia admin chọn cũng chi phối dòng vẽ từ Ô CHỌN, không riêng dòng cột
+            // `country` — có vậy 'Chỉ ô Quốc gia cơ bản' và 'Ẩn' mới đúng nghĩa, không bị dòng
+            // kia lén hiện lại.
+            const nguon = nguonQuocGiaCua(provider)
+            const oNayLaQuocGia = truongCoQuocGia(field)
+            const choPhepVeTuOChon =
+              nguon === NGUON_QUOC_GIA.AUTO ||
+              nguon === NGUON_QUOC_GIA.OPTIONS ||
+              nguon === NGUON_QUOC_GIA.BOTH
+
+            if (oNayLaQuocGia && !choPhepVeTuOChon) return null
+
             // Vẽ cờ theo ĐÚNG các nước ô chọn đang bán — không lấy từ cột `country` nữa,
             // và gộp về mức quốc gia để 2 vị trí cùng nước không thành 2 lá cờ giống hệt.
-            const { danhSach, soNuoc, soViTri } = truongCoQuocGia(field)
+            const { danhSach, soNuoc, soViTri } = oNayLaQuocGia
               ? gomCoTheoNuoc(field.options || [])
               : { danhSach: [], soNuoc: 0, soViTri: 0 }
 
@@ -326,12 +372,18 @@ export function renderFeatureRow(
       )
 
     case 'country': {
-      // Ô chọn ở "Tuỳ chọn mua hàng" là NGUỒN ĐÚNG (đó mới là thứ khách chọn được khi mua),
-      // nên hễ có ô chọn mang quốc gia thì ẩn hẳn dòng lấy từ cột `country` — tránh vừa trùng
-      // vừa mâu thuẫn (SP #42: cột ghi vn,us nhưng ô chọn bán 8 nước khác, không có VN).
+      // Nguồn quốc gia do admin chọn ở từng sản phẩm (mặc định `auto` = hành vi cũ).
+      const nguon = nguonQuocGiaCua(provider)
+
+      if (nguon === NGUON_QUOC_GIA.HIDDEN || nguon === NGUON_QUOC_GIA.OPTIONS) return null
+
+      // `auto`: ô chọn ở "Tuỳ chọn mua hàng" là NGUỒN ĐÚNG (đó mới là thứ khách chọn được khi
+      // mua), nên hễ có ô chọn mang quốc gia thì ẩn hẳn dòng lấy từ cột `country` — tránh vừa
+      // trùng vừa mâu thuẫn (SP #42: cột ghi vn,us nhưng ô chọn bán 8 nước khác, không có VN).
+      // `column`/`both`: admin CỐ Ý muốn thấy cột này → không ẩn.
       const daCoOChonQuocGia = provider?.metadata?.custom_fields?.some(truongCoQuocGia)
 
-      if (daCoOChonQuocGia) return null
+      if (nguon === NGUON_QUOC_GIA.AUTO && daCoOChonQuocGia) return null
 
       const rawVal = provider?.country || provider?.country_code || ''
       const raw = Array.isArray(rawVal) ? rawVal.join(',') : String(rawVal)
