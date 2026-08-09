@@ -847,6 +847,22 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+56 Sửa SP (EditServicePage): ô Quốc gia trống với SP đa quốc gia (09/08/2026)
+
+**Vấn đề:** trang `/admin/service-type/edit/[id]` — ô "Quốc gia" hiện TRỐNG với SP có nhiều nước
+(vd `vn,us`). Reset truyền `country` dạng CHUỖI `'vn,us'` vào ô **single-select hardcode chỉ có mỗi
+`'vi'`** → không khớp option nào → trống.
+
+**Sửa:** ô Quốc gia → **multi-select đủ nước + cờ** (options từ `useCountries`, `renderValue` hiện cờ),
+giống `ChildServiceFormModal`. Giữ form value dạng CHUỖI (tách khi hiển thị / gộp khi lưu) → không đụng
+schema/submit. Form modal (ChildServiceFormModal) đọc country đúng sẵn nên không cần sửa.
+
+**Verify:** tsc 294=baseline, 0 lỗi mới.
+
+**Files:** `src/views/Client/Admin/ServiceType/EditServicePage.tsx`
+
+---
+
 #### 13.N+55 Site con: import SP mẹ — preview KHÔNG hiện quốc gia/lựa chọn (09/08/2026)
 
 **Vấn đề (admin site con, luồng IMPORT MỚI):** vào tạo SP con → chọn/nhập code SP mẹ → bấm "Kiểm tra"

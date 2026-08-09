@@ -35,6 +35,7 @@ import * as yup from 'yup'
 
 import CustomTextField from '@/@core/components/mui/TextField'
 import { useProviders } from '@/hooks/apis/useProviders'
+import { useCountries } from '@/hooks/apis/useCountries'
 import { useServiceType, useUpdateServiceType, useServiceTypes } from '@/hooks/apis/useServiceType'
 import MultiInputModal from '@/views/Client/Admin/ServiceType/MultiInputModal'
 import PriceByDurationModal from '@/views/Client/Admin/ServiceType/PriceByDurationModal'
@@ -194,6 +195,9 @@ return { values: {}, errors: formattedErrors }
       }
     }
   }
+
+  // Danh sách quốc gia cho ô multi-select (giống ChildServiceFormModal — trước đây hardcode mỗi 'vi')
+  const { data: countries } = useCountries()
 
   // Fetch service data
   const { data: serviceData, isLoading, isError, error } = useServiceType(serviceId)
@@ -638,28 +642,62 @@ return Array.from(allProtocols).map(protocol => ({
                 <Controller
                   name='country'
                   control={control}
-                  render={({ field }) => (
-                    <CustomTextField
-                      {...field}
-                      size='medium'
-                      fullWidth
-                      select
-                      id='select-country'
-                      label='Quốc gia'
-                      value={field.value || ''}
-                      error={!!errors.country}
-                      helperText={errors.country?.message}
-                      slotProps={{
-                        select: { displayEmpty: true },
-                        htmlInput: { 'aria-label': 'Without label' }
-                      }}
-                    >
-                      <MenuItem value=''>
-                        <em>Chọn quốc gia</em>
-                      </MenuItem>
-                      <MenuItem value='vi'>Việt Nam</MenuItem>
-                    </CustomTextField>
-                  )}
+                  render={({ field }) => {
+                    // Form value giữ dạng CHUỖI "vn,us" (khớp schema + submit). Ô UI tách ra mảng để
+                    // hiển thị multi-select, onChange gộp lại chuỗi. Trước đây field single-select chỉ có
+                    // mỗi 'vi' nên SP đa quốc gia (vn,us…) không khớp option nào → hiện trống.
+                    const values: string[] = (field.value ? String(field.value).split(',') : [])
+                      .map((c: string) => c.trim().toLowerCase())
+                      .filter((c: string) => c.length >= 2)
+
+                    return (
+                      <CustomTextField
+                        size='medium'
+                        fullWidth
+                        select
+                        id='select-country'
+                        label='Quốc gia'
+                        value={values}
+                        onChange={(e: any) => field.onChange((e.target.value as string[]).join(','))}
+                        error={!!errors.country}
+                        helperText={errors.country?.message}
+                        slotProps={{
+                          select: {
+                            multiple: true,
+                            displayEmpty: true,
+                            renderValue: (selected: any) => {
+                              const vals = selected as string[]
+
+                              if (!vals?.length) return <em>Chọn quốc gia</em>
+
+                              return (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                  {vals.map(code => (
+                                    <span key={code} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#f1f5f9', borderRadius: 4, padding: '1px 6px', fontSize: '11px' }}>
+                                      <img src={`https://flagcdn.com/w20/${code}.png`} style={{ width: 14, height: 10 }} alt='' />
+                                      {code.toUpperCase()}
+                                    </span>
+                                  ))}
+                                </div>
+                              )
+                            }
+                          },
+                          htmlInput: { 'aria-label': 'Without label' }
+                        }}
+                      >
+                        {(countries || []).map((c: any) => (
+                          <MenuItem key={c.code} value={c.code.toLowerCase()}>
+                            <img
+                              src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
+                              style={{ width: 20, height: 15, marginRight: 8, verticalAlign: 'middle' }}
+                              alt=''
+                            />
+                            {c.name}
+                          </MenuItem>
+                        ))}
+                      </CustomTextField>
+                    )
+                  }}
                 />
               </Grid2>
             </Grid2>
