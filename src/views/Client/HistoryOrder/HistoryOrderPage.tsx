@@ -40,6 +40,7 @@ import { formatDateTimeLocal } from '@/utils/formatDate'
 import { useHistoryOrders, PENDING_STATUSES } from '@/hooks/apis/useHistoryOrders'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/constants/orderStatus'
 import PurchaseAttributes from '@/components/PurchaseAttributes'
+import PackageUsage from '@/components/PackageUsage'
 import OrderDetail from './OrderDetail'
 
 const inputSx = {
@@ -161,6 +162,8 @@ export default function HistoryOrderPage() {
               {remaining && (
                 <div style={{ color: '#16a34a', fontWeight: 600, fontSize: '12px' }}>Còn lại: {remaining}</div>
               )}
+              {/* Gói GB: hiện ngay ở DANH SÁCH, không bắt mở từng đơn mới biết gói nào sắp hết */}
+              <PackageUsage data={o.package_usage} />
             </div>
           )
         }

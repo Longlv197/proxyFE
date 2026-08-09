@@ -60,6 +60,7 @@ import { useProxyCheck } from '@/hooks/apis/useProxyCheck'
 import { ROTATION_MODE, ROTATION_MODE_LABELS } from '@/constants/rotationMode'
 import '@/components/checkout-modal/styles.css'
 import PurchaseAttributes from '@/components/PurchaseAttributes'
+import PackageUsage from '@/components/PackageUsage'
 import ResidentialPackageBox from './ResidentialPackageBox'
 import ProxyDetailModal from '@/views/Client/OrderRotatingProxy/ProxyDetailModal'
 
@@ -657,21 +658,9 @@ return row.original?.key || row.original?.api_key || ''
                   </div>
                 </div>
 
-                {packageUsage && (
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1.5, p: 1, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 1.5 }}>
-                    <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#0c4a6e' }}>Gói GB:</Typography>
-                    {packageUsage.limit_mb != null && (
-                      <Typography sx={{ fontSize: 12, color: '#334155' }}>
-                        Dung lượng <strong>{(packageUsage.used_mb / 1024).toFixed(2)}/{(packageUsage.limit_mb / 1024).toFixed(2)} GB</strong>
-                      </Typography>
-                    )}
-                    {packageUsage.days_left != null && (
-                      <Typography sx={{ fontSize: 12, color: packageUsage.days_left <= 3 ? '#dc2626' : '#334155' }}>
-                        · còn <strong>{packageUsage.days_left}</strong> ngày
-                      </Typography>
-                    )}
-                  </Box>
-                )}
+                {/* Dùng chung component với danh sách đơn — sửa cách hiện thì sửa một chỗ.
+                    Ưu tiên số của chi tiết đơn (mới hơn), thiếu thì lấy số đã có ở danh sách. */}
+                <PackageUsage data={packageUsage || (order as any).package_usage} variant='box' />
 
                 {isLoadingKeys ? (
                   <Box sx={{ textAlign: 'center', py: 4 }}>

@@ -847,6 +847,25 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+65 Dung lượng gói GB hiện ở DANH SÁCH đơn + thanh tiến trình (09/08/2026)
+
+**Vấn đề:** dung lượng còn lại chỉ hiện trong modal chi tiết. Khách có nhiều gói phải mở từng đơn mới
+biết gói nào sắp hết.
+
+**Sửa:** component dùng chung **`PackageUsage`** cho cả 2 màn (danh sách + chi tiết) — sửa cách trình
+bày thì sửa một chỗ, không để hai chỗ lệch nhau như dòng Quốc gia từng bị.
+- `variant='inline'` cho bảng danh sách · `variant='box'` cho modal.
+- Thêm **thanh tiến trình**: con số trần trụi ("0.04/1.00 GB") bắt khách tự chia mới biết sắp hết chưa.
+- **Sắp hết** (≥90% dung lượng HOẶC còn ≤3 ngày) → đổi sang đỏ. Vượt trần thì kẹp thanh ở 100%, không
+  để tràn ra ngoài khung trông như lỗi giao diện.
+- Modal ghi thêm dòng nhỏ "Số liệu lấy từ nhà cung cấp lúc …, cập nhật mỗi 30 phút" — số cũ 29 phút là
+  chuyện bình thường, nói trước để khách khỏi tưởng sai.
+
+**Files:** `src/components/PackageUsage.tsx` (mới), `src/views/Client/HistoryOrder/{HistoryOrderPage,
+OrderDetail}.tsx`
+
+---
+
 #### 13.N+64 Ô "Info package": chỉ dẫn sai làm admin dán thừa `/{key}` (09/08/2026)
 
 **Vấn đề:** ô nhập URL hỏng dung lượng gói ghi *"gọi {url}/{package_key}"* — admin đọc xong dễ tự dán thêm
