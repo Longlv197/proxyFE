@@ -847,6 +847,22 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+64 Ô "Info package": chỉ dẫn sai làm admin dán thừa `/{key}` (09/08/2026)
+
+**Vấn đề:** ô nhập URL hỏng dung lượng gói ghi *"gọi {url}/{package_key}"* — admin đọc xong dễ tự dán thêm
+`/{key}` vào cuối. URL thành `.../package/{key}/ABC123` → NCC trả **404**, mà lệnh chỉ ghi log rồi thôi:
+khách vẫn không thấy dung lượng, **không có gì báo động**, 30 phút lại lặp lại.
+
+**Sửa:** placeholder đổi thành `https://api.proxyma.io/api/reseller/info/package/{package_key}` (BE 15.N+49
+nay nhận chỗ giữ chỗ), và chỉ dẫn viết theo HẬU QUẢ thay vì tên lệnh: *"Đặt {package_key} vào đúng chỗ mã
+gói (kể cả trong ?param=). Bỏ trống thì mã gói được nối vào cuối. Cứ 30 phút hệ thống hỏi NCC một lần rồi
+cập nhật 'còn bao nhiêu GB, còn mấy ngày' cho khách xem trong đơn — nhớ bật 'Đồng bộ dung lượng gói (GB)'
+ở sản phẩm."*
+
+**Files:** `src/views/Client/Admin/Provider/ResidentialProviderSection.tsx`
+
+---
+
 #### 13.N+63 Trường `select`: admin đặt cách hiển thị nhưng màn mua vẫn BUNG HẾT ra (09/08/2026)
 
 **Vấn đề:** admin khai trường tuỳ chọn kiểu `select`, mong khách thấy một ô chọn gọn. Thực tế màn

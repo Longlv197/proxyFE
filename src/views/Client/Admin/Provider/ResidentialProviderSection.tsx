@@ -277,8 +277,15 @@ export default function ResidentialProviderSection({ provider, stateRef }: Props
                   size='small' fullWidth label='Info package (dung lượng/hạn còn lại)'
                   value={infoPackageUrl}
                   onChange={e => setInfoPackageUrl(e.target.value)}
-                  placeholder='https://api.proxyma.io/api/reseller/info/package'
-                  helperText='Command sync:package-usage gọi {url}/{package_key} mỗi 30 phút để cập nhật dung lượng còn lại. Bật "Đồng bộ dung lượng" ở sản phẩm để dùng.'
+                  placeholder='https://api.proxyma.io/api/reseller/info/package/{package_key}'
+                  // Nhãn nói HẬU QUẢ + chỉ rõ chỗ đặt mã gói. Trước đây chỉ ghi "gọi {url}/{package_key}"
+                  // nên admin dễ tự dán thêm "/{key}" vào cuối → URL thành .../package/{key}/ABC → NCC trả
+                  // 404, mà lệnh chỉ ghi log rồi thôi: khách vẫn không thấy dung lượng, không ai biết vì sao.
+                  helperText={
+                    'Đặt {package_key} vào đúng chỗ mã gói (kể cả trong ?param=). Bỏ trống chỗ này thì mã gói ' +
+                    'được nối vào cuối. Cứ 30 phút hệ thống hỏi NCC một lần rồi cập nhật "còn bao nhiêu GB, ' +
+                    'còn mấy ngày" cho khách xem trong đơn — nhớ bật "Đồng bộ dung lượng gói (GB)" ở sản phẩm.'
+                  }
                 />
               </Stack>
             </AccordionDetails>
