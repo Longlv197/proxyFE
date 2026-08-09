@@ -48,6 +48,7 @@ import CollapsibleSection from '@/views/Client/Admin/ServiceType/CollapsibleSect
 import { useServiceType, useCreateServiceType, useUpdateServiceType } from '@/hooks/apis/useServiceType'
 import { useCheckSupplierProduct, type SupplierProduct } from '@/hooks/apis/useSupplierProducts'
 import { useCountries } from '@/hooks/apis/useCountries'
+import { computeChildConfigDiff, type ConfigDiffItem } from '@/utils/childConfigDiff'
 
 import { PREDEFINED_TAGS, getTagStyle } from '@/configs/tagConfig'
 import '@/app/[lang]/(private)/(client)/components/proxy-card/styles.css'
@@ -191,6 +192,9 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
   // State
   const [supplierCodeInput, setSupplierCodeInput] = useState('')
   const [checkedProduct, setCheckedProduct] = useState<(SupplierProduct & { already_imported?: boolean }) | null>(null)
+  // Bảng đối chiếu cấu hình con↔mẹ khi kiểm tra/đồng bộ (Mới/Bỏ/Đổi) — admin xem trước khi Lưu.
+  // null = chưa đối chiếu; [] = đã đối chiếu, không có gì đổi.
+  const [syncDiff, setSyncDiff] = useState<ConfigDiffItem[] | null>(null)
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null)
   const [selectedSupplierCode, setSelectedSupplierCode] = useState<string | null>(null)
   const { notification, showSuccess, showError, clear: clearNotification } = useFormNotification()
@@ -578,6 +582,14 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
     setValue('tag', updated.join(', '))
   }
 
+  // Metadata CON hiện tại (đọc từ SP đang sửa) → dùng để đối chiếu với cấu hình MẸ khi kiểm tra/đồng bộ.
+  const currentChildMeta = () => {
+    const m = serviceData?.metadata
+    return typeof m === 'string' ? (() => { try { return JSON.parse(m || '{}') } catch { return {} } })() : (m || {})
+  }
+  // Đối chiếu con↔mẹ + hiện bảng Mới/Bỏ/Đổi. Gọi ở mọi nút Kiểm tra/Đồng bộ.
+  const runConfigDiff = (parentData: any) => setSyncDiff(computeChildConfigDiff(currentChildMeta(), parentData))
+
   const onSubmit = (data: any) => {
     if (pricingMode === 'per_unit') {
       // Per_unit: validate giá bán/đơn vị
@@ -905,6 +917,40 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
           <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Đang tải...</div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)}>
+            {/* Bảng đối chiếu cấu hình con↔mẹ sau khi Kiểm tra/Đồng bộ — admin xem Mới/Bỏ/Đổi trước khi Lưu */}
+            {syncDiff !== null && (
+              <div style={{ marginBottom: 16, borderRadius: 10, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#f8fafc', borderBottom: syncDiff.length ? '1px solid #e2e8f0' : 'none' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1e293b' }}>
+                    {syncDiff.length === 0 ? '✓ Cấu hình đã khớp site mẹ — không có gì thay đổi' : `Đối chiếu cấu hình site mẹ: ${syncDiff.length} thay đổi`}
+                  </span>
+                  <button type='button' onClick={() => setSyncDiff(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 16, lineHeight: 1 }}>×</button>
+                </div>
+                {syncDiff.length > 0 && (
+                  <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {(['added', 'removed', 'changed'] as const).map(kind => {
+                      const items = syncDiff.filter(d => d.kind === kind)
+                      if (!items.length) return null
+                      const cfg = kind === 'added'
+                        ? { dot: '#10b981', tag: 'MỚI' }
+                        : kind === 'removed'
+                          ? { dot: '#ef4444', tag: 'BỎ' }
+                          : { dot: '#f59e0b', tag: 'ĐỔI' }
+                      return items.map((d, i) => (
+                        <div key={`${kind}-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12 }}>
+                          <span style={{ flexShrink: 0, marginTop: 5, width: 7, height: 7, borderRadius: '50%', background: cfg.dot }} />
+                          <span style={{ flexShrink: 0, fontWeight: 700, color: cfg.dot, minWidth: 30 }}>{cfg.tag}</span>
+                          <span style={{ color: '#334155' }}>{d.label}</span>
+                        </div>
+                      ))
+                    })}
+                    <div style={{ marginTop: 6, fontSize: 11, color: '#64748b' }}>
+                      Cấu hình mới từ site mẹ đã nạp vào form. Bấm <strong>Cập nhật</strong> để lưu, hoặc <strong>Hủy</strong> để giữ nguyên.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 24 }}>
               {/* Left: Form */}
               <div style={{ flex: 3 }}>
@@ -953,6 +999,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                 setCheckedProduct(data)
                                 setSelectedSupplierId(data.supplier_id)
                                 setSelectedSupplierCode(data.supplier_code || supplierCodeInput)
+                                runConfigDiff(data)
                               },
                               onError: () => setCheckedProduct(null)
                             })
@@ -1057,6 +1104,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                 if (data.auth_type && !watch('auth_type')) {
                                   setValue('auth_type', data.auth_type)
                                 }
+                                runConfigDiff(data)
                               },
                               onError: () => setCheckedProduct(null)
                             })
@@ -1292,7 +1340,8 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
                                         required: f.required || false,
                                         default: f.default || '',
                                         display_type: f.display_type || '',
-                                        options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' }))
+                                        options: (f.options || [{ provider_value: '', label: '' }]).map((o: any) => ({ ...o, provider_value: o.provider_value ?? o.value ?? o.key ?? '' })),
+                                        __raw: f // giữ khoá lạ (depends_on/options_by_parent/components) — trước đây nhánh này bỏ sót → mất ô phụ thuộc
                                       }))
                                     )
                                   }
@@ -1335,6 +1384,7 @@ export default function ChildServiceFormModal({ open, onClose, serviceId, initia
 
                                   if (data?.renewal_duration) setRenewalDuration(data.renewal_duration)
                                   if (data?.allow_expired_renew !== undefined) setAllowExpiredRenew(!!data.allow_expired_renew)
+                                  runConfigDiff(data)
                                   setSyncStatus('done')
                                   setTimeout(() => setSyncStatus('idle'), 2000)
                                 },

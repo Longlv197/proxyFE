@@ -847,6 +847,25 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+57 Site con: bảng đối chiếu cấu hình mẹ↔con khi kiểm tra/đồng bộ (Mới/Bỏ/Đổi) (09/08/2026)
+
+**Vấn đề:** con "Đồng bộ" SP mẹ → **ghi đè lặng lẽ** (set thẳng options/giá/mode), admin không thấy đã đổi
+gì. Nhánh đồng bộ còn dựng lại options **không giữ `__raw`** → âm thầm BỎ khoá lạ (region/city phụ thuộc).
+
+**Sửa:**
+- Thêm helper thuần `src/utils/childConfigDiff.ts` — so cấu hình con↔mẹ, trả danh sách Mới/Bỏ/Đổi
+  (price_quantity_mode, kind, track_package_usage, rotation, và từng trường/lựa chọn custom_fields).
+- `ChildServiceFormModal`: mọi nút Kiểm tra/Đồng bộ gọi `runConfigDiff(data)` → hiện **panel Mới/Bỏ/Đổi**
+  ở đầu form. Admin xem rồi bấm **Cập nhật** để lưu, hoặc **Hủy**. Hết ghi đè/bỏ khoá lặng lẽ.
+- Vá nhánh đồng bộ dựng options: thêm `__raw` (giữ depends_on/options_by_parent/components).
+
+**Verify:** tsc 294=baseline (0 lỗi mới; các lỗi SupplierProduct trong file là có sẵn). BE checkByCode trả
+đủ field (15.N+46).
+
+**Files:** `src/utils/childConfigDiff.ts` (mới), `src/views/Client/Admin/ServiceType/ChildServiceFormModal.tsx`
+
+---
+
 #### 13.N+56 Sửa SP (EditServicePage): ô Quốc gia trống với SP đa quốc gia (09/08/2026)
 
 **Vấn đề:** trang `/admin/service-type/edit/[id]` — ô "Quốc gia" hiện TRỐNG với SP có nhiều nước
