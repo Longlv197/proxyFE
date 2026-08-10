@@ -36,7 +36,11 @@ export default function CreateTicketDialog({ open, onClose }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const createTicket = useCreateTicket()
-  const { data: orders = [] } = useHistoryOrders()
+  // Ô chọn "Đơn hàng liên quan" — chỉ cần các đơn GẦN ĐÂY, khách khiếu nại thì thường về đơn mới.
+  // Trước đây gọi không tham số = tải TOÀN BỘ đơn (tài khoản nhiều đơn phải nuốt ~9 MB chỉ để
+  // đổ một dropdown). Nay lấy 200 đơn mới nhất.
+  const { data: ordersData } = useHistoryOrders({ page: 1, limit: 200 })
+  const orders = ordersData?.rows ?? []
   const { data: deposits = [] } = useMyDeposits()
 
   const isDeposit = type === TICKET_TYPES.DEPOSIT

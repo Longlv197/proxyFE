@@ -18,8 +18,7 @@ import {
 import {
   useReactTable,
   getCoreRowModel,
-  flexRender,
-  getPaginationRowModel
+  flexRender
 } from '@tanstack/react-table'
 
 import Button from '@mui/material/Button'
@@ -60,13 +59,17 @@ export default function HistoryOrderPage() {
 
   const queryClient = useQueryClient()
 
-  const {
-    data: dataOrders = [],
-    isLoading,
-    isFetching,
-    refetch,
-    dataUpdatedAt
-  } = useHistoryOrders(appliedSearch || undefined)
+  // Phân trang + lọc trạng thái nay do SERVER làm (xem useHistoryOrders). Lọc ở trình duyệt sẽ chỉ
+  // lọc trong trang hiện tại → ra kết quả sai, nên phải gửi lên server.
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useHistoryOrders({
+    search: appliedSearch || undefined,
+    status: statusFilter,
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize
+  })
+
+  const filteredOrders = data?.rows ?? []
+  const meta = data?.meta
 
   const handleSearch = () => {
     const text = searchText.trim()
@@ -76,23 +79,10 @@ export default function HistoryOrderPage() {
     queryClient.invalidateQueries({ queryKey: ['userOrders'] })
   }
 
-  // Client-side filtering (status only — search đã server-side)
-  const filteredOrders = useMemo(() => {
-    let result = dataOrders
-
-    if (statusFilter !== 'all') {
-      result = result.filter((order: any) => String(order.status) === statusFilter)
-    }
-
-    return result
-  }, [dataOrders, appliedSearch, statusFilter])
-
-  // Đếm đơn đang chờ xử lý
-  const pendingOrders = useMemo(() => {
-    return dataOrders.filter((o: any) => PENDING_STATUSES.includes(Number(o.status)))
-  }, [dataOrders])
-
-  const hasPendingOrders = pendingOrders.length > 0
+  // Số đơn đang chờ lấy từ SERVER (đếm trên toàn bộ danh sách). Đếm theo trang hiện tại là sai:
+  // đang ở trang 3 mà trang đó không có đơn chờ thì banner biến mất dù thực tế vẫn còn.
+  const pendingCount = meta?.pending_count ?? 0
+  const hasPendingOrders = pendingCount > 0
 
   // Tính thời gian còn lại
   const getTimeRemaining = (expiredAt: string, status: string) => {
@@ -232,11 +222,15 @@ export default function HistoryOrderPage() {
     state: { pagination },
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel()
+    // manualPagination: server đã cắt sẵn đúng số dòng. Thiếu cờ này thì bảng tưởng `data` là TOÀN BỘ
+    // và tự cắt tiếp → trang 2 trở đi trắng trơn.
+    manualPagination: true,
+    pageCount: meta?.last_page ?? 1,
+    rowCount: meta?.total ?? 0
   })
 
   const { pageIndex, pageSize } = table.getState().pagination
-  const totalRows = filteredOrders.length
+  const totalRows = meta?.total ?? 0
   const startRow = totalRows ? pageIndex * pageSize + 1 : 0
   const endRow = Math.min(startRow + pageSize - 1, totalRows)
 
@@ -327,7 +321,7 @@ export default function HistoryOrderPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af' }}>
-                    {pendingOrders.length} đơn hàng đang chờ xử lý
+                    {pendingCount} đơn hàng đang chờ xử lý
                   </div>
                 </div>
                 {isFetching && (

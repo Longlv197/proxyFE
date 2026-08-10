@@ -847,6 +847,33 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+66 Danh sách đơn: phân trang phía server, thôi tải hết đơn về trình duyệt (10/08/2026)
+
+**Vấn đề:** trang "Đơn hàng của tôi" tải TOÀN BỘ đơn về rồi mới lọc + phân trang ở trình duyệt.
+Tài khoản 8.538 đơn phải nuốt **8,92 MB / 3,4 giây mỗi lần mở**. Xem BE 15.N+52.
+
+**Sửa:**
+- `useHistoryOrders` nhận `{search, status, page, limit}`, trả `{rows, meta}`. `keepPreviousData` để
+  đổi trang không nháy trắng.
+- Bảng bật **`manualPagination`** + `pageCount`/`rowCount` từ `meta`. ⚠ Thiếu cờ này thì bảng tưởng
+  `data` là toàn bộ và tự cắt tiếp → **trang 2 trở đi trắng trơn**.
+- **Lọc trạng thái chuyển lên server** (lọc ở trình duyệt sau khi phân trang = chỉ lọc trong trang
+  hiện tại, sai kết quả). Đổi bộ lọc → về trang 1 (đã có sẵn).
+- Banner "N đơn đang chờ" + cơ chế tự làm mới 5s **đọc `meta.pending_count`** do server đếm trên toàn
+  bộ danh sách — đếm theo trang hiện tại thì đứng ở trang 3 sẽ tưởng hết đơn chờ.
+- Bỏ `getPaginationRowModel` (không còn dùng).
+
+🔴 **Consumer thứ hai suýt bỏ sót:** `CreateTicketDialog` cũng gọi `useHistoryOrders()` để đổ dropdown
+"Đơn hàng liên quan" — tức màn tạo ticket cũng đang tải ~9 MB chỉ để hiện một danh sách chọn. Nay lấy
+**200 đơn gần nhất**. (Lần grep đầu để `| head` nên dòng này bị cắt mất — tsc mới lôi ra.)
+
+**Verify:** tsc **294 = baseline**, so bằng `comm` với danh sách lỗi baseline → **0 lỗi mới**.
+
+**Files:** `src/hooks/apis/useHistoryOrders.ts`, `src/views/Client/HistoryOrder/HistoryOrderPage.tsx`,
+`src/views/Client/SupportTickets/CreateTicketDialog.tsx`
+
+---
+
 #### 13.N+65 Dung lượng gói GB hiện ở DANH SÁCH đơn + thanh tiến trình (09/08/2026)
 
 **Vấn đề:** dung lượng còn lại chỉ hiện trong modal chi tiết. Khách có nhiều gói phải mở từng đơn mới
