@@ -847,6 +847,26 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+67 Log xoay: chỉ xem ở ADMIN + hiện đủ payload/response (21/08/2026)
+
+**Anh Long:** *"log tôi muốn nhìn ở phần admin (không phải ở user, màn hình user kể cả là admin cũng
+không hiển thị)"*.
+
+- `OrderDetail` (màn **KHÁCH**) trước đây mở log xoay cho admin ngay tại đó
+  (`canViewRotateLog = isAdmin && !isChild`) → **tắt hẳn**. Log chứa địa chỉ API + dữ liệu thô của NCC;
+  chỉ cần một lần nhầm tài khoản là lộ thông tin đối tác ra màn hình khách.
+- Trang **Admin → Danh sách proxy** trước chỉ hiện `method + url`, nay thêm **payload** và
+  **response thô của NCC** (thu gọn mặc định, lỗi thì tự bung) + **người gọi**
+  (`context.called_by`, đánh dấu rõ khi KHÔNG phải chủ đơn).
+- Màn **Admin → Chi tiết đơn** vốn đã hiện đủ payload/response — không phải sửa.
+
+**Verify:** tsc 294 = baseline.
+
+**Files:** `src/views/Client/HistoryOrder/OrderDetail.tsx`,
+`src/app/[lang]/(private)/(client)/admin/order-items/page.tsx`
+
+---
+
 #### 13.N+66 Danh sách đơn: phân trang phía server, thôi tải hết đơn về trình duyệt (10/08/2026)
 
 **Vấn đề:** trang "Đơn hàng của tôi" tải TOÀN BỘ đơn về rồi mới lọc + phân trang ở trình duyệt.

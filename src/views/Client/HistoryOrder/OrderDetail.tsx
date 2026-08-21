@@ -103,7 +103,11 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
   const [viewItemKey, setViewItemKey] = useState<string | null>(null)
   const { isAdmin } = useRole()
   const { isChild } = useBranding()
-  const canViewRotateLog = isAdmin && !isChild // Chỉ admin site mẹ thấy log xoay
+  // Log xoay CHỈ xem ở khu ADMIN (Admin → Danh sách proxy / Chi tiết đơn của admin).
+  // Màn này là màn KHÁCH — kể cả người đang xem là admin cũng KHÔNG hiện, vì log chứa
+  // địa chỉ API và dữ liệu thô của nhà cung cấp. Trước đây mở cho admin ngay tại đây, tức
+  // chỉ cần một lần nhầm tài khoản là lộ thông tin đối tác ra màn hình khách.
+  const canViewRotateLog = false
   const updateItemMutation = useUpdateOrderItem()
   const { data: apiKeysData = [], isLoading: isLoadingKeys } = useApiKeys(order?.id, open)
 

@@ -272,6 +272,33 @@ export default function AdminProxyKeysPage() {
                       {log.request.method} {log.request.url}
                     </div>
                   )}
+                  {/* Payload + response THÔ của nhà cung cấp — thứ duy nhất phân định được
+                      "lỗi do mình hay do đối tác". Mặc định thu gọn cho đỡ rối, lỗi thì tự bung. */}
+                  {log.request?.params && (
+                    <details style={{ marginTop: 3 }}>
+                      <summary style={{ fontSize: 10, color: '#6366f1', cursor: 'pointer' }}>Đã gửi (payload)</summary>
+                      <pre style={{ fontSize: 10, margin: '3px 0 0', padding: '6px 8px', background: '#0f172a', color: '#93c5fd', borderRadius: 4, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                        {typeof log.request.params === 'string' ? log.request.params : JSON.stringify(log.request.params, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                  {log.response && (
+                    <details style={{ marginTop: 3 }} open={log.action === 'rotate_error'}>
+                      <summary style={{ fontSize: 10, color: log.action === 'rotate_error' ? '#dc2626' : '#16a34a', cursor: 'pointer' }}>
+                        Đối tác trả về{log.status_code ? ` (HTTP ${log.status_code})` : ''}
+                      </summary>
+                      <pre style={{ fontSize: 10, margin: '3px 0 0', padding: '6px 8px', background: '#0f172a', color: log.action === 'rotate_error' ? '#fca5a5' : '#86efac', borderRadius: 4, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                        {log.response}
+                      </pre>
+                    </details>
+                  )}
+                  {log.context?.called_by != null && (
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>
+                      Người gọi: user #{log.context.called_by}
+                      {log.context.is_owner === false && ' (KHÔNG phải chủ đơn)'}
+                      {log.context.source ? ` · ${log.context.source === 'manual' ? 'khách/API gọi' : log.context.source}` : ''}
+                    </div>
+                  )}
                 </Box>
               )
             })}
