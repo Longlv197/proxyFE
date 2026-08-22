@@ -1869,6 +1869,9 @@ const navBtnStyle = (disabled: boolean): React.CSSProperties => ({
 const ITEM_LOG_ACTION: Record<string, { label: string; color: string }> = {
   rotate_success: { label: 'OK', color: '#16a34a' },
   rotate_error: { label: 'Lỗi', color: '#dc2626' },
+  // Khách CÓ gọi nhưng hệ thống không gọi NCC (còn khoá chờ / SP tắt xoay tay / chưa gắn NCC).
+  // Xám = KHÔNG phải lỗi. Giữ trùng nhãn với màn Admin → Danh sách proxy để hai chỗ không lệch.
+  rotate_skipped: { label: 'Bỏ qua', color: '#64748b' },
   rotate_timeout: { label: 'Timeout', color: '#f59e0b' },
   no_provider: { label: 'No NCC', color: '#ea580c' },
   paused: { label: 'Tạm dừng', color: '#7c3aed' },

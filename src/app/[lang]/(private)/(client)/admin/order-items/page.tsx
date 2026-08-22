@@ -18,6 +18,9 @@ const STATUS_MAP: Record<number, { label: string; color: string; bg: string }> =
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   rotate_success: { label: 'Xoay OK', color: '#16a34a' },
   rotate_error: { label: 'Xoay lỗi', color: '#dc2626' },
+  // Khách CÓ gọi nhưng hệ thống không gọi NCC (còn khoá chờ / SP tắt xoay tay / chưa gắn NCC).
+  // Màu xám vì KHÔNG phải lỗi — đừng để admin tưởng hệ thống hỏng.
+  rotate_skipped: { label: 'Bỏ qua (không gọi NCC)', color: '#64748b' },
   paused: { label: 'Dừng xoay', color: '#f59e0b' },
   no_provider: { label: 'Không có NCC', color: '#94a3b8' },
 }
