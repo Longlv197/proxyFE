@@ -410,9 +410,16 @@ interface PurchaseOption {
   // 'dropdown' dùng cho trường combo (chọn cách bày cho khách: thẻ cờ hay dropdown).
   // Khai thiếu giá trị này nên chỗ dùng ở dòng ~622 báo lỗi kiểu.
   display_type?: 'country_flag' | 'dropdown' | ''
+  /**
+   * "Trường này quyết định giá bán" — chọn mẫu nào thì bao nhiêu tiền (BE 15.N+59).
+   * Bật lên thì mỗi lựa chọn khai `price`/`cost` riêng. Mỗi sản phẩm chỉ MỘT trường được bật.
+   */
+  price_driver?: boolean
   options: Array<{
     provider_value: string; label: string
     key?: string; flag?: string; value?: string
+    /** Giá bán / giá vốn của riêng lựa chọn này — chỉ dùng khi trường bật `price_driver`. */
+    price?: number; cost?: number
     // i18n override — admin tự nhập tên hiển thị theo locale. Priority cao hơn dictionary ISO.
     // VD: { vi: 'Mỹ', en: 'USA', ko: '미국' } để override 'Hợp chúng quốc Hoa Kỳ' (ISO)
     label_i18n?: Record<string, string>
@@ -685,6 +692,32 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                     <MenuItem value='false'>Không</MenuItem>
                   </CustomTextField>
                 </Grid2>
+                {/* "Chọn mẫu nào thì bao nhiêu tiền" — bật lên thì mỗi lựa chọn hiện thêm ô giá bán/giá vốn.
+                    CHỈ cho SELECT: text/number khách tự gõ, không có bảng giá để tra.
+                    Bật ô này thì trường TỰ ĐỘNG thành bắt buộc — khách bỏ qua thì không biết tính tiền sao. */}
+                {(opt.type || 'select') === 'select' && (
+                  <Grid2 size={{ xs: 3 }}>
+                    <CustomTextField fullWidth size='small' select label='Quyết định giá bán'
+                      value={opt.price_driver ? 'true' : 'false'}
+                      helperText={opt.price_driver ? 'Mỗi lựa chọn một giá riêng' : 'Dùng giá chung của sản phẩm'}
+                      onChange={(e: any) => {
+                        const bat = e.target.value === 'true'
+
+                        // Mỗi sản phẩm chỉ MỘT trường được quyết định giá — hai trường cùng quyết
+                        // thì không biết nghe ai. Bật cái này thì tự tắt cái kia.
+                        if (bat) {
+                          onChange(options.map((o, i) => i === optIdx
+                            ? { ...o, price_driver: true, required: true }
+                            : { ...o, price_driver: false }))
+                        } else {
+                          update(optIdx, { price_driver: false })
+                        }
+                      }}>
+                      <MenuItem value='false'>Không</MenuItem>
+                      <MenuItem value='true'>Có — mỗi lựa chọn một giá</MenuItem>
+                    </CustomTextField>
+                  </Grid2>
+                )}
                 {providerSupportsResidential && (
                   <Grid2 size={{ xs: 3 }}>
                     <CustomTextField fullWidth size='small' select label='Bước dùng' value={opt.stage || 'buy'}
@@ -919,6 +952,28 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                                 const newOpts = [...opt.options]; newOpts[valIdx] = { ...newOpts[valIdx], label: e.target.value }
                                 update(optIdx, { options: newOpts })
                               }} />
+                            {/* Giá riêng cho lựa chọn này — chỉ hiện khi trường được bật "Quyết định giá bán".
+                                Không bật mà vẫn hiện thì thành ô bấm cho vui, admin gõ vào không có tác dụng. */}
+                            {opt.price_driver && (
+                              <>
+                                <CustomTextField size='small' type='number' placeholder='Giá bán' value={(option as any).price ?? ''}
+                                  sx={{ width: 120 }}
+                                  onChange={(e: any) => {
+                                    const newOpts = [...opt.options]
+                                    newOpts[valIdx] = { ...newOpts[valIdx], price: e.target.value === '' ? undefined : Number(e.target.value) } as any
+                                    update(optIdx, { options: newOpts })
+                                  }} />
+                                <CustomTextField size='small' type='number' placeholder='Giá vốn' value={(option as any).cost ?? ''}
+                                  sx={{ width: 120 }}
+                                  // Khai giá bán mà quên vốn → báo cáo lãi lỗ sai (bán gói 30GB ghi vốn gói 1GB = lãi ảo).
+                                  error={!!(option as any).price && !(option as any).cost}
+                                  onChange={(e: any) => {
+                                    const newOpts = [...opt.options]
+                                    newOpts[valIdx] = { ...newOpts[valIdx], cost: e.target.value === '' ? undefined : Number(e.target.value) } as any
+                                    update(optIdx, { options: newOpts })
+                                  }} />
+                              </>
+                            )}
                             <button type='button'
                               onClick={() => toggleI18n(i18nKey)}
                               title={hasI18n ? 'Có bản dịch — click sửa' : 'Thêm bản dịch (vi/en/ko/ja/cn)'}
@@ -1432,6 +1487,9 @@ return { values: {}, errors: formattedErrors }
             provider_value: o.provider_value ?? o.value ?? '',
           })),
           stage: f.stage === 'fetch' ? 'fetch' : 'buy',
+          // Thiếu dòng này thì mở form ra công tắc về "Không", bấm Lưu là MẤT cấu hình giá.
+          // (`options` dùng `...o` nên price/cost của từng lựa chọn tự được giữ.)
+          price_driver: !!f.price_driver,
           components: Array.isArray(f.components) ? f.components : undefined,
 
           // ⚠ GIỮ NGUYÊN BẢN GỐC — form chỉ hiểu một phần các khoá.
@@ -1560,6 +1618,11 @@ return { values: {}, errors: formattedErrors }
 
       if (o.stage === 'fetch') out.stage = 'fetch'
       else delete out.stage
+
+      // "Trường này quyết định giá bán" — form QUẢN LÝ khoá này nên phải ghi tường minh.
+      // Chỉ ghi khi bật; tắt thì xoá hẳn để cấu hình sạch, BE hiểu là dùng giá chung của SP.
+      if (o.price_driver) out.price_driver = true
+      else delete out.price_driver
 
       if (o.type === 'select') {
         const built = o.options.filter((opt: any) => opt.provider_value).map((opt: any) => {

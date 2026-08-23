@@ -847,6 +847,29 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+70 Ô "Quyết định giá bán" + giá riêng cho từng lựa chọn (23/08/2026)
+
+Đi kèm BE 15.N+59 — "chọn mẫu áo nào thì bao nhiêu tiền".
+
+**Form sản phẩm** (`ServiceFormModal`): mỗi trường tuỳ chọn thêm ô **"Quyết định giá bán"**.
+Bật lên → mỗi dòng lựa chọn hiện thêm 2 ô **Giá bán** và **Giá vốn**.
+· CHỈ cho `select` — text/number khách tự gõ, không có bảng giá để tra.
+· Bật ô này thì trường **tự động thành bắt buộc** + **tự tắt các trường khác** (chỉ một trường quyết giá).
+· Ô Giá vốn **viền đỏ khi khai giá bán mà quên vốn** — báo cáo lãi lỗ sẽ sai.
+· 2 ô giá **chỉ hiện khi bật công tắc** — không bật mà vẫn hiện thì thành ô bấm cho vui.
+
+**Màn thanh toán** (`CheckoutModal`): giá đổi theo lựa chọn khách chọn. Đảo lại chú thích cũ
+*"KHÔNG override theo option price"* — nay có override, nhưng chỉ khi SP khai `price_driver`.
+
+⚠ Vá đủ 4 chỗ (bẫy mất khoá — lần thứ 6): kiểu `PurchaseOption` · **đọc lên** (`price_driver: !!f.price_driver`) ·
+**ghi xuống** (`buildField`) · ô nhập. `price`/`cost` của từng lựa chọn tự sống nhờ `...o` và `optExtra` sẵn có.
+
+**Verify:** tsc 294 = baseline (có lúc 298 do thiếu khai kiểu — đã bổ sung, so bằng `comm` với baseline).
+
+**Files:** `src/views/Client/Admin/ServiceType/ServiceFormModal.tsx`, `src/components/checkout-modal/CheckoutModal.tsx`
+
+---
+
 #### 13.N+69 Ô cấu hình "Khi nhà cung cấp giao THIẾU" (23/08/2026)
 
 Đi kèm BE 15.N+58. Admin chọn cách xử theo TỪNG nhà cung cấp, ngay dưới phần mã lỗi (cùng ngữ cảnh

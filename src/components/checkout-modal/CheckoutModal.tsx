@@ -311,13 +311,30 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
       ? Math.round((selectedOption?.price || 0) * (1 - fixedQtyDiscountPct / 100))
       : 0
 
-  // Pricing — dùng cấu trúc chung của hệ thống (price_by_duration / per_unit).
-  // KHÔNG override theo option price (đồng bộ với mọi SP, đơn giản hoá).
-  const unitPrice = isPerUnit
+  // Giá theo LỰA CHỌN khách chọn — "chọn mẫu nào thì bao nhiêu tiền" (BE 15.N+59).
+  // Admin bật "Quyết định giá bán" ở MỘT trường; lựa chọn nào có `price` thì giá là con số đó.
+  // Không sản phẩm nào bật → `null` → mọi thứ chạy y như trước.
+  const giaTheoLuaChon = (() => {
+    const truong = customFields?.find((f: any) => f.price_driver)
+    if (!truong) return null
+
+    const khoa = truong.key || truong.param || ''
+    const daChon = customFieldValues[khoa] || truong.default
+    if (!daChon) return null
+
+    const opt = (truong.options || []).find((o: any) => (o.key ?? o.value) === daChon || o.provider_value === daChon)
+    const gia = opt ? (opt as any).price : null
+
+    return typeof gia === 'number' && gia > 0 ? gia : null
+  })()
+
+  // Pricing — dùng cấu trúc chung của hệ thống (price_by_duration / per_unit),
+  // TRỪ khi sản phẩm khai giá theo lựa chọn (khi đó lựa chọn quyết định).
+  const unitPrice = giaTheoLuaChon ?? (isPerUnit
     ? priceAfterQtyDiscount * customDuration
     : fixedQtyPrice > 0
       ? fixedQtyPrice
-      : selectedOption?.price || 0
+      : selectedOption?.price || 0)
   const baseUnitPrice = isPerUnit ? effectivePricePerUnit * customDuration : selectedOption?.price || 0
   const hasQtyDiscount = unitPrice < baseUnitPrice
 
