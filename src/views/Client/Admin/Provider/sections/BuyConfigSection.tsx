@@ -1057,7 +1057,7 @@ function StepErrorHandling({ prefix, control }: BuySectionProps) {
                 Mã lỗi cụ thể <FieldHint text='Khi nhà cung cấp trả mã lỗi, hệ thống sẽ hiện thông báo tương ứng thay vì lỗi chung chung.' />
               </Typography>
               <Button size='small' startIcon={<Plus size={14} />}
-                onClick={() => appendErrorCode({ field: '', value: '', match: 'exact' as const, message: '' })}
+                onClick={() => appendErrorCode({ field: '', value: '', match: 'exact' as const, message: '', action: '' as const })}
                 sx={{ fontSize: 11, textTransform: 'none' }}>
                 Thêm mã lỗi
               </Button>
@@ -1078,6 +1078,18 @@ function StepErrorHandling({ prefix, control }: BuySectionProps) {
                 )} />
                 <Controller name={`${prefix}.response.error_codes.${idx}.message`} control={control} render={({ field }) => (
                   <CustomTextField {...field} placeholder='Hết proxy trong kho' size='small' sx={{ flex: 2 }} label={idx === 0 ? 'Thông báo hiển thị' : undefined} />
+                )} />
+                {/* Gặp mã lỗi này thì XỬ THẾ NÀO. Nhãn nói HẬU QUẢ, không nói tên kỹ thuật —
+                    admin đọc là biết tiền có tự về ví khách hay không. Mặc định để trống = giữ
+                    nguyên cách chạy trước giờ (thử lại 3 lần rồi treo đơn chờ admin). */}
+                <Controller name={`${prefix}.response.error_codes.${idx}.action`} control={control} render={({ field }) => (
+                  <CustomTextField {...field} value={field.value ?? ''} select size='small' sx={{ flex: 1.6 }}
+                    slotProps={{ select: { displayEmpty: true } }}
+                    label={idx === 0 ? 'Gặp lỗi này thì' : undefined}>
+                    <MenuItem value=''>Thử lại (mặc định)</MenuItem>
+                    <MenuItem value='refund'>Hoàn tiền ngay cho khách</MenuItem>
+                    <MenuItem value='manual'>Dừng, chờ admin xử lý</MenuItem>
+                  </CustomTextField>
                 )} />
                 <IconButton size='small' onClick={() => removeErrorCode(idx)} sx={{ color: '#dc2626', mt: idx === 0 ? 2.5 : 0 }}>
                   <Trash2 size={14} />

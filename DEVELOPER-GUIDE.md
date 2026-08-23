@@ -847,6 +847,32 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+68 🔴 Ô "Gặp lỗi này thì" — cấu hình tự hoàn tiền CHƯA CÓ trong giao diện (23/08/2026)
+
+**Anh Long:** *"đã thấy phần action trong phần hoàn tiền đâu nhỉ, tôi reload site mẹ rồi"*.
+**Đúng — BE đã xong (15.N+56) nhưng FE chưa có ô nhập**, nên reload cũng không thấy gì.
+
+**Thêm ô "Gặp lỗi này thì"** vào từng dòng mã lỗi (`BuyConfigSection`), nhãn nói HẬU QUẢ chứ không
+nói tên kỹ thuật — admin đọc là biết tiền có tự về ví khách hay không:
+**Thử lại (mặc định)** · **Hoàn tiền ngay cho khách** · **Dừng, chờ admin xử lý**.
+
+⚠ **Phải vá ĐỦ 4 CHỖ, thiếu một là chọn xong bấm Lưu vẫn mất** — đúng bẫy "danh sách trắng làm mất
+khoá" đã vấp 4 lần trong dự án:
+1. `ErrorCodeRule` — khai kiểu `action`
+2. **Đọc lên** (`deserialize`): thiếu → mở form ra ô đã về rỗng
+3. **Ghi xuống** (`serialize`): thiếu → bấm Lưu là bay cấu hình
+4. **Thêm dòng mới** (`appendErrorCode`): thiếu → dòng vừa thêm không có ô chọn
+
+Chỉ gửi `action` khi admin CỐ Ý chọn — để trống thì không ghi khoá, cấu hình sạch và BE hiểu là
+"thử lại" (giữ nguyên hành vi cũ).
+
+**Verify:** tsc 294 = baseline.
+
+**Files:** `src/views/Client/Admin/Provider/sections/BuyConfigSection.tsx`,
+`src/views/Client/Admin/Provider/{ProviderFormTypes.ts,ProviderFormSerializer.ts}`
+
+---
+
 #### 13.N+67 Log xoay: chỉ xem ở ADMIN + hiện đủ payload/response (21/08/2026)
 
 **Anh Long:** *"log tôi muốn nhìn ở phần admin (không phải ở user, màn hình user kể cả là admin cũng

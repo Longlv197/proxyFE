@@ -259,6 +259,9 @@ export function parseBuySection(buy: any): ApiConfigBuy {
         value: r.value != null ? String(r.value) : '',
         match: r.match || 'exact',
         message: r.message || '',
+        // Thiếu dòng này thì admin mở form ra là ô "Gặp lỗi này thì" về rỗng, bấm Lưu là MẤT
+        // cấu hình hoàn tiền — đúng bẫy "danh sách trắng làm mất khoá" đã vấp 4 lần trong dự án.
+        action: r.action || '',
       })),
       http_errors: (() => {
         const he = buyResp.http_errors
@@ -502,6 +505,8 @@ export function buildBuySection(buy: ApiConfigBuy, prevBuy?: any): object | null
       value: r.match === 'contains' ? r.value : (isNaN(Number(r.value)) ? r.value : Number(r.value)),
       match: r.match,
       message: r.message,
+      // Chỉ gửi khi admin CỐ Ý chọn — để trống thì không ghi khoá, cấu hình sạch và BE hiểu là "thử lại".
+      ...(r.action ? { action: r.action } : {}),
     }))
   }
 

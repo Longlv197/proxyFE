@@ -7,6 +7,11 @@ export interface ErrorCodeRule {
   value: string
   match: 'exact' | 'contains'
   message: string
+  /**
+   * Gặp mã lỗi này thì xử thế nào (BE 15.N+56).
+   * '' hoặc thiếu = thử lại như cũ · 'refund' = hoàn tiền ngay · 'manual' = dừng, chờ admin.
+   */
+  action?: '' | 'refund' | 'manual'
 }
 
 export interface HttpErrorRule {
