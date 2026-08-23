@@ -326,6 +326,17 @@ export function parseApiConfig(apiConfig: any): Partial<FormValues> {
       param: ipCfg.param || 'ip',
       param_format: ipCfg.param_format || 'single',
     },
+    // Cách xử đơn giao thiếu. Thiếu khối này thì mở form ra là ô về rỗng, bấm Lưu là MẤT
+    // cấu hình — đúng bẫy "danh sách trắng làm mất khoá" đã vấp 5 lần trong dự án.
+    partial_policy: (() => {
+      const pp = apiConfig.partial_policy || {}
+
+      return {
+        mode: pp.mode || '',
+        retry_after_hours: pp.retry_after_hours != null ? String(pp.retry_after_hours) : '',
+        refund_after_hours: pp.refund_after_hours != null ? String(pp.refund_after_hours) : '',
+      }
+    })(),
     renew: (() => {
       const r = apiConfig.renew
       if (!r) return { ...defaultValues.renew }
@@ -715,6 +726,23 @@ export function buildApiConfig(form: FormValues, prevConfig?: any): object | nul
       param: form.ip_whitelist.param,
       param_format: form.ip_whitelist.param_format,
     }
+  }
+
+  // Chỉ ghi khi admin CỐ Ý chọn — để trống thì không có khoá, BE dùng mặc định thận trọng
+  // (chờ mua bù 2h, hoàn sau 12h). Cấu hình sạch, không đẻ khoá rỗng vô nghĩa.
+  if (form.partial_policy?.mode) {
+    const pp: any = { mode: form.partial_policy.mode }
+
+    // Số giờ chỉ có nghĩa với chế độ CHỜ; refund_now hoàn ngay nên ghi vào chỉ tổ gây hiểu nhầm.
+    if (form.partial_policy.mode === 'retry_then_refund') {
+      const r = Number(form.partial_policy.retry_after_hours)
+      const f = Number(form.partial_policy.refund_after_hours)
+
+      if (r > 0) pp.retry_after_hours = r
+      if (f > 0) pp.refund_after_hours = f
+    }
+
+    config.partial_policy = pp
   }
 
   if (form.renew.enabled && form.renew.url) {

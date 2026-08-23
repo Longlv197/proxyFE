@@ -1104,6 +1104,46 @@ function StepErrorHandling({ prefix, control }: BuySectionProps) {
           </Box>
         </Grid2>
 
+        {/* Giao THIẾU — khác hẳn "lỗi": nhà cung cấp báo mua thành công nhưng không đủ số lượng.
+            Đặt ngay dưới phần mã lỗi vì cùng ngữ cảnh "khi mua có chuyện". */}
+        <Grid2 size={{ xs: 12 }}>
+          <Box sx={{ p: 1.5, background: '#f0f9ff', borderRadius: 1.5, border: '1px solid #bae6fd' }}>
+            <Typography variant='caption' sx={{ fontWeight: 600, color: '#0c4a6e', display: 'block', mb: 0.5 }}>
+              Khi nhà cung cấp giao THIẾU (đặt 10 chỉ nhận 6)
+            </Typography>
+            <Typography variant='caption' sx={{ color: '#64748b', display: 'block', mb: 1.5, fontSize: 11 }}>
+              Tiền hoàn = đơn giá × số lượng thiếu. Phần đã giao vẫn giữ nguyên cho khách dùng.
+            </Typography>
+
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+              <Controller name='partial_policy.mode' control={control} render={({ field }) => (
+                <CustomTextField {...field} value={field.value ?? ''} select size='small' sx={{ flex: 2 }}
+                  slotProps={{ select: { displayEmpty: true } }} label='Cách xử lý'>
+                  <MenuItem value=''>Chờ mua bù rồi hoàn (mặc định)</MenuItem>
+                  <MenuItem value='retry_then_refund'>Chờ mua bù rồi hoàn — đặt thời gian riêng</MenuItem>
+                  <MenuItem value='refund_now'>Hoàn phần thiếu ngay, không chờ</MenuItem>
+                </CustomTextField>
+              )} />
+
+              {/* Số giờ chỉ hiện khi CHỜ — chế độ hoàn ngay không dùng tới, hiện ra là điều khiển chết */}
+              <Controller name='partial_policy.mode' control={control} render={({ field: m }) => (
+                m.value === 'retry_then_refund' ? (
+                  <>
+                    <Controller name='partial_policy.retry_after_hours' control={control} render={({ field }) => (
+                      <CustomTextField {...field} value={field.value ?? ''} size='small' type='number' sx={{ flex: 1 }}
+                        label='Chờ mua bù sau' placeholder='2' helperText='giờ (để trống = 2)' />
+                    )} />
+                    <Controller name='partial_policy.refund_after_hours' control={control} render={({ field }) => (
+                      <CustomTextField {...field} value={field.value ?? ''} size='small' type='number' sx={{ flex: 1 }}
+                        label='Vẫn thiếu thì hoàn sau' placeholder='12' helperText='giờ (để trống = 12)' />
+                    )} />
+                  </>
+                ) : <></>
+              )} />
+            </Box>
+          </Box>
+        </Grid2>
+
         {/* HTTP errors */}
         <Grid2 size={{ xs: 12 }}>
           <Box sx={{ p: 1.5, background: '#fefce8', borderRadius: 1.5, border: '1px solid #fde68a' }}>

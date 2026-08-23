@@ -244,6 +244,18 @@ export interface FormValues {
   rotate: ApiConfigRotate
   ip_whitelist: IpConfig
   renew: RenewConfig
+  partial_policy: PartialPolicy
+}
+
+/**
+ * NCC báo mua thành công nhưng giao THIẾU (đặt 10 nhận 6) thì xử thế nào (BE 15.N+58).
+ * `refund_now` — hoàn phần thiếu ngay, không chờ (NCC "hết là hết").
+ * `retry_then_refund` — chờ NCC giao nốt → tự mua bù → quá hạn vẫn thiếu thì mới hoàn.
+ */
+export interface PartialPolicy {
+  mode: '' | 'refund_now' | 'retry_then_refund'
+  retry_after_hours: string
+  refund_after_hours: string
 }
 
 export interface ModalAddProviderProps {
@@ -469,5 +481,11 @@ export const defaultValues: FormValues = {
     success_value: '',
     new_expiry_field: '',
     batch_delay_ms: '0',
+  },
+  // Để trống = giữ hành vi thận trọng của BE (chờ mua bù 2h, hoàn sau 12h).
+  partial_policy: {
+    mode: '',
+    retry_after_hours: '',
+    refund_after_hours: '',
   }
 }

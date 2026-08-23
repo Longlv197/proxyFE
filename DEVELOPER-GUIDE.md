@@ -847,6 +847,28 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+69 Ô cấu hình "Khi nhà cung cấp giao THIẾU" (23/08/2026)
+
+Đi kèm BE 15.N+58. Admin chọn cách xử theo TỪNG nhà cung cấp, ngay dưới phần mã lỗi (cùng ngữ cảnh
+"khi mua có chuyện"):
+· **Chờ mua bù rồi hoàn (mặc định)** · **Chờ mua bù rồi hoàn — đặt thời gian riêng** ·
+**Hoàn phần thiếu ngay, không chờ**
+
+Nhãn nói HẬU QUẢ, kèm một câu giải thích cách tính: *"Tiền hoàn = đơn giá × số lượng thiếu.
+Phần đã giao vẫn giữ nguyên cho khách dùng."*
+
+2 ô số giờ **chỉ hiện khi chọn chế độ CHỜ** — chế độ hoàn ngay không dùng tới, hiện ra là **điều
+khiển chết** (admin gõ mà không có tác dụng gì).
+
+⚠ Vá đủ **4 chỗ** như mọi lần: kiểu `PartialPolicy` · giá trị mặc định · **đọc lên** · **ghi xuống**.
+Chỉ ghi khi admin CỐ Ý chọn; số giờ chỉ ghi cho chế độ chờ → cấu hình sạch, không đẻ khoá rỗng.
+
+**Verify:** tsc 294 = baseline.
+
+**Files:** `src/views/Client/Admin/Provider/{ProviderFormTypes.ts,ProviderFormSerializer.ts,sections/BuyConfigSection.tsx}`
+
+---
+
 #### 13.N+68 🔴 Ô "Gặp lỗi này thì" — cấu hình tự hoàn tiền CHƯA CÓ trong giao diện (23/08/2026)
 
 **Anh Long:** *"đã thấy phần action trong phần hoàn tiền đâu nhỉ, tôi reload site mẹ rồi"*.
