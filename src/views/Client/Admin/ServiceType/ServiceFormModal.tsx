@@ -483,12 +483,17 @@ const I18N_LOCALES: Array<{ code: string; label: string; flag: string }> = [
 ]
 
 const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
-  options, onChange, control, errors, countries, providerSupportsResidential
+  options, onChange, control, errors, countries, providerSupportsResidential,
+  chanQuyetDinhGia, onBatQuyetDinhGia
 }: {
   options: PurchaseOption[]
   onChange: (options: PurchaseOption[]) => void
   control: any; errors: any; countries?: any[]
   providerSupportsResidential?: boolean
+  /** Lý do KHÔNG cho bật "Quyết định giá bán" (null = cho bật). Tính ở component cha. */
+  chanQuyetDinhGia?: string | null
+  /** Gọi khi admin bật công tắc giá — cha tự đặt "Giá theo số lượng" = tính theo gói. */
+  onBatQuyetDinhGia?: () => void
 }) {
   const update = (idx: number, patch: Partial<PurchaseOption>) => {
     onChange(options.map((o, i) => i === idx ? { ...o, ...patch } : o))
@@ -699,7 +704,14 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                   <Grid2 size={{ xs: 3 }}>
                     <CustomTextField fullWidth size='small' select label='Quyết định giá bán'
                       value={opt.price_driver ? 'true' : 'false'}
-                      helperText={opt.price_driver ? 'Mỗi lựa chọn một giá riêng' : 'Dùng giá chung của sản phẩm'}
+                      error={!!chanQuyetDinhGia && !!opt.price_driver}
+                      helperText={
+                        chanQuyetDinhGia
+                          ? chanQuyetDinhGia
+                          : opt.price_driver
+                            ? 'Mỗi lựa chọn một giá riêng · đã đặt "Giá theo số lượng" = tính theo gói'
+                            : 'Dùng giá chung của sản phẩm'
+                      }
                       onChange={(e: any) => {
                         const bat = e.target.value === 'true'
 
@@ -709,12 +721,19 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                           onChange(options.map((o, i) => i === optIdx
                             ? { ...o, price_driver: true, required: true }
                             : { ...o, price_driver: false }))
+
+                          // Ép "tính theo gói": giá của lựa chọn LÀ giá trọn gói. Để nguyên chế độ
+                          // nhân mặc định thì khách mua 5 cái gói 30GB = 10 triệu.
+                          onBatQuyetDinhGia?.()
                         } else {
                           update(optIdx, { price_driver: false })
                         }
                       }}>
                       <MenuItem value='false'>Không</MenuItem>
-                      <MenuItem value='true'>Có — mỗi lựa chọn một giá</MenuItem>
+                      {/* Chặn BẬT khi sản phẩm chưa hợp: vẫn cho TẮT nếu lỡ bật rồi, không nhốt admin */}
+                      <MenuItem value='true' disabled={!!chanQuyetDinhGia && !opt.price_driver}>
+                        Có — mỗi lựa chọn một giá
+                      </MenuItem>
                     </CustomTextField>
                   </Grid2>
                 )}
@@ -1239,6 +1258,26 @@ export default function ServiceFormModal({ open, onClose, serviceId, initialData
   const [pricingMode, setPricingMode] = useState<'fixed' | 'per_unit'>('fixed')
   // Residential: 'package' = giá cố định theo gói (số lượng KHÔNG nhân) | 'multiply' = × số lượng proxy (mặc định = hành vi cũ).
   const [priceQuantityMode, setPriceQuantityMode] = useState<'multiply' | 'package'>('multiply')
+
+  // ─── Rào cho "Quyết định giá bán" (giá theo lựa chọn) ───────────────────────────────────
+  // Giá của lựa chọn hiện là MỘT con số phẳng, không phân biệt 30/60/90 ngày — nhưng ngày hết
+  // hạn vẫn cộng đủ theo mốc khách chọn. Cho bật ở sản phẩm nhiều mốc = khách chọn mốc dài
+  // nhất mà trả tiền như mốc ngắn nhất.
+  //
+  // 👉 THÁO RÀO: khi nào khai được giá theo (lựa chọn × thời hạn) thì xoá đúng hàm này là xong —
+  //    luật chỉ nằm ở đây, không rải trong component con.
+  const chanQuyetDinhGia = useMemo<string | null>(() => {
+    if (pricingMode === 'per_unit') {
+      return 'Sản phẩm tính tiền theo ngày, khách tự nhập thời hạn — chưa dùng được giá theo lựa chọn.'
+    }
+
+    const soMoc = priceFields.filter(f => f.key && f.value).length
+    if (soMoc > 1) {
+      return `Sản phẩm đang có ${soMoc} mốc thời hạn. Giá theo lựa chọn chỉ là một con số, không phân biệt thời hạn — khách sẽ chọn mốc dài nhất mà trả tiền như mốc ngắn nhất. Rút còn 1 mốc thì bật được.`
+    }
+
+    return null
+  }, [pricingMode, priceFields])
 
   // Thẻ sản phẩm lấy quốc gia từ nguồn nào. Mặc định 'auto' = đúng hành vi trước giờ,
   // nên sản phẩm cũ không khai gì cũng không đổi cách hiện.
@@ -2779,6 +2818,8 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   errors={errors}
                   countries={countries}
                   providerSupportsResidential={selectedProviderMain?.api_config?.kind === 'residential'}
+                  chanQuyetDinhGia={chanQuyetDinhGia}
+                  onBatQuyetDinhGia={() => setPriceQuantityMode('package')}
                 />
               </CollapsibleSection>
 

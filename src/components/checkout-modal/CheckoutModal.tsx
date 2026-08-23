@@ -335,7 +335,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
     : fixedQtyPrice > 0
       ? fixedQtyPrice
       : selectedOption?.price || 0)
-  const baseUnitPrice = isPerUnit ? effectivePricePerUnit * customDuration : selectedOption?.price || 0
+  // Giá gốc để so "có đang giảm không". SP bán theo lựa chọn thì giá gốc CHÍNH LÀ giá lựa chọn —
+  // không lấy giá chung của SP, không thì gói rẻ hơn giá chung sẽ hiện gạch ngang giảm giá ảo.
+  const baseUnitPrice = giaTheoLuaChon ?? (isPerUnit ? effectivePricePerUnit * customDuration : selectedOption?.price || 0)
   const hasQtyDiscount = unitPrice < baseUnitPrice
 
   const activeDuration = isPerUnit ? String(customDuration) : selectedDuration

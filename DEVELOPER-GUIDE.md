@@ -847,6 +847,37 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+71 Hai rào cho "Quyết định giá bán" — chống bán hớ (23/08/2026)
+
+Đi kèm BE 15.N+60 (rà soát 15.N+59). Bản trước cho bật công tắc giá ở **mọi** sản phẩm, sinh 2 lỗ:
+
+**Rào 1 — sản phẩm nhiều mốc thời hạn thì không cho bật.** Giá của lựa chọn hiện là MỘT con số
+phẳng, không phân biệt 30/60/90 ngày — nhưng ngày hết hạn vẫn cộng đủ theo mốc khách chọn. Bật ở
+sản phẩm nhiều mốc = khách chọn mốc dài nhất mà trả tiền như mốc ngắn nhất.
+Cũng chặn luôn sản phẩm tính tiền theo ngày (khách tự nhập thời hạn).
+
+**Rào 2 — bật công tắc giá thì tự đặt "Giá theo số lượng" = tính theo gói.** Mặc định hệ thống là
+*nhân*; admin bật giá gói 30GB mà quên đổi thì khách mua 5 cái = **10.000.000đ**. Không đặt lén:
+dòng chú thích dưới ô ghi rõ *"đã đặt Giá theo số lượng = tính theo gói"*.
+
+Chặn **BẬT** chứ không khoá ô: lỡ bật rồi vẫn TẮT được, không nhốt admin. Đang bật mà sản phẩm
+thành không hợp lệ → ô chuyển đỏ kèm lý do.
+
+⚠ **Đây là rào ở FORM, không phải ràng buộc ở dữ liệu.** BE không từ chối sản phẩm vừa bật
+`price_driver` vừa có nhiều mốc thời hạn — sửa thẳng `metadata`, hoặc sản phẩm site con nhập từ
+mẹ, thì đi vòng qua được. Chấp nhận vì hiện form này là nơi khai duy nhất; muốn bịt hẳn thì phải
+thêm luật ở `ServiceTypeController` lúc lưu.
+
+👉 **Luật nằm gọn trong `chanQuyetDinhGia` (một `useMemo`)** — sau này khai được giá theo
+(lựa chọn × thời hạn) thì xoá đúng hàm đó là tháo rào, không phải đi lục component con.
+
+Kèm: `baseUnitPrice` ở CheckoutModal lấy theo giá lựa chọn — không thì gói rẻ hơn giá chung của
+sản phẩm sẽ hiện gạch ngang **giảm giá ảo**.
+
+**Verify:** tsc 294 = baseline.
+**Files:** `src/views/Client/Admin/ServiceType/ServiceFormModal.tsx`,
+`src/components/checkout-modal/CheckoutModal.tsx`
+
 #### 13.N+70 Ô "Quyết định giá bán" + giá riêng cho từng lựa chọn (23/08/2026)
 
 Đi kèm BE 15.N+59 — "chọn mẫu áo nào thì bao nhiêu tiền".
