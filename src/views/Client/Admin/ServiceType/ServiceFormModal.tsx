@@ -484,7 +484,7 @@ const I18N_LOCALES: Array<{ code: string; label: string; flag: string }> = [
 
 const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
   options, onChange, control, errors, countries, providerSupportsResidential,
-  chanQuyetDinhGia, onBatQuyetDinhGia
+  chanQuyetDinhGia, priceQuantityMode, onDoiCachTinhTien
 }: {
   options: PurchaseOption[]
   onChange: (options: PurchaseOption[]) => void
@@ -492,8 +492,9 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
   providerSupportsResidential?: boolean
   /** Lý do KHÔNG cho bật "Quyết định giá bán" (null = cho bật). Tính ở component cha. */
   chanQuyetDinhGia?: string | null
-  /** Gọi khi admin bật công tắc giá — cha tự đặt "Giá theo số lượng" = tính theo gói. */
-  onBatQuyetDinhGia?: () => void
+  /** `price_quantity_mode` cấp SẢN PHẨM — mượn ra đây để admin quyết ngay lúc bật công tắc giá. */
+  priceQuantityMode?: 'multiply' | 'package'
+  onDoiCachTinhTien?: (mode: 'multiply' | 'package') => void
 }) {
   const update = (idx: number, patch: Partial<PurchaseOption>) => {
     onChange(options.map((o, i) => i === idx ? { ...o, ...patch } : o))
@@ -709,7 +710,7 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                         chanQuyetDinhGia
                           ? chanQuyetDinhGia
                           : opt.price_driver
-                            ? 'Mỗi lựa chọn một giá riêng · đã đặt "Giá theo số lượng" = tính theo gói'
+                            ? 'Mỗi lựa chọn một giá riêng'
                             : 'Dùng giá chung của sản phẩm'
                       }
                       onChange={(e: any) => {
@@ -721,10 +722,6 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                           onChange(options.map((o, i) => i === optIdx
                             ? { ...o, price_driver: true, required: true }
                             : { ...o, price_driver: false }))
-
-                          // Ép "tính theo gói": giá của lựa chọn LÀ giá trọn gói. Để nguyên chế độ
-                          // nhân mặc định thì khách mua 5 cái gói 30GB = 10 triệu.
-                          onBatQuyetDinhGia?.()
                         } else {
                           update(optIdx, { price_driver: false })
                         }
@@ -735,6 +732,29 @@ const PurchaseOptionsSection = memo(function PurchaseOptionsSection({
                         Có — mỗi lựa chọn một giá
                       </MenuItem>
                     </CustomTextField>
+                  </Grid2>
+                )}
+                {/* Bật giá theo lựa chọn thì PHẢI nói rõ giá đó nhân với số lượng hay không.
+                    Trước đây tự ép sang "tính theo gói" — SAI với SP bán theo số IP (vd Static-V6
+                    Multi Country: khách mua 10 IP trả tiền như 1 IP). Và ô gốc "Giá theo số lượng"
+                    nằm trong mục Residential nên SP thường KHÔNG nhìn thấy để sửa lại.
+                    Cố ý KHÔNG đẻ khoá mới ở cấp tuỳ chọn: `price_quantity_mode` cấp sản phẩm đã có
+                    6 chỗ trong BE đọc; thêm khái niệm thứ hai là phải vá cả 6. Ô này chỉ ĐƯA CÁI
+                    SẴN CÓ ra đúng lúc admin cần quyết. Thêm tuỳ chọn nữa sau này không phải sửa gì. */}
+                {opt.price_driver && (
+                  <Grid2 size={{ xs: 12 }}>
+                    <Alert severity={priceQuantityMode === 'package' ? 'info' : 'warning'} sx={{ py: 0.5 }}
+                      action={
+                        <CustomTextField select size='small' sx={{ minWidth: 210 }} value={priceQuantityMode}
+                          onChange={(e: any) => onDoiCachTinhTien?.(e.target.value)}>
+                          <MenuItem value='package'>Giá TRỌN GÓI</MenuItem>
+                          <MenuItem value='multiply'>Giá MỖI PROXY</MenuItem>
+                        </CustomTextField>
+                      }>
+                      {priceQuantityMode === 'package'
+                        ? 'Khách mua 5 proxy vẫn trả đúng 1× giá của lựa chọn — dùng cho gói dung lượng (5GB, 30GB…).'
+                        : 'Khách mua 5 proxy trả 5× giá của lựa chọn — dùng khi lựa chọn quyết định giá MỖI proxy (chọn quốc gia, chọn nhà mạng).'}
+                    </Alert>
                   </Grid2>
                 )}
                 {providerSupportsResidential && (
@@ -2819,7 +2839,8 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   countries={countries}
                   providerSupportsResidential={selectedProviderMain?.api_config?.kind === 'residential'}
                   chanQuyetDinhGia={chanQuyetDinhGia}
-                  onBatQuyetDinhGia={() => setPriceQuantityMode('package')}
+                  priceQuantityMode={priceQuantityMode}
+                  onDoiCachTinhTien={setPriceQuantityMode}
                 />
               </CollapsibleSection>
 

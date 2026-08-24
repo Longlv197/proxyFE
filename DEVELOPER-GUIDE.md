@@ -847,6 +847,34 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+72 🔴 Bỏ ép "tính theo gói" — hỏi thẳng admin trọn gói hay mỗi proxy (24/08/2026)
+
+**Anh Long:** *"chọn gói hay tuỳ chọn, sau này nó có tuỳ chọn khác thì sao?"*
+
+**Lỗi của 13.N+71:** bật "Quyết định giá bán" → tự đặt `price_quantity_mode = package`. Suy từ ĐÚNG
+MỘT ca (gói dung lượng Proxyma) rồi áp cho mọi ca. Soi 20 SP prod mới lòi ra **SP #37 Static-V6
+Multi Country bán theo số IP** (tuỳ chọn = 7 quốc gia) → bật công tắc là **khách mua 10 IP trả tiền
+như 1 IP**.
+
+Nặng hơn: ô gốc *"Giá theo số lượng"* nằm trong mục **Residential**, nên SP thường **không nhìn thấy
+để sửa lại** — tự đặt ở chỗ admin không với tới được.
+
+**Trả lời câu hỏi "sau này có tuỳ chọn khác thì sao":** *trọn gói / mỗi proxy* là tính chất của
+**SẢN PHẨM**, không phải của tuỳ chọn — SP #37 thêm ô "loại IP" thì vẫn bán theo IP. Nên **KHÔNG đẻ
+khoá mới ở cấp tuỳ chọn**: `price_quantity_mode` cấp SP đã có **6 chỗ trong BE đọc**, thêm khái niệm
+thứ hai là phải vá cả 6 (đúng bẫy vừa vấp ở 15.N+60). Ô mới chỉ **mượn cái sẵn có ra đúng lúc admin
+cần quyết**. Thêm tuỳ chọn thứ hai/ba sau này → không phải sửa gì.
+
+**Làm:** bật `price_driver` → hiện `Alert` ngay dưới hàng đó, nói **hậu quả bằng số** kèm ô chọn:
+- *Giá TRỌN GÓI* → "Khách mua 5 proxy vẫn trả đúng 1× giá của lựa chọn" (info)
+- *Giá MỖI PROXY* → "Khách mua 5 proxy trả 5× giá của lựa chọn" (**warning** — để admin phải nhìn)
+
+Không đặt mặc định hộ: giữ nguyên chế độ SP đang dùng, chỉ đưa ra trước mặt.
+
+**An toàn:** 0 SP nào bật `price_driver` (kiểm cả 2 site) → không có dữ liệu nào bị ép sai cần vá lại.
+**Verify:** tsc 294 = baseline.
+**Files:** `src/views/Client/Admin/ServiceType/ServiceFormModal.tsx`
+
 #### 13.N+71 Hai rào cho "Quyết định giá bán" — chống bán hớ (23/08/2026)
 
 Đi kèm BE 15.N+60 (rà soát 15.N+59). Bản trước cho bật công tắc giá ở **mọi** sản phẩm, sinh 2 lỗ:
