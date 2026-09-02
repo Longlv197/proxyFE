@@ -51,6 +51,16 @@ import { toast } from 'react-toastify'
 import CustomTextField from '@/@core/components/mui/TextField'
 
 import { formatDateTimeLocal } from '@/utils/formatDate'
+import {
+  formatPercent,
+  marginPercent,
+  markupPercent,
+  profitColor,
+  HINT_MARGIN,
+  HINT_MARKUP,
+  LABEL_MARGIN_SHORT,
+  LABEL_MARKUP_SHORT
+} from '@/utils/profitMetrics'
 
 import useAxiosAuth from '@/hocs/useAxiosAuth'
 import { useAdminOrders } from '@/hooks/apis/useOrderReport'
@@ -776,8 +786,9 @@ export default function AdminOrdersPage() {
           const totalSell = o.total_amount ?? 0
           const totalCost = o.total_cost ?? 0
           const profit = totalSell - totalCost
-          const profitColor = profit >= 0 ? '#16a34a' : '#dc2626'
-          const marginPercent = totalSell > 0 ? ((profit / totalSell) * 100).toFixed(1) : '—'
+          const profitTextColor = profit >= 0 ? '#16a34a' : '#dc2626'
+          const margin = marginPercent(profit, totalSell)
+          const markup = markupPercent(profit, totalCost)
           const costLabel = isChild ? 'Nhập' : 'Vốn'
 
           return (
@@ -791,7 +802,7 @@ export default function AdminOrdersPage() {
               <div
                 style={{
                   fontWeight: 700,
-                  color: profitColor,
+                  color: profitTextColor,
                   fontSize: '12px',
                   borderTop: '1px solid #e2e8f0',
                   marginTop: 3,
@@ -805,8 +816,23 @@ export default function AdminOrdersPage() {
                   Lãi: {profit >= 0 ? '+' : ''}
                   {formatVND(profit)}
                 </span>
-                <span style={{ fontSize: '10px', fontWeight: 400, color: '#94a3b8' }}>({marginPercent}%)</span>
+                {/* Site con giữ nguyên Y HỆT như cũ — 2 kiểu lãi chỉ hiện ở site mẹ */}
+                {isChild && (
+                  <span style={{ fontSize: '10px', fontWeight: 400, color: '#94a3b8' }}>
+                    ({totalSell > 0 ? ((profit / totalSell) * 100).toFixed(1) : '—'}%)
+                  </span>
+                )}
               </div>
+              {!isChild && (
+                <>
+                  <div style={{ fontSize: '10px', color: '#94a3b8' }} title={HINT_MARKUP}>
+                    {LABEL_MARKUP_SHORT}: <span style={{ color: profitColor(markup) }}>{formatPercent(markup)}</span>
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#94a3b8' }} title={HINT_MARGIN}>
+                    {LABEL_MARGIN_SHORT}: <span style={{ color: profitColor(margin) }}>{formatPercent(margin)}</span>
+                  </div>
+                </>
+              )}
             </div>
           )
         }

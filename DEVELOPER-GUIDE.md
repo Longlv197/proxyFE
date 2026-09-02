@@ -847,6 +847,43 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+73 Báo cáo admin hiện đủ 2 kiểu lãi: trên giá gốc và trên tổng thu (03/09/2026)
+
+**Anh Long:** *"hiển thị 2 kiểu lãi trên giá gốc và lãi trên tổng thu giúp tôi"* — sau khi đặt
+markup 15% mà báo cáo hiện 13% (xem BE 15.N+65: `15/115 = 13,04%`, không phải mất tiền).
+
+**Sửa:** module dùng chung `src/utils/profitMetrics.ts` giữ công thức, nhãn, tooltip và ngưỡng màu
+ở MỘT chỗ để 6 màn hình không lệch chữ lệch số:
+- `markupPercent()` = lãi ÷ giá vốn · `marginPercent()` = lãi ÷ doanh thu · `formatPercent()`
+  (`12,9%`, dấu phẩy thập phân) · `profitColor()` / `profitBadgeClass()`.
+- **Đổi ngưỡng màu**: cũ là xanh ≥40% / vàng ≥20% / còn lại đỏ → bán đúng markup 15% chỉ ra ~13%
+  nên **mọi NCC đều đỏ dù đang lãi đúng thiết kế**. Mới: đỏ khi âm, vàng 0–10%, xanh trên 10%.
+
+**Chỗ hiển thị (mỗi kiểu lãi 1 hàng / 1 cột riêng, kèm tooltip giải thích công thức):**
+
+| Màn hình | File | Thay đổi |
+|---|---|---|
+| Dashboard — thẻ Lợi Nhuận | `RevenueProfitCards.tsx` | 1 dòng "Biên lợi nhuận" → 2 dòng |
+| Dashboard — hero | `ProfitHero.tsx` | tách 2 dòng (giữ chữ trắng, nền gradient) |
+| Dashboard — bảng NCC | `PartnerBreakdown.tsx` | cột "Biên lợi nhuận" → 2 cột Lãi/gốc · Lãi/thu |
+| Báo cáo NCC — thẻ + bảng | `ProviderReportPage.tsx` | thẻ "Margin" → 2 thẻ; bảng thêm cột |
+| Báo cáo NCC — modal + biểu đồ | `ModalStatistic.tsx` | ô "Margin" → 2 ô; chart thêm cột thứ 2 |
+| Bảng đơn admin — cột Tổng | `AdminOrdersPage.tsx` | thêm 2 hàng, **chỉ site mẹ** (`!isChild`) |
+
+**Site con giữ nguyên như cũ** (vẫn 1 con số trong ngoặc) theo yêu cầu "chỉ làm phần site mẹ".
+
+**Bẫy đã xử:** biểu đồ margin khoá cứng `domain={[0, 100]}` → cắt cột ở **cả hai đầu**: NCC bán dưới
+vốn (minproxy.io đang −11,1%) mất phần âm, mà lãi trên giá gốc vượt 100% (bán gấp đôi vốn) cũng bị
+cụt ngọn. Đổi thành `[min(0, dataMin), max(100, dataMax)]` — vẫn giữ đủ 0–100 cho tỷ lệ thành công.
+
+**Verify:** `npm run build` exit 0. `npx tsc --noEmit` — 0 lỗi mới ở 8 file đụng tới (4 lỗi còn lại
+ở `ModalStatistic`/`ProviderReportPage` đã có sẵn trước khi sửa, đối chiếu bằng `git stash`).
+
+**Files:** `src/utils/profitMetrics.ts` (mới), `src/hooks/apis/useFinancialReport.ts`,
+`src/views/Client/Admin/Dashboard/{RevenueProfitCards,ProfitHero,PartnerBreakdown}.tsx`,
+`src/views/Client/Admin/Provider/{ProviderReportPage,ModalStatistic}.tsx`,
+`src/views/Client/Admin/Orders/AdminOrdersPage.tsx`
+
 #### 13.N+72 🔴 Bỏ ép "tính theo gói" — hỏi thẳng admin trọn gói hay mỗi proxy (24/08/2026)
 
 **Anh Long:** *"chọn gói hay tuỳ chọn, sau này nó có tuỳ chọn khác thì sao?"*

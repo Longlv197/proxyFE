@@ -12,6 +12,16 @@ import {
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import DialogCloseButton from '@/components/modals/DialogCloseButton'
+import {
+  formatPercent,
+  profitColor,
+  HINT_MARGIN,
+  HINT_MARKUP,
+  LABEL_MARGIN,
+  LABEL_MARGIN_SHORT,
+  LABEL_MARKUP,
+  LABEL_MARKUP_SHORT
+} from '@/utils/profitMetrics'
 
 interface ModalStatisticProps {
   onClose: () => void
@@ -75,20 +85,28 @@ export default function ModalStatistic({ onClose, open, providerId }: ModalStati
                           mb: 2
                         }}
                       >
-                        {[
+                        {([
                           { label: 'Đơn mua', value: s.total_orders || 0, color: '#6366f1' },
                           { label: 'Gia hạn', value: s.renewal_orders || 0, color: '#8b5cf6' },
                           { label: 'Tỷ lệ OK', value: `${s.avg_success_rate || 0}%`, color: '#0ea5e9' },
                           { label: 'Proxy hoạt động', value: s.active_proxies || 0, color: '#6366f1' },
                           {
-                            label: 'Margin',
-                            value: `${s.margin_percent || 0}%`,
-                            color: Number(s.margin_percent) > 20 ? '#16a34a' : '#f59e0b'
+                            label: LABEL_MARKUP_SHORT,
+                            value: formatPercent(s.markup_percent),
+                            color: profitColor(s.markup_percent),
+                            hint: HINT_MARKUP
+                          },
+                          {
+                            label: LABEL_MARGIN_SHORT,
+                            value: formatPercent(s.margin_percent),
+                            color: profitColor(s.margin_percent),
+                            hint: HINT_MARGIN
                           },
                           { label: 'Hoàn tiền', value: fmtM(s.total_refunds), color: '#ef4444' }
-                        ].map(c => (
+                        ] as { label: string; value: any; color: string; hint?: string }[]).map(c => (
                           <Box
                             key={c.label}
+                            title={c.hint}
                             sx={{ p: 1, borderRadius: 1.5, border: '1px solid #e2e8f0', background: '#f8fafc' }}
                           >
                             <Typography sx={{ fontSize: 9, color: '#94a3b8' }}>{c.label}</Typography>
@@ -261,23 +279,36 @@ export default function ModalStatistic({ onClose, open, providerId }: ModalStati
                         {/* Chart 3: Margin % + Tỷ lệ thành công */}
                         <Paper variant='outlined' sx={{ p: 2, borderRadius: 2 }}>
                           <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 0.5, color: '#1e293b' }}>
-                            Biên lợi nhuận & Tỷ lệ thành công
+                            Lợi nhuận & Tỷ lệ thành công
                           </Typography>
                           <Typography sx={{ fontSize: 11, color: '#94a3b8', mb: 1.5 }}>
-                            Phần trăm margin và tỷ lệ đơn thành công theo ngày
+                            Lãi trên giá gốc, lãi trên tổng thu và tỷ lệ đơn thành công theo ngày
                           </Typography>
                           <Box sx={{ width: '100%', height: 280 }}>
                             <ResponsiveContainer>
                               <BarChart data={statsData.trend} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                                 <CartesianGrid strokeDasharray='3 3' opacity={0.4} />
                                 <XAxis dataKey='date' tickFormatter={fmtX} style={axisSx} />
-                                <YAxis unit='%' style={axisSx} domain={[0, 100]} />
+                                {/*
+                                  Khoá cứng [0, 100] sẽ cắt cột ở CẢ HAI đầu: NCC bán dưới vốn ra %
+                                  âm, còn lãi trên giá gốc thì vượt 100% là chuyện bình thường
+                                  (bán gấp đôi vốn = 100%). Giữ tối thiểu 0–100 cho tỷ lệ thành công.
+                                */}
+                                <YAxis
+                                  unit='%'
+                                  style={axisSx}
+                                  domain={[
+                                    (dataMin: number) => Math.min(0, Math.floor(dataMin)),
+                                    (dataMax: number) => Math.max(100, Math.ceil(dataMax))
+                                  ]}
+                                />
                                 <RechartsTooltip
                                   labelFormatter={fmtLabel}
-                                  formatter={(value: any, name: string) => [`${value}%`, name]}
+                                  formatter={(value: any, name: string) => [formatPercent(value), name]}
                                 />
                                 <Legend wrapperStyle={legendSx} />
-                                <Bar name='Biên lợi nhuận (Margin)' dataKey='margin_percent' fill='#2563eb' radius={[4, 4, 0, 0]} />
+                                <Bar name={LABEL_MARKUP} dataKey='markup_percent' fill='#f59e0b' radius={[4, 4, 0, 0]} />
+                                <Bar name={LABEL_MARGIN} dataKey='margin_percent' fill='#2563eb' radius={[4, 4, 0, 0]} />
                                 <Bar name='Tỷ lệ thành công' dataKey='success_rate' fill='#16a34a' radius={[4, 4, 0, 0]} />
                               </BarChart>
                             </ResponsiveContainer>

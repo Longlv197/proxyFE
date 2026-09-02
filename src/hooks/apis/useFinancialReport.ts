@@ -28,6 +28,7 @@ export interface ProviderBreakdownItem {
   total_amount: number
   cost_actual: number
   profit: number
+  markup_percent: number
   margin_percent: number
 }
 
@@ -57,6 +58,7 @@ export interface FinancialReportData {
     cost_actual: number
     affiliate_cost: number
     profit: number
+    markup_percent: number
     margin_percent: number
     expected_cost: number
     expected_affiliate: number

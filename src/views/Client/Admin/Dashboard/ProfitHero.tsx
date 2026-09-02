@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, DollarSign, Receipt, RefreshCw, Users, Clock,
 import Tooltip from '@mui/material/Tooltip'
 
 import { formatCurrency } from '@/utils/formatters'
+import { formatPercent, HINT_MARGIN, HINT_MARKUP, LABEL_MARGIN, LABEL_MARKUP } from '@/utils/profitMetrics'
 import type { FinancialReportData } from '@/hooks/apis/useFinancialReport'
 
 interface ProfitHeroProps {
@@ -54,8 +55,14 @@ export default function ProfitHero({ revenue, periodDays }: ProfitHeroProps) {
           <div className='text-3xl font-bold'>
             {formatCurrency(Math.abs(revenue.profit))}
           </div>
+          {/* Nền gradient màu nên giữ chữ trắng, không tô màu theo ngưỡng như các thẻ khác */}
           <div className='text-sm opacity-70 mt-1'>
-            Trung bình: {formatCurrency(Math.abs(dailyProfit))}/ngày · Biên lợi nhuận: {revenue.margin_percent}%
+            {LABEL_MARKUP}: <span className='font-semibold'>{formatPercent(revenue.markup_percent)}</span>{' '}
+            <Hint text={HINT_MARKUP} />
+          </div>
+          <div className='text-sm opacity-70'>
+            {LABEL_MARGIN}: <span className='font-semibold'>{formatPercent(revenue.margin_percent)}</span>{' '}
+            <Hint text={HINT_MARGIN} /> · Trung bình: {formatCurrency(Math.abs(dailyProfit))}/ngày
           </div>
           {revenue.expected > 0 && (
             <div className='text-xs opacity-60 mt-1'>

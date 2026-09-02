@@ -3,6 +3,14 @@
 import { Building2 } from 'lucide-react'
 
 import { formatCurrency, formatNumber } from '@/utils/formatters'
+import {
+  formatPercent,
+  profitBadgeClass,
+  HINT_MARGIN,
+  HINT_MARKUP,
+  LABEL_MARGIN_SHORT,
+  LABEL_MARKUP_SHORT
+} from '@/utils/profitMetrics'
 import type { ProviderBreakdownItem } from '@/hooks/apis/useFinancialReport'
 
 interface ProviderBreakdownProps {
@@ -27,7 +35,12 @@ export default function ProviderBreakdown({ data }: ProviderBreakdownProps) {
               <th className='text-right py-2 px-2 text-xs font-semibold text-gray-500 uppercase'>Doanh thu</th>
               <th className='text-right py-2 px-2 text-xs font-semibold text-gray-500 uppercase'>Chi phí</th>
               <th className='text-right py-2 px-2 text-xs font-semibold text-gray-500 uppercase'>Lợi nhuận</th>
-              <th className='text-right py-2 px-2 text-xs font-semibold text-gray-500 uppercase'>Biên lợi nhuận</th>
+              <th className='text-right py-2 px-2 text-xs font-semibold text-gray-500 uppercase' title={HINT_MARKUP}>
+                {LABEL_MARKUP_SHORT}
+              </th>
+              <th className='text-right py-2 px-2 text-xs font-semibold text-gray-500 uppercase' title={HINT_MARGIN}>
+                {LABEL_MARGIN_SHORT}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -41,12 +54,17 @@ export default function ProviderBreakdown({ data }: ProviderBreakdownProps) {
                   {formatCurrency(provider.profit)}
                 </td>
                 <td className='py-2 px-2 text-right'>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    provider.margin_percent >= 40 ? 'bg-green-100 text-green-700'
-                    : provider.margin_percent >= 20 ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-red-100 text-red-700'
-                  }`}>
-                    {provider.margin_percent}%
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${profitBadgeClass(provider.markup_percent)}`}
+                  >
+                    {formatPercent(provider.markup_percent)}
+                  </span>
+                </td>
+                <td className='py-2 px-2 text-right'>
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${profitBadgeClass(provider.margin_percent)}`}
+                  >
+                    {formatPercent(provider.margin_percent)}
                   </span>
                 </td>
               </tr>

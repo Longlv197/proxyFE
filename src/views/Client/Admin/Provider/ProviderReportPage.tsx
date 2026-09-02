@@ -20,6 +20,18 @@ import {
   Cell
 } from 'recharts'
 import AppReactDatepicker from '@/components/AppReactDatepicker'
+import {
+  formatPercent,
+  marginPercent,
+  markupPercent,
+  profitColor,
+  HINT_MARGIN,
+  HINT_MARKUP,
+  LABEL_MARGIN,
+  LABEL_MARGIN_SHORT,
+  LABEL_MARKUP,
+  LABEL_MARKUP_SHORT
+} from '@/utils/profitMetrics'
 import { useProviderDashboard } from '@/hooks/apis/useProviders'
 import DatePicker from 'react-datepicker'
 
@@ -164,9 +176,15 @@ export default function ProviderReportPage() {
                 },
                 {
                   icon: <TrendingUp size={14} />,
-                  label: 'Margin',
-                  value: `${overview.margin_percent || 0}%`,
-                  color: Number(overview.margin_percent) > 20 ? '#16a34a' : '#f59e0b'
+                  label: LABEL_MARKUP,
+                  value: formatPercent(overview.markup_percent),
+                  color: profitColor(overview.markup_percent)
+                },
+                {
+                  icon: <TrendingUp size={14} />,
+                  label: LABEL_MARGIN,
+                  value: formatPercent(overview.margin_percent),
+                  color: profitColor(overview.margin_percent)
                 },
                 {
                   icon: <Wallet size={14} />,
@@ -279,28 +297,38 @@ export default function ProviderReportPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: '#f8fafc' }}>
-                      {['NCC', 'Đơn hàng', 'Doanh thu', 'Chi phí', 'Lợi nhuận', 'Margin', 'Tỷ lệ OK', 'Hoàn tiền'].map(
-                        h => (
-                          <th
-                            key={h}
-                            style={{
-                              padding: '8px 12px',
-                              textAlign: 'left',
-                              fontSize: 10,
-                              fontWeight: 600,
-                              color: '#64748b',
-                              borderBottom: '1px solid #e2e8f0'
-                            }}
-                          >
-                            {h}
-                          </th>
-                        )
-                      )}
+                      {[
+                        { label: 'NCC' },
+                        { label: 'Đơn hàng' },
+                        { label: 'Doanh thu' },
+                        { label: 'Chi phí' },
+                        { label: 'Lợi nhuận' },
+                        { label: LABEL_MARKUP_SHORT, hint: HINT_MARKUP },
+                        { label: LABEL_MARGIN_SHORT, hint: HINT_MARGIN },
+                        { label: 'Tỷ lệ OK' },
+                        { label: 'Hoàn tiền' }
+                      ].map(h => (
+                        <th
+                          key={h.label}
+                          title={h.hint}
+                          style={{
+                            padding: '8px 12px',
+                            textAlign: 'left',
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: '#64748b',
+                            borderBottom: '1px solid #e2e8f0'
+                          }}
+                        >
+                          {h.label}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {providers.map((p: any, i: number) => {
-                      const margin = p.total_revenue > 0 ? ((p.total_profit / p.total_revenue) * 100).toFixed(1) : '0'
+                      const markup = markupPercent(p.total_profit, p.total_cost)
+                      const margin = marginPercent(p.total_profit, p.total_revenue)
 
                       return (
                         <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -324,14 +352,11 @@ export default function ProviderReportPage() {
                           >
                             {fmtM(p.total_profit)}
                           </td>
-                          <td
-                            style={{
-                              padding: '8px 12px',
-                              fontWeight: 600,
-                              color: Number(margin) > 20 ? '#16a34a' : '#f59e0b'
-                            }}
-                          >
-                            {margin}%
+                          <td style={{ padding: '8px 12px', fontWeight: 600, color: profitColor(markup) }}>
+                            {formatPercent(markup)}
+                          </td>
+                          <td style={{ padding: '8px 12px', fontWeight: 600, color: profitColor(margin) }}>
+                            {formatPercent(margin)}
                           </td>
                           <td style={{ padding: '8px 12px', color: '#0ea5e9' }}>{p.avg_success_rate}%</td>
                           <td style={{ padding: '8px 12px', color: '#ef4444', fontFamily: 'monospace' }}>

@@ -5,6 +5,14 @@ import Tooltip from '@mui/material/Tooltip'
 
 import KPICard from '@/components/UI/KPICard'
 import { formatCurrency, formatNumber } from '@/utils/formatters'
+import {
+  formatPercent,
+  profitColor,
+  HINT_MARGIN,
+  HINT_MARKUP,
+  LABEL_MARGIN,
+  LABEL_MARKUP
+} from '@/utils/profitMetrics'
 import type { FinancialReportData } from '@/hooks/apis/useFinancialReport'
 
 interface RevenueProfitCardsProps {
@@ -69,9 +77,21 @@ export default function RevenueProfitCards({ revenue, deposits, periodDays }: Re
           color='green'
         />
         <div className='mt-1 px-2 text-xs text-gray-500'>
-          Biên lợi nhuận: <span className='font-semibold text-green-600'>{revenue.margin_percent}%</span>
-          <Hint text='Biên lợi nhuận = Lợi nhuận ÷ (Doanh thu − Hoàn tiền) × 100%. Cho biết mỗi 100đ doanh thu thực lãi bao nhiêu.' />
-          {' · '}Trung bình: {formatCurrency(Math.round(revenue.profit / periodDays))}/ngày
+          <div>
+            {LABEL_MARKUP}:{' '}
+            <span className='font-semibold' style={{ color: profitColor(revenue.markup_percent) }}>
+              {formatPercent(revenue.markup_percent)}
+            </span>
+            <Hint text={HINT_MARKUP} />
+          </div>
+          <div>
+            {LABEL_MARGIN}:{' '}
+            <span className='font-semibold' style={{ color: profitColor(revenue.margin_percent) }}>
+              {formatPercent(revenue.margin_percent)}
+            </span>
+            <Hint text={HINT_MARGIN} />
+            {' · '}Trung bình: {formatCurrency(Math.round(revenue.profit / periodDays))}/ngày
+          </div>
         </div>
       </div>
 
