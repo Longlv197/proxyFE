@@ -869,8 +869,14 @@ hỏng lại. Đây là lần thứ 5 dự án gặp bẫy này (xem `feedback_w
 
 **Đã đo:** lỗi TypeScript trong `Provider/` trước sửa 7, sau sửa 7 — không phát sinh lỗi mới.
 
+**Thêm (cùng ngày, anh Long báo "chưa hiển thị url xoay ở item"):** cột **"URL xoay"** trong bảng
+proxy ở `Admin/TransactionHistory/OrderDetailModal.tsx`, cạnh cột "ID NCC". Hiện tên file endpoint
+cho gọn (`key_xoay_port.php`), rê chuột thấy URL đầy đủ. Không có thì hiện `—`.
+Site con KHÔNG nhận được field này (BE chặn — URL mang tên miền đối tác).
+
 **Files:** `Provider/ProviderFormTypes.ts` · `Provider/ProviderFormSerializer.ts` ·
-`Provider/sections/RotateSection.tsx` · `scripts/check-provider-form-roundtrip.ts`
+`Provider/sections/RotateSection.tsx` · `scripts/check-provider-form-roundtrip.ts` ·
+`Admin/TransactionHistory/OrderDetailModal.tsx`
 
 #### 13.N+73 Báo cáo admin hiện đủ 2 kiểu lãi: trên giá gốc và trên tổng thu (03/09/2026)
 

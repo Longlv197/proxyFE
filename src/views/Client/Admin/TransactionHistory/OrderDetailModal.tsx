@@ -392,6 +392,32 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
         }
       },
       {
+        // URL xoay riêng của từng proxy (đối tác cấp kèm). Chỉ site mẹ nhận được field này —
+        // site con BE không trả về vì URL mang tên miền đối tác.
+        // Hiện tên file cho gọn, rê chuột xem URL đầy đủ.
+        header: 'URL xoay',
+        size: 110,
+        cell: ({ row }: { row: any }) => {
+          const url = row.original.rotate_url
+          if (!url) return <span style={{ color: '#cbd5e1', fontSize: '11px' }}>—</span>
+
+          let nhan = url
+          try {
+            const u = new URL(url)
+            nhan = u.pathname.split('/').pop() || url
+          } catch { /* URL lạ thì hiện nguyên */ }
+
+          return (
+            <span
+              title={url}
+              style={{ fontFamily: 'monospace', fontSize: '11px', color: '#0ea5e9', cursor: 'help' }}
+            >
+              {nhan}
+            </span>
+          )
+        }
+      },
+      {
         header: 'Dữ liệu lưu ← Đối tác',
         size: 200,
         cell: ({ row }: { row: any }) => {
