@@ -395,24 +395,22 @@ export default function OrderDetailModal({ isOpen, onClose, orderData, isLoading
         // URL xoay riêng của từng proxy (đối tác cấp kèm). Chỉ site mẹ nhận được field này —
         // site con BE không trả về vì URL mang tên miền đối tác.
         // Hiện tên file cho gọn, rê chuột xem URL đầy đủ.
-        header: 'URL xoay',
-        size: 110,
+        header: 'Link gọi xoay',
+        size: 240,
         cell: ({ row }: { row: any }) => {
           const url = row.original.rotate_url
           if (!url) return <span style={{ color: '#cbd5e1', fontSize: '11px' }}>—</span>
 
-          let nhan = url
-          try {
-            const u = new URL(url)
-            nhan = u.pathname.split('/').pop() || url
-          } catch { /* URL lạ thì hiện nguyên */ }
-
           return (
             <span
-              title={url}
-              style={{ fontFamily: 'monospace', fontSize: '11px', color: '#0ea5e9', cursor: 'help' }}
+              onClick={() => navigator.clipboard?.writeText(url)}
+              title={`${url}\n\n(bấm để chép)`}
+              style={{
+                fontFamily: 'monospace', fontSize: '10.5px', color: '#0ea5e9', cursor: 'pointer',
+                wordBreak: 'break-all', display: 'block', lineHeight: 1.35
+              }}
             >
-              {nhan}
+              {url}
             </span>
           )
         }
