@@ -847,6 +847,31 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+74 Form NCC: khai URL xoay theo từng loại đơn hàng — và không ăn mất khoá mới (22/09/2026)
+
+**Vấn đề:** BE thêm 4 khoá cấu hình xoay (`url_source`, `url_by_type`, `url_allow_hosts`,
+`response.seconds_field` — xem BE 15.N+66). Nhưng `buildApiConfig` **dựng lại khối `rotate` từ một
+danh sách cố định**, còn BE trộn **nông** (`array_merge` ở `ProviderController:203`) → khoá nào form
+không khai là bị THAY NGUYÊN CỤC. Thêm ở BE mà quên form = admin mở NCC bấm Lưu là mất sạch, xoay
+hỏng lại. Đây là lần thứ 5 dự án gặp bẫy này (xem `feedback_whitelist_rebuild_loses_keys`).
+
+**Thêm:**
+- `ProviderFormTypes.ts` — 4 field vào `ApiConfigRotate` + giá trị mặc định.
+- `ProviderFormSerializer.ts` — vá **CẢ HAI chiều**: `parseApiConfig` (đọc lên) và `buildApiConfig`
+  (ghi xuống). `url_by_type` hiện dưới dạng JSON, `url_allow_hosts` dạng danh sách ngăn phẩy.
+  Chỉ gửi khoá khi admin có khai → NCC cũ không mọc khoá thừa.
+- `sections/RotateSection.tsx` — khối "URL xoay khác nhau theo từng loại đơn hàng (tuỳ chọn)" nêu rõ
+  thứ tự 3 nấc + ô "Field báo thời gian chờ lần xoay sau" + cảnh báo **thứ tự dòng ánh xạ
+  `provider_key` quyết định hành vi, đừng kéo tuỳ tiện**.
+- `scripts/check-provider-form-roundtrip.ts` (MỚI) — gác đúng lỗi trên: nạp cấu hình thật → parse →
+  build ngược → phải còn nguyên. Chạy `npx tsx scripts/check-provider-form-roundtrip.ts` (dùng `tsx`
+  đã có sẵn, không thêm phụ thuộc). Chạy trước khi vá: **4 mục hỏng**; sau khi vá: 7/7 đạt.
+
+**Đã đo:** lỗi TypeScript trong `Provider/` trước sửa 7, sau sửa 7 — không phát sinh lỗi mới.
+
+**Files:** `Provider/ProviderFormTypes.ts` · `Provider/ProviderFormSerializer.ts` ·
+`Provider/sections/RotateSection.tsx` · `scripts/check-provider-form-roundtrip.ts`
+
 #### 13.N+73 Báo cáo admin hiện đủ 2 kiểu lãi: trên giá gốc và trên tổng thu (03/09/2026)
 
 **Anh Long:** *"hiển thị 2 kiểu lãi trên giá gốc và lãi trên tổng thu giúp tôi"* — sau khi đặt

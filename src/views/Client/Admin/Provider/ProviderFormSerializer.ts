@@ -312,6 +312,10 @@ export function parseApiConfig(apiConfig: any): Partial<FormValues> {
       response_socks5: rotate.response?.proxy_fields?.socks5 || 'socks5',
       response_real_ip: rotate.response?.proxy_fields?.real_ip || '',
       double_ampersand: rotate.double_ampersand || false,
+      url_source: rotate.url_source || '',
+      url_by_type_json: rotate.url_by_type ? JSON.stringify(rotate.url_by_type, null, 2) : '',
+      url_allow_hosts: Array.isArray(rotate.url_allow_hosts) ? rotate.url_allow_hosts.join(', ') : '',
+      response_seconds_field: rotate.response?.seconds_field || '',
       rotate_params: Array.isArray(rotate.rotate_params)
         ? rotate.rotate_params.map((rp: any) => ({
             param: rp.param || '', source: rp.source || 'order_items',
@@ -699,13 +703,25 @@ export function buildApiConfig(form: FormValues, prevConfig?: any): object | nul
       key_source: form.rotate.key_source,
       ...(form.rotate.params_json ? { params: (() => { try { return JSON.parse(form.rotate.params_json) } catch { return undefined } })() } : {}),
       double_ampersand: form.rotate.double_ampersand || undefined,
+
+      // Chọn URL theo 3 nấc — chỉ gửi khi admin có khai, để NCC cũ không mọc khoá thừa.
+      ...(form.rotate.url_source ? { url_source: form.rotate.url_source } : {}),
+      ...(form.rotate.url_by_type_json
+        ? { url_by_type: (() => { try { return JSON.parse(form.rotate.url_by_type_json) } catch { return undefined } })() }
+        : {}),
+      ...(form.rotate.url_allow_hosts
+        ? { url_allow_hosts: form.rotate.url_allow_hosts.split(',').map(h => h.trim()).filter(Boolean) }
+        : {}),
+
       response: {
         proxy_fields: {
           http: form.rotate.response_http || 'http',
           socks5: form.rotate.response_socks5 || 'socks5',
           // IP gốc NCC trả về (nếu có) — chỉ lưu khi admin khai báo field
           ...(form.rotate.response_real_ip ? { real_ip: form.rotate.response_real_ip } : {}),
-        }
+        },
+        // Field NCC báo số giây phải chờ lần xoay sau (vd 2proxy: next_allowed_in_seconds)
+        ...(form.rotate.response_seconds_field ? { seconds_field: form.rotate.response_seconds_field } : {}),
       },
       ...(form.rotate.rotate_params?.length ? {
         rotate_params: form.rotate.rotate_params

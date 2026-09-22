@@ -153,6 +153,16 @@ export interface ApiConfigRotate {
   response_real_ip: string
   double_ampersand: boolean
   rotate_params: RotateParamRule[]
+
+  /**
+   * Chọn URL xoay theo 3 nấc (BE `DefaultHandler::resolveRotateUrl`) — dùng khi một NCC có
+   * nhiều dòng sản phẩm xoay ở endpoint khác nhau (vd 2proxy: key_xoay.php vs key_xoay_port.php).
+   * ⚠ Khoá nào BE đọc mà form không khai ở ĐÂY và ở cả parse/build là bấm Lưu mất sạch.
+   */
+  url_source: string
+  url_by_type_json: string
+  url_allow_hosts: string
+  response_seconds_field: string
 }
 
 export interface IpConfig {
@@ -458,6 +468,10 @@ export const defaultValues: FormValues = {
     response_real_ip: '',
     double_ampersand: false,
     rotate_params: [],
+    url_source: '',
+    url_by_type_json: '',
+    url_allow_hosts: '',
+    response_seconds_field: '',
   },
   ip_whitelist: {
     enabled: false,

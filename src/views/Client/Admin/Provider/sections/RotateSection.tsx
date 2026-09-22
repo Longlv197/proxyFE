@@ -192,6 +192,51 @@ function RotateSection({ control }: SectionProps) {
             </Box>
           </Box>
 
+          {/* Bước 1b: NCC có nhiều dòng sản phẩm, mỗi dòng một URL xoay */}
+          <Box sx={{ border: '1px solid #fcd34d', borderTop: '3px solid #f59e0b', borderRadius: 2, overflow: 'hidden' }}>
+            <Box sx={{ background: '#fffbeb', borderBottom: '1px solid #fcd34d', px: 2, py: 1.25 }}>
+              <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#b45309' }}>
+                URL xoay khác nhau theo từng loại đơn hàng (tuỳ chọn)
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: '#475569', mt: 0.25 }}>
+                Bỏ trống hết nếu NCC chỉ có một URL xoay duy nhất — mọi thứ chạy y như cũ.
+                Hệ thống tìm URL theo thứ tự: <b>URL riêng của từng proxy</b> → <b>URL theo loại</b> → <b>URL ở trên</b>.
+              </Typography>
+            </Box>
+            <Box sx={{ p: 2 }}>
+              <Grid2 container spacing={2}>
+                <Grid2 size={{ xs: 12, sm: 6 }}>
+                  <Controller name='rotate.url_source' control={control} render={({ field }) => (
+                    <CustomTextField {...field} fullWidth label='Field chứa URL xoay riêng của từng proxy'
+                      placeholder='rotate_url'
+                      helperText='Khi NCC trả sẵn link xoay cho từng proxy. Phần "?..." sẽ được cắt, tham số ở trên tự gắn lại.' />
+                  )} />
+                </Grid2>
+                <Grid2 size={{ xs: 12, sm: 6 }}>
+                  <Controller name='rotate.url_allow_hosts' control={control} render={({ field }) => (
+                    <CustomTextField {...field} fullWidth label='Host được phép gọi'
+                      placeholder='api.proxyxoay.org'
+                      helperText='Ngăn cách bằng dấu phẩy. Bỏ trống = chỉ cho host của URL ở trên (an toàn nhất).' />
+                  )} />
+                </Grid2>
+                <Grid2 size={{ xs: 12 }}>
+                  <Controller name='rotate.url_by_type_json' control={control} render={({ field }) => (
+                    <CustomTextField {...field} fullWidth multiline minRows={3} label='URL xoay theo loại đơn hàng'
+                      placeholder='{"Us_xoay_ten_mien": "https://.../key_xoay_port.php"}'
+                      helperText='Dùng khi NCC không trả link riêng mà chỉ nói bằng tài liệu. Khoá là mã loại NCC trả về (provider_type_code). Loại không khai → dùng URL ở trên.' />
+                  )} />
+                </Grid2>
+                <Grid2 size={{ xs: 12 }}>
+                  <Typography sx={{ fontSize: 12, color: '#b45309', background: '#fffbeb', border: '1px dashed #fcd34d', borderRadius: 1, px: 1.5, py: 1 }}>
+                    ⚠ Nếu khoá xoay của mỗi loại nằm ở field khác nhau, khai nhiều dòng ánh xạ cùng trỏ
+                    <b> provider_key</b> ở mục lấy hàng — <b>dòng nào đứng sau sẽ đè dòng trước</b>.
+                    Đổi thứ tự các dòng đó là đổi hành vi, đừng kéo tuỳ tiện.
+                  </Typography>
+                </Grid2>
+              </Grid2>
+            </Box>
+          </Box>
+
           {/* Bước 2: Đọc proxy mới từ response */}
           <Box sx={{ border: '1px solid #6ee7b7', borderTop: '3px solid #10b981', borderRadius: 2, overflow: 'hidden' }}>
             <Box sx={{ background: '#ecfdf5', borderBottom: '1px solid #6ee7b7', px: 2, py: 1.25 }}>
@@ -207,6 +252,11 @@ function RotateSection({ control }: SectionProps) {
                 <Grid2 size={{ xs: 6, sm: 4 }}>
                   <Controller name='rotate.response_http' control={control} render={({ field }) => (
                     <CustomTextField {...field} fullWidth label='Field chứa proxy HTTP' placeholder='http' helperText='VD: NCC trả {"http": "1.2.3.4:8080:user:pass"}' />
+                  )} />
+                </Grid2>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
+                  <Controller name='rotate.response_seconds_field' control={control} render={({ field }) => (
+                    <CustomTextField {...field} fullWidth label='Field báo thời gian chờ lần xoay sau' placeholder='seconds' helperText='VD 2proxy trả {"next_allowed_in_seconds": 60}. Bỏ trống = đọc "seconds".' />
                   )} />
                 </Grid2>
                 <Grid2 size={{ xs: 6, sm: 4 }}>
