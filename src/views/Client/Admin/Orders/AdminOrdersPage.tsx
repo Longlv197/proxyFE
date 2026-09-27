@@ -227,6 +227,8 @@ export default function AdminOrdersPage() {
   // Renewal state
   const [renewalRetryOrder, setRenewalRetryOrder] = useState<any>(null)
   const [renewalDismissOrder, setRenewalDismissOrder] = useState<any>(null)
+  // Xác nhận gia hạn ĐÃ thành công dù hệ thống báo lỗi (NCC đã gia hạn thật).
+  const [renewalOkOrder, setRenewalOkOrder] = useState<any>(null)
   const [renewalLoading, setRenewalLoading] = useState(false)
 
   // Data - Tab 0
@@ -437,6 +439,25 @@ export default function AdminOrdersPage() {
     }
   }, [renewalDismissOrder, axiosAuth, queryClient])
 
+  // Không gửi new_expired_at — để BE tự tính từ hạn hiện tại + số ngày của lần gia hạn đó,
+  // tránh cảnh FE tính một kiểu, BE tính kiểu khác rồi lệch nhau.
+  const handleConfirmRenewalOk = useCallback(async () => {
+    if (!renewalOkOrder) return
+    setRenewalLoading(true)
+    try {
+      const res = await axiosAuth.post('/admin/renewal-confirm', { order_id: renewalOkOrder.id })
+      setRenewalOkOrder(null)
+      toast.info(res?.data?.message || 'Đã xác nhận gia hạn thành công.')
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] })
+      queryClient.invalidateQueries({ queryKey: ['orderHistories'] })
+    } catch (err: any) {
+      setRenewalOkOrder(null)
+      toast.error(err?.response?.data?.message || 'Lỗi xác nhận gia hạn')
+    } finally {
+      setRenewalLoading(false)
+    }
+  }, [renewalOkOrder, axiosAuth, queryClient])
+
   const handleRefund = useCallback(() => {
     if (!refundOrder) return
     refundMutation.mutate(refundOrder.id, {
@@ -556,6 +577,11 @@ export default function AdminOrdersPage() {
               )}
               {status === 12 && (
                 <>
+                  <Tooltip title='Nhà cung cấp đã gia hạn thật — xác nhận thành công'>
+                    <IconButton size='small' color='success' onClick={() => setRenewalOkOrder(order)}>
+                      <CheckCircle size={16} />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title='Retry gia hạn'>
                     <IconButton size='small' color='warning' onClick={() => setRenewalRetryOrder(order)}>
                       <RotateCcw size={16} />
@@ -1359,6 +1385,44 @@ export default function AdminOrdersPage() {
       />
 
       {/* Renewal Dismiss Dialog */}
+      {/* Xác nhận gia hạn ĐÃ thành công — nói rõ hậu quả, vì thao tác này gia hạn mà KHÔNG thu tiền */}
+      <Dialog open={!!renewalOkOrder} onClose={() => setRenewalOkOrder(null)} maxWidth='sm' fullWidth>
+        <DialogTitle>Xác nhận gia hạn thành công</DialogTitle>
+        <DialogContent>
+          <DialogContentText component='div'>
+            Đơn <strong>#{renewalOkOrder?.order_code}</strong>
+            <br />
+            <br />
+            Chỉ dùng khi <strong>nhà cung cấp ĐÃ gia hạn thật</strong> nhưng hệ thống báo lỗi
+            (thường do quá thời gian chờ). Kiểm tra bên nhà cung cấp trước khi bấm.
+            <ul style={{ margin: '12px 0 0', paddingLeft: 20 }}>
+              <li>Hạn dùng của đơn sẽ được cộng thêm theo số ngày của lần gia hạn đó</li>
+              <li><strong>KHÔNG thu thêm tiền</strong> của khách</li>
+              <li>Lịch sử gia hạn chuyển từ <em>Thất bại</em> sang <em>Đang dùng</em></li>
+              <li>Không hoàn tác được</li>
+            </ul>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRenewalOkOrder(null)} color='inherit'>
+            Hủy
+          </Button>
+          <Button
+            onClick={handleConfirmRenewalOk}
+            color='success'
+            variant='contained'
+            disabled={renewalLoading}
+            sx={{ color: '#fff' }}
+          >
+            {renewalLoading ? (
+              <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+            ) : (
+              'Xác nhận đã gia hạn'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog open={!!renewalDismissOrder} onClose={() => setRenewalDismissOrder(null)}>
         <DialogTitle>Bỏ qua gia hạn lỗi</DialogTitle>
         <DialogContent>

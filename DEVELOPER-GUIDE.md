@@ -847,6 +847,29 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+75 Nút "xác nhận gia hạn thành công" ở 2 chỗ admin hay dùng (27/09/2026)
+
+**Vấn đề:** chức năng đã có đủ (BE + hook `useRenewalConfirm`), nhưng nút chỉ nằm ở trang chi tiết
+đơn PHÍA KHÁCH — chữ "OK" 10px trong bảng lịch sử gia hạn. Hai chỗ admin thật sự làm việc thì không
+có: trang danh sách đơn (chỉ có *Thử lại* / *Bỏ qua*) và modal chi tiết đơn của admin (panel "Lịch
+sử gia hạn" không có nút nào).
+
+**Thêm:**
+- `Admin/Orders/AdminOrdersPage.tsx` — nút ✓ xanh cho đơn trạng thái 12 (*Gia hạn lỗi*), cạnh
+  *Thử lại*. Gửi `order_id` (trang này không biết id lịch sử → BE tự dò, xem BE 15.N+67).
+- `Admin/TransactionHistory/OrderDetailModal.tsx` — nút "Đã gia hạn thành công" trên từng dòng
+  lịch sử có trạng thái 3/6. Gửi `history_id` (ở đây biết chính xác dòng nào).
+- Cả hai đều có **hộp xác nhận nói rõ HẬU QUẢ**, không chỉ "chắc chưa": cộng thêm bao nhiêu ngày ·
+  **KHÔNG thu thêm tiền** · không hoàn tác được · chỉ dùng khi NCC đã gia hạn thật.
+
+**Lưu ý:** dùng `toast.info` theo quy tắc dự án (code cũ trong `AdminOrdersPage` còn `toast.success`
+— không sửa lây, ngoài phạm vi). `useRenewalConfirm` đã invalidate `['orderHistories']`, khớp tiền tố
+`['orderHistories', orderId]` nên modal tự nạp lại.
+
+**Không làm:** không thêm nút "Hoàn tiền" vào 2 chỗ mới; không đổi nút "OK" cũ ở trang khách.
+
+**Files:** `Admin/Orders/AdminOrdersPage.tsx` · `Admin/TransactionHistory/OrderDetailModal.tsx`
+
 #### 13.N+74 Form NCC: khai URL xoay theo từng loại đơn hàng — và không ăn mất khoá mới (22/09/2026)
 
 **Vấn đề:** BE thêm 4 khoá cấu hình xoay (`url_source`, `url_by_type`, `url_allow_hosts`,

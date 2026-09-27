@@ -42,7 +42,8 @@ import { ORDER_STATUS_LABELS_ADMIN, ORDER_STATUS, ORDER_STATUS_COLORS_ADMIN } fr
 import { useApiKeys, useUpdateItem, useUpdateOrder } from '@/hooks/apis/useOrders'
 import { useOrderLogs, type OrderLog } from '@/hooks/apis/useOrderLogs'
 import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderHistories'
-import { useOrderHistoryLogs, type HistoryLogItem } from '@/hooks/apis/useRenewal'
+import { useOrderHistoryLogs, useRenewalConfirm, type HistoryLogItem } from '@/hooks/apis/useRenewal'
+import { toast } from 'react-toastify'
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 import { usePingProxy } from '@/hooks/apis/usePingProxy'
@@ -1558,11 +1559,30 @@ function OrderLogsTimeline({ logs, isLoading }: { logs: OrderLog[]; isLoading: b
 function AdminRenewalSection({ histories, order, viewLogId, onViewLog }: {
   histories: OrderHistoryItem[]; order: any; viewLogId?: number | null; onViewLog?: (id: number) => void
 }) {
+  // Xác nhận gia hạn ĐÃ thành công khi hệ thống báo lỗi. Gọi theo `history_id` (ở đây biết chính
+  // xác dòng nào) — khác trang danh sách chỉ có mã đơn nên phải để BE tự dò.
+  const confirmMutation = useRenewalConfirm()
+  const [dongDangXacNhan, setDongDangXacNhan] = useState<OrderHistoryItem | null>(null)
+
   const renewals = histories.filter(h => h.type === 'renewal')
   if (!renewals.length) return null
 
   const successCount = renewals.filter(h => h.status === 4 || h.status === 5).length
   const fmtVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
+  // Chỉ Thất bại (3) và Một phần (6) — trùng đúng điều kiện backend cho phép.
+  const xacNhanDuoc = (status: number) => [3, 6].includes(status)
+
+  const guiXacNhan = async () => {
+    if (!dongDangXacNhan) return
+    try {
+      await confirmMutation.mutateAsync({ historyId: dongDangXacNhan.id })
+      setDongDangXacNhan(null)
+      toast.info('Đã xác nhận gia hạn thành công.')
+    } catch (err: any) {
+      setDongDangXacNhan(null)
+      toast.error(err?.response?.data?.message || 'Lỗi xác nhận gia hạn')
+    }
+  }
 
   return (
     <div style={{ display: 'flex', gap: 0 }}>
@@ -1618,6 +1638,23 @@ function AdminRenewalSection({ histories, order, viewLogId, onViewLog }: {
                   {h.note}
                 </div>
               )}
+
+              {/* Nhà cung cấp đã gia hạn thật mà hệ thống báo lỗi → cho admin chốt lại */}
+              {xacNhanDuoc(h.status) && (
+                <div onClick={e => e.stopPropagation()} style={{ marginTop: 6 }}>
+                  <button
+                    disabled={confirmMutation.isPending}
+                    onClick={() => setDongDangXacNhan(h)}
+                    style={{
+                      fontSize: '11px', padding: '3px 10px', borderRadius: 6,
+                      border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#16a34a',
+                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+                    }}
+                  >
+                    <CheckCircle size={11} /> Đã gia hạn thành công
+                  </button>
+                </div>
+              )}
             </div>
           )
         })}
@@ -1628,6 +1665,46 @@ function AdminRenewalSection({ histories, order, viewLogId, onViewLog }: {
           </div>
         )}
       </div>
+
+      {/* Hộp xác nhận — nói rõ hậu quả, vì thao tác này gia hạn mà KHÔNG thu tiền */}
+      <Dialog open={!!dongDangXacNhan} onClose={() => setDongDangXacNhan(null)} maxWidth='sm' fullWidth>
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 10 }}>
+            Xác nhận gia hạn thành công
+          </div>
+          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
+            Lần gia hạn <strong>{dongDangXacNhan?.duration} ngày</strong> —{' '}
+            <strong>{dongDangXacNhan ? fmtVND(dongDangXacNhan.amount) : ''}</strong>
+            <div style={{ marginTop: 10 }}>
+              Chỉ dùng khi <strong>nhà cung cấp ĐÃ gia hạn thật</strong> nhưng hệ thống báo lỗi
+              (thường do quá thời gian chờ). Kiểm tra bên nhà cung cấp trước khi bấm.
+            </div>
+            <ul style={{ margin: '10px 0 0', paddingLeft: 20 }}>
+              <li>Hạn dùng của đơn được cộng thêm {dongDangXacNhan?.duration} ngày</li>
+              <li><strong>KHÔNG thu thêm tiền</strong> của khách</li>
+              <li>Không hoàn tác được</li>
+            </ul>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+            <button
+              onClick={() => setDongDangXacNhan(null)}
+              style={{ fontSize: 13, padding: '7px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', cursor: 'pointer' }}
+            >
+              Hủy
+            </button>
+            <button
+              onClick={guiXacNhan}
+              disabled={confirmMutation.isPending}
+              style={{ fontSize: 13, padding: '7px 14px', borderRadius: 6, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              {confirmMutation.isPending
+                ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                : <CheckCircle size={14} />}
+              Xác nhận đã gia hạn
+            </button>
+          </div>
+        </div>
+      </Dialog>
 
       {/* Right: log panel — slide in */}
       {viewLogId && (
