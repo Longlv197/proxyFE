@@ -4664,3 +4664,36 @@ Các phần dưới đây nằm ngoài scope "flow mua proxy" nhưng có thể c
 **Sửa:** Hook `useComposingInput(setValue)` — chỉ commit state khi compositionend (kết thúc gõ 1 chữ) → tiếng Việt 1 lần/chữ như không dấu. Áp cho: TicketDetailDialog (reply), CreditManualDrawer (reason, manualUserId). Sẽ rải tiếp các ô note khác.
 **Files:** `src/hooks/useComposingInput.ts` (mới), `src/views/Client/SupportTickets/TicketDetailDialog.tsx`, `src/views/Client/Admin/DepositManagement/CreditManualDrawer.tsx`
 
+#### 13.N+24 Trang nạp tiền hiện thanh chọn cách nạp theo quốc gia IP (01/10/2026)
+
+**Bối cảnh (cả chặng, không chỉ phần FE):** BE thêm nạp tiền bằng crypto (Binance Pay, USDT/USDC
+BEP20) song song với chuyển khoản ngân hàng. Đường ngân hàng được tách lõi cộng tiền dùng chung
+(`DepositService::congVaoVi()`) để 2 đường không lệch mạch tiền — lưới an toàn ngân hàng viết TRƯỚC
+khi tách, chạy lại vẫn xanh. 4 bảng mới ở BE cho crypto (`crypto_deposit_addresses`,
+`crypto_deposits`, `binance_deposits`, `binance_pending`) — `crypto_deposits` khoá UNIQUE **ghép**
+`(tx_hash, log_index)` chứ không khoá riêng `tx_hash`, vì một giao dịch trên chain có thể chứa nhiều
+Transfer log (nhiều khách nhận tiền trong cùng 1 tx) — khoá riêng `tx_hash` sẽ chặn nhầm khách thứ 2
+trong cùng tx, coi phần của họ là "trùng" trong khi là khoản tiền khác. Quốc gia khách đọc từ header
+`CF-IPCountry` do Cloudflare gắn (`GeoIpService`) — **header này giả được** nếu request không thật sự
+qua Cloudflare edge, nên KHÔNG dùng để bảo vệ thứ gì có giá trị, chỉ dùng để quyết định HIỂN THỊ; luật
+"khách VN không thấy crypto" chặn Ở MÁY CHỦ (endpoint không trả field đó về, không phải FE tự ẩn).
+
+**Việc FE (task này):** trang Nạp tiền gọi `GET /api/payment-methods` (mới) —
+`{success, data:{methods:[{code,label,available,reason}]}}`. Khách VN nhận về đúng 1 phần tử
+`bank_qr` (Chặng 1 crypto chưa nối Binance/BscScan nên chưa bật cho ai) → **giao diện y hệt trước
+đây, không thanh chọn, không lệch layout** — chỉ vẽ thanh chọn khi `methods.length > 1`. Khách ngoại
+(giả lập bằng cách tạm sửa BE trả `$ngoai = true` rồi hoàn lại) thấy 3 nút: `bank_qr` chọn được,
+`binance_pay`/`usdt_bep20` bị `disabled` + `title`/nhãn phụ "— chưa mở" lấy đúng `reason` server trả
+(`"Đang cấu hình, chưa mở"`) — không có nút nào đưa khách vào luồng crypto thật vì Chặng 1 chưa mở.
+Phần QR ngân hàng hiện có được BỌC LẠI nguyên vẹn (chỉ hiện khi đang chọn `bank_qr`), không viết lại
+nội bộ.
+
+**Verify:** `tsc --noEmit` — 294 lỗi trước và sau khi sửa (không lỗi nào mới ở
+`usePaymentMethods.ts`/`RechargePage.tsx`, đo bằng cách tạm bỏ 2 file ra rồi so). Chạy `npm run dev`
+thật: máy dev không có header Cloudflare → coi như VN → trang hiện đúng y hệt luồng QR ngân hàng cũ,
+0 thanh chọn. Bật tạm `$ngoai = true` ở `PaymentMethodController` (BE, hoàn lại ngay sau khi xem) để
+xác nhận giao diện 3 nút + nút disabled thật sự không bấm được (Playwright timeout khi cố click nút
+"chưa mở", đúng như kỳ vọng) + tooltip đúng lý do server trả.
+
+**Files:** `src/hooks/apis/usePaymentMethods.ts` (mới), `src/views/Client/Recharge/RechargePage.tsx`
+

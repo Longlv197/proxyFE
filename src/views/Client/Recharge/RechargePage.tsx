@@ -23,6 +23,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import CustomTextField from '@core/components/mui/TextField'
 
 import { useCreateBankQr, usePendingBankQr, useCancelBankQr, type PendingBankQr } from '@/hooks/apis/useBankQr'
+import { usePaymentMethods } from '@/hooks/apis/usePaymentMethods'
 import { useBankInfo } from '@/hooks/apis/useBankInfo'
 import { useUpdateTransferName } from '@/hooks/apis/useTransferName'
 import { useDepositHistory } from '@/hooks/apis/useDeponsitHistory'
@@ -72,6 +73,10 @@ export default function RechargePage() {
   const cancelBankQr = useCancelBankQr()
   const { data: pendingData, refetch: refetchPending } = usePendingBankQr(true, true)
   const { data: bankInfo, isLoading: loadingBank } = useBankInfo()
+
+  // Cách nạp tiền theo quốc gia IP (máy chủ quyết định). Khách VN chỉ nhận về bank_qr.
+  const { data: methods = [] } = usePaymentMethods()
+  const [cachNap, setCachNap] = useState<string>('bank_qr')
   const [, copy] = useCopy()
   const axiosAuth = useAxiosAuth()
 
@@ -436,14 +441,43 @@ export default function RechargePage() {
 
           {/* ===== Form nạp tiền / QR (chỉ hiện khi đã cấu hình tên) ===== */}
           {hasTransferName && (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: hasPending ? '1fr 1fr' : '1fr' },
-                gap: '16px'
-              }}
-            >
-              {/* FORM NHẬP SỐ TIỀN */}
+            <>
+              {/* Thanh chọn cách nạp — chỉ hiện khi máy chủ trả về nhiều hơn 1 cách
+                  (khách VN chỉ có bank_qr nên thấy đúng như cũ, không có thanh này). */}
+              {methods.length > 1 && (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                  {methods.map(m => (
+                    <button
+                      key={m.code}
+                      onClick={() => m.available && setCachNap(m.code)}
+                      disabled={!m.available}
+                      title={m.reason ?? undefined}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: 8,
+                        fontSize: 13,
+                        cursor: m.available ? 'pointer' : 'not-allowed',
+                        border: `1px solid ${cachNap === m.code ? 'var(--primary-color)' : '#e2e8f0'}`,
+                        background: cachNap === m.code ? 'var(--primary-color)' : '#fff',
+                        color: cachNap === m.code ? '#fff' : m.available ? '#374151' : '#9ca3af'
+                      }}
+                    >
+                      {m.label}
+                      {!m.available && ' — chưa mở'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {cachNap === 'bank_qr' && (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', md: hasPending ? '1fr 1fr' : '1fr' },
+                    gap: '16px'
+                  }}
+                >
+                  {/* FORM NHẬP SỐ TIỀN */}
               {!hasPending && (
                 <Box
                   sx={{
@@ -863,7 +897,9 @@ export default function RechargePage() {
                   </Box>
                 </>
               )}
-            </Box>
+                </Box>
+              )}
+            </>
           )}
 
           {/* ===== PHẦN DƯỚI: TABS ===== */}
