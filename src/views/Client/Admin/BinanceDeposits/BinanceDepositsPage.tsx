@@ -12,7 +12,7 @@ import {
   Tabs,
   Typography
 } from '@mui/material'
-import { AlertTriangle, CheckCircle2, HelpCircle, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, ShieldCheck } from 'lucide-react'
 
 import { useBinanceDeposits, useHanhDongKhoanNap, type KhoanNapBinance } from '@/hooks/apis/useBinanceDeposits'
 
@@ -32,35 +32,22 @@ const TRANG_THAI: Array<{ ma: 'pending' | 'credited' | 'ignored'; nhan: string }
   { ma: 'ignored', nhan: 'Đã bỏ qua' }
 ]
 
-/** Kết quả đối chiếu — phải nói nghĩa, không chỉ hiện chữ "khop". */
-const TheKetQuaSo = ({ ketQua }: { ketQua: KhoanNapBinance['ket_qua_so'] }) => {
-  if (!ketQua) return null
-
-  const cauHinh = {
-    khop: {
-      mau: 'success' as const,
-      icon: <ShieldCheck size={14} />,
-      nhan: 'KHỚP',
-      giai: 'Tên/ID khách khai trùng với người gửi mà Binance báo — duyệt được.'
-    },
-    lech: {
-      mau: 'error' as const,
-      icon: <AlertTriangle size={14} />,
-      nhan: 'LỆCH',
-      giai: 'Khách khai KHÁC người gửi mà Binance báo. Kiểm lại trước khi duyệt.'
-    },
-    khong_ro: {
-      mau: 'warning' as const,
-      icon: <HelpCircle size={14} />,
-      nhan: 'KHÔNG RÕ',
-      giai: 'Binance không trả về tên người gửi nên không đối chiếu được — không phải khách gian.'
-    }
-  }[ketQua]
+/**
+ * Bằng chứng khách đưa ra. Phải nói NGHĨA, không hiện chữ trơ.
+ *
+ * Bằng chứng là MÃ GIAO DỊCH — chỉ người đã chuyển tiền mới thấy nó trong lịch sử Binance
+ * của chính họ, nên khai đúng mã là bằng chứng mạnh. (Bản đầu dùng TÊN tài khoản, nhưng
+ * Binance che tên `Tran V***` nên ai gõ "Tran" cũng "khớp" — đã bỏ.)
+ */
+const TheBangChung = ({ ketQua }: { ketQua: KhoanNapBinance['ket_qua_so'] }) => {
+  if (ketQua !== 'khop') return null
 
   return (
     <Box>
-      <Chip size='small' color={cauHinh.mau} icon={cauHinh.icon} label={cauHinh.nhan} sx={{ fontWeight: 700 }} />
-      <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>{cauHinh.giai}</Typography>
+      <Chip size='small' color='success' icon={<ShieldCheck size={14} />} label='KHAI ĐÚNG MÃ' sx={{ fontWeight: 700 }} />
+      <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
+        Khách khai đúng mã giao dịch Binance — chỉ người đã chuyển tiền mới biết mã này.
+      </Typography>
     </Box>
   )
 }
@@ -196,21 +183,22 @@ const BinanceDepositsPage = () => {
                 {k.nguoi_xin_nhan && (
                   <>
                     <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: k.chu_he_thong_biet ? 1 : 0 }}>
-                      Khách tự xin nhận ({k.luc_xin})
+                      Khách khai mã giao dịch ({k.luc_xin})
                     </Typography>
                     <Typography sx={{ fontSize: 13 }}>
                       <strong>{k.nguoi_xin_nhan.name}</strong> · {k.nguoi_xin_nhan.email}
                     </Typography>
-                    <Typography sx={{ fontSize: 13, mb: 0.75 }}>
-                      Khách khai là: <strong>{k.bang_chung_khach}</strong>
+                    <Typography sx={{ fontSize: 13, mb: 0.75, wordBreak: 'break-all' }}>
+                      Mã khách khai: <strong>{k.bang_chung_khach}</strong>
                     </Typography>
-                    <TheKetQuaSo ketQua={k.ket_qua_so} />
+                    <TheBangChung ketQua={k.ket_qua_so} />
                   </>
                 )}
 
                 {!k.chu_he_thong_biet && !k.nguoi_xin_nhan && k.status === 'pending' && (
                   <Alert severity='warning' sx={{ fontSize: 12, py: 0 }}>
-                    Chưa biết của ai và chưa có khách nào xin. Chờ khách tự nhận ở trang nạp tiền.
+                    Chưa biết của ai và chưa có khách nào khai mã. Khách khai đúng mã giao dịch ở trang
+                    nạp tiền là tự cộng được; hoặc anh tự chọn khách rồi duyệt.
                   </Alert>
                 )}
               </Box>

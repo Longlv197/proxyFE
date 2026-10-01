@@ -2,44 +2,45 @@
 
 import { useState } from 'react'
 
-import { Alert, Box, Button, CircularProgress, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, TextField, Typography } from '@mui/material'
 import { CheckCircle2, Clock, HelpCircle, XCircle } from 'lucide-react'
 
 import { useBinanceClaims, useXinNhanKhoan } from '@/hooks/apis/useBinanceClaims'
 import { useDepositNote } from '@/hooks/apis/usePaymentMethods'
 
 /**
- * Nạp tiền qua Binance Pay + đường cứu "khoản tiền của tôi đâu?".
+ * Nạp tiền qua Binance Pay + đường cứu "tiền của tôi đâu?".
  *
- * VÌ SAO KHÔNG BẮT KHÁCH GÕ MÃ GIAO DỊCH: mã Binance dài (`M_P_71505104267788288`),
- * trên điện thoại gần như không copy nổi. Khách CHỌN khoản của mình trong danh sách rồi
- * khai tên tài khoản Binance — ngắn, dễ gõ, và đủ để admin đối chiếu.
- *
- * ⚠ Danh sách này chỉ có số tiền + giờ. Đừng hỏi máy chủ trả thêm tên người gửi để
- * "cho khách dễ nhận ra": đó là tên của khách KHÁC.
+ * ⚠ KHÔNG hiện danh sách khoản chưa có chủ. Bản đầu có, và nó phải phơi số tiền + giờ của
+ * khách khác cho mọi người xem; bằng chứng lại chỉ là tên tài khoản — mà Binance che tên
+ * (`Tran V***`) nên ai gõ "Tran" cũng khớp. Nay khách khai MÃ GIAO DỊCH: chỉ người đã
+ * chuyển tiền mới thấy nó trong lịch sử Binance của chính họ. Đừng thêm lại danh sách.
  */
 const BinancePayPanel = () => {
-  const [moDanhSach, setMoDanhSach] = useState(false)
-  const [dangChon, setDangChon] = useState<number | null>(null)
-  const [tenBinance, setTenBinance] = useState('')
-  const [daGui, setDaGui] = useState(false)
+  const [moForm, setMoForm] = useState(false)
+  const [maGiaoDich, setMaGiaoDich] = useState('')
+  const [ketQua, setKetQua] = useState<{ daCong: boolean; soTien: number | null; loi?: string } | null>(null)
 
-  const { data, isLoading } = useBinanceClaims(moDanhSach)
+  const { data } = useBinanceClaims(moForm)
   const { data: ghiChuCanDien = '' } = useDepositNote()
   const xinNhan = useXinNhanKhoan()
 
-  const guiYeuCau = () => {
-    if (!dangChon || !tenBinance.trim()) return
+  const gui = () => {
+    const ma = maGiaoDich.trim()
 
+    if (!ma) return
+
+    setKetQua(null)
     xinNhan.mutate(
-      { depositId: dangChon, binanceTen: tenBinance.trim() },
+      { transactionId: ma },
       {
-        onSuccess: () => {
-          // Phản hồi tại chỗ, KHÔNG dùng toast success (quy ước dự án).
-          setDaGui(true)
-          setDangChon(null)
-          setTenBinance('')
-        }
+        // Phản hồi tại chỗ, KHÔNG dùng toast success (quy ước dự án).
+        onSuccess: res => {
+          setKetQua({ daCong: !!res?.da_cong, soTien: res?.so_tien_vnd ?? null })
+          setMaGiaoDich('')
+        },
+        onError: (e: any) =>
+          setKetQua({ daCong: false, soTien: null, loi: e?.response?.data?.message ?? 'Không gửi được yêu cầu.' })
       }
     )
   }
@@ -74,106 +75,66 @@ const BinancePayPanel = () => {
       </Alert>
 
       {/* ── Đường cứu khi khách quên ghi chú ───────────────────────────── */}
-      {!moDanhSach && (
+      {!moForm && (
         <Button
           variant='text'
           size='small'
           startIcon={<HelpCircle size={15} />}
-          onClick={() => setMoDanhSach(true)}
+          onClick={() => setMoForm(true)}
           sx={{ textTransform: 'none', fontSize: 13, p: 0 }}
         >
           Đã chuyển tiền mà chưa được cộng?
         </Button>
       )}
 
-      {moDanhSach && (
+      {moForm && (
         <Box sx={{ mt: 1 }}>
-          <Typography sx={{ fontWeight: 600, fontSize: 13, mb: 0.5 }}>
-            Chọn khoản bạn vừa chuyển
-          </Typography>
+          <Typography sx={{ fontWeight: 600, fontSize: 13, mb: 0.5 }}>Điền mã giao dịch Binance</Typography>
           <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 1.5 }}>
-            Thường là do quên ghi chú nên máy không biết tiền của ai. Chọn đúng khoản của bạn rồi gửi
-            yêu cầu — chúng tôi đối chiếu với Binance trước khi cộng tiền.
+            Mở ứng dụng Binance → <strong>Lịch sử giao dịch</strong> → chọn lệnh chuyển tiền vừa rồi →
+            bấm sao chép ở dòng <strong>mã giao dịch</strong> rồi dán vào đây. Chúng tôi đối chiếu trực
+            tiếp với Binance, nên chỉ bạn — người đã chuyển tiền — mới nhận được khoản này.
           </Typography>
 
-          {isLoading && <CircularProgress size={18} />}
+          <TextField
+            fullWidth
+            size='small'
+            label='Mã giao dịch'
+            placeholder='Ví dụ: M_P_71505104267788288'
+            value={maGiaoDich}
+            onChange={e => setMaGiaoDich(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && gui()}
+            sx={{ mb: 1.5, '& input': { fontFamily: 'monospace' } }}
+          />
 
-          {!isLoading && (data?.khoAnChuaCoChu?.length ?? 0) === 0 && (
-            <Alert severity='success' sx={{ fontSize: 13 }}>
-              Không có khoản nào đang chờ. Nếu bạn vừa chuyển tiền, hãy đợi vài phút rồi tải lại trang.
+          {ketQua?.loi && (
+            <Alert severity='error' sx={{ mb: 1.5, fontSize: 13 }}>
+              {ketQua.loi}
             </Alert>
           )}
 
-          {!isLoading &&
-            (data?.khoAnChuaCoChu?.length ?? 0) > 0 && (
-              <>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
-                  {data!.khoAnChuaCoChu.map(k => {
-                    const dangBamChon = dangChon === k.id
+          {ketQua && !ketQua.loi && (
+            <Alert
+              severity={ketQua.daCong ? 'success' : 'info'}
+              icon={ketQua.daCong ? <CheckCircle2 size={18} /> : <Clock size={18} />}
+              sx={{ mb: 1.5, fontSize: 13 }}
+            >
+              {ketQua.daCong
+                ? `Đã cộng ${(ketQua.soTien ?? 0).toLocaleString('vi-VN')}đ vào ví của bạn.`
+                : 'Đã nhận yêu cầu. Khoản này cần được duyệt tay — chúng tôi sẽ xử lý sớm.'}
+            </Alert>
+          )}
 
-                    return (
-                      <Box
-                        key={k.id}
-                        onClick={() => setDangChon(k.id)}
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          gap: 1,
-                          px: 1.5,
-                          py: 1.25,
-                          cursor: 'pointer',
-                          borderRadius: '8px',
-                          border: dangBamChon
-                            ? '2px solid var(--primary-color)'
-                            : '1px solid var(--mui-palette-divider, #e2e8f0)',
-                          background: dangBamChon
-                            ? 'var(--mui-palette-action-selected, rgba(0,0,0,0.04))'
-                            : 'transparent'
-                        }}
-                      >
-                        <Typography sx={{ fontWeight: 700, fontSize: 14 }}>{k.amount_usdt} USDT</Typography>
-                        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{k.luc}</Typography>
-                      </Box>
-                    )
-                  })}
-                </Box>
+          <Button
+            variant='contained'
+            disabled={!maGiaoDich.trim() || xinNhan.isPending}
+            onClick={gui}
+            sx={{ textTransform: 'none' }}
+          >
+            {xinNhan.isPending ? 'Đang kiểm tra…' : 'Kiểm tra và cộng tiền'}
+          </Button>
 
-                <TextField
-                  fullWidth
-                  size='small'
-                  label='Tên hoặc ID tài khoản Binance của bạn'
-                  placeholder='Ví dụ: Nguyen Van A — hoặc 88001122'
-                  value={tenBinance}
-                  onChange={e => setTenBinance(e.target.value)}
-                  helperText='Dùng để đối chiếu bạn đúng là người đã chuyển khoản tiền này.'
-                  sx={{ mb: 1.5 }}
-                />
-
-                {xinNhan.isError && (
-                  <Alert severity='error' sx={{ mb: 1.5, fontSize: 13 }}>
-                    {(xinNhan.error as any)?.response?.data?.message ?? 'Không gửi được yêu cầu.'}
-                  </Alert>
-                )}
-
-                {daGui && (
-                  <Alert severity='success' icon={<CheckCircle2 size={18} />} sx={{ mb: 1.5, fontSize: 13 }}>
-                    Đã ghi nhận. Yêu cầu của bạn đang chờ xác nhận — tiền sẽ vào ví sau khi được duyệt.
-                  </Alert>
-                )}
-
-                <Button
-                  variant='contained'
-                  disabled={!dangChon || !tenBinance.trim() || xinNhan.isPending}
-                  onClick={guiYeuCau}
-                  sx={{ textTransform: 'none' }}
-                >
-                  {xinNhan.isPending ? 'Đang gửi…' : 'Đây là khoản của tôi'}
-                </Button>
-              </>
-            )}
-
-          {/* Các lần khách này đã xin — để khách theo dõi, không phải hỏi hỗ trợ. */}
+          {/* Các lần khách này đã khai — để khách theo dõi, không phải hỏi hỗ trợ. */}
           {(data?.donXinCuaToi?.length ?? 0) > 0 && (
             <Box sx={{ mt: 2.5 }}>
               <Typography sx={{ fontWeight: 600, fontSize: 13, mb: 1 }}>Yêu cầu của bạn</Typography>
@@ -191,7 +152,7 @@ const BinancePayPanel = () => {
                         ? 'đã cộng tiền'
                         : d.trang_thai === 'tu_choi'
                           ? 'không được chấp nhận'
-                          : 'đang chờ xác nhận'}
+                          : 'đang chờ duyệt'}
                     </Typography>
                   </Box>
                 ))}

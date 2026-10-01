@@ -18,8 +18,13 @@ export type KhoanNapBinance = {
   source: 'scanner' | 'user_claim' | 'admin'
   chu_he_thong_biet: { id: number; name: string; email: string } | null
   nguoi_xin_nhan: { id: number; name: string; email: string } | null
+  /** MÃ GIAO DỊCH khách khai — bằng chứng sở hữu (chỉ người đã chuyển tiền mới biết). */
   bang_chung_khach: string | null
-  /** Kết quả máy so bằng chứng khách khai với dữ liệu Binance — căn cứ để admin duyệt. */
+  /**
+   * Kết quả đối chiếu. Nay chỉ còn `khop` (khai đúng mã) hoặc `null` (chưa ai khai).
+   * `lech`/`khong_ro` là của bản cũ đối chiếu theo TÊN tài khoản — đã bỏ vì Binance che
+   * tên nên ai gõ "Tran" cũng "khớp". Giữ trong kiểu để đọc được dữ liệu cũ nếu có.
+   */
   ket_qua_so: 'khop' | 'lech' | 'khong_ro' | null
   luc: string
   luc_xin: string | null

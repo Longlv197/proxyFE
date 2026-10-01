@@ -849,34 +849,41 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 #### 13.N+78 Nạp Binance: khách tự nhận khoản tiền của mình + màn admin duyệt (01/10/2026)
 
-**Anh Long:** *"nếu nạp bằng binance ... nếu không tự động được thì user điền mã giao dịch vào có cộng
-tiền nếu > min được không"* → *"mã đó dài lắm sao mà copy được"*.
+**Anh Long:** *"nếu không tự động được thì user điền mã giao dịch vào có cộng tiền nếu > min được không"*
+→ *"sao lại gõ tài khoản á, phải gõ mã giao dịch mới được chứ"*.
 
-**Vấn đề:** mã giao dịch Binance dài (`M_P_71505104267788288`), trên điện thoại gần như không copy nổi.
-Và API Binance **không có tham số tra theo mã** (chỉ `startTime`/`endTime` + `limit` ≤ 100) nên bắt gõ
-mã cũng chẳng nhanh hơn.
+**🔴 BÀI HỌC — một giao diện tôi làm xong rồi phải bỏ, đừng làm lại:**
+Bản đầu cho khách **CHỌN khoản trong danh sách** rồi khai **TÊN tài khoản Binance** (vì tưởng mã dài quá
+khách không copy nổi). Sai, và sai nặng hơn sự bất tiện:
+- Binance **che tên** người gửi (`Tran V***`) → ai gõ "Tran" cũng "khớp" → nhãn **KHỚP** ở màn admin
+  sinh ra từ phép đoán, làm admin tin tưởng hơn dựa trên bằng chứng yếu hơn.
+- Danh sách đó buộc phải **phơi số tiền + giờ của khách khác** cho mọi người xem.
 
-**Làm:** khách **CHỌN** khoản của mình trong danh sách rồi khai **tên/ID tài khoản Binance** (ngắn, dễ gõ).
-- `BinancePayPanel.tsx` (mới) — gắn vào `RechargePage` ở nhánh `cachNap === 'binance_pay'`:
-  hiện ghi chú cần điền → nút "Đã chuyển tiền mà chưa được cộng?" → danh sách → ô khai tên → gửi.
-  Kèm mục "Yêu cầu của bạn" để khách tự theo dõi, khỏi phải nhắn hỗ trợ.
+Nay khách dán **MÃ GIAO DỊCH** — chỉ người đã chuyển tiền mới thấy nó trong lịch sử Binance của chính họ.
+Bỏ hẳn danh sách. **Đừng thêm lại.**
+
+**Làm:**
+- `BinancePayPanel.tsx` (mới) — gắn vào `RechargePage` ở nhánh `cachNap === 'binance_pay'`: hiện ghi chú
+  cần điền → "Đã chuyển tiền mà chưa được cộng?" → **ô dán mã giao dịch** (kèm hướng dẫn tìm mã ở đâu
+  trong app Binance) → đủ mức tối thiểu thì cộng tiền NGAY. Kèm "Yêu cầu của bạn" để khách tự theo dõi.
 - `BinanceDepositsPage.tsx` (mới) + route `admin/binance-deposits` + menu (ẩn ở site con).
 - `useBinanceClaims.ts` · `useBinanceDeposits.ts` (mới).
 
 **3 điểm phải giữ khi sửa tiếp:**
-1. 🔴 **Danh sách cho khách CHỈ có số tiền + giờ.** Đừng xin máy chủ trả thêm tên người gửi để "khách dễ
-   nhận ra" — đó là tên của khách KHÁC. Kiểu `KhoanChuaCoChu` cố ý chỉ có 3 trường.
+1. 🔴 **KHÔNG có hook/endpoint liệt kê khoản chưa có chủ.** Đã bỏ vì nó phơi thông tin khách khác —
+   xem bài học trên.
 2. **Ghi chú nạp tiền do MÁY CHỦ ghép sẵn** kèm mã khách (`deposit_note`), FE không tự ghép: FE ghép mà
    lấy sai mã khách là tiền chạy vào ví người khác. Hook `useDepositNote()`.
-3. Màn admin: `ket_qua_so` (KHỚP/LỆCH/KHÔNG RÕ) phải hiện **kèm giảng giải**, không hiện chữ trơ —
-   "KHÔNG RÕ" nghĩa là Binance không trả tên người gửi, KHÔNG phải khách gian.
+3. 🔴 **Số dư nằm ở REDUX (`state.user.sodu`), KHÔNG phải TanStack Query** → `invalidateQueries` không
+   chạm tới nó. Cộng tiền xong phải `POST /me` rồi `dispatch(setUser())`, đúng khuôn luồng nạp bank.
 
-**Lỗi tự bắt được khi nghiệm thu:** dòng giải thích nút "Từ chối yêu cầu" lại hiện ở các khoản **không có**
-nút đó (ngược điều kiện `!k.nguoi_xin_nhan`) → admin đi tìm nút không thấy. Đã sửa.
+**Hai lỗi tự bắt được khi nghiệm thu bằng trình duyệt** (đọc code không thấy):
+1. Dòng giải thích nút "Từ chối yêu cầu" hiện ở các khoản **không có** nút đó (ngược điều kiện).
+2. Cộng tiền xong mà **số dư trên thanh bên vẫn hiện số cũ** → khách tưởng chưa nhận được, đi khai lại.
+   Nguyên nhân: số dư ở Redux (điểm 3 trên).
 
-**Nghiệm thu bằng trình duyệt thật** (Playwright, không chỉ đọc code): chọn khoản 12 USDT → khai "Tran" →
-khoản biến khỏi danh sách, hiện "đang chờ xác nhận" → màn admin hiện "Khách tự xin nhận" + nhãn **KHỚP**
-→ bấm Duyệt → số dư 1.800đ → **313.800đ**, nối đúng dòng sổ tiền, lịch sử đủ 3 chặng.
+**Nghiệm thu bằng trình duyệt thật** (Playwright): dán mã → "Đã cộng 195.000đ vào ví của bạn", mục
+"Yêu cầu của bạn" hiện "đã cộng tiền", số dư thanh bên + đầu trang đổi **2.393.800đ → 2.588.800đ** ngay.
 
 **Files:** `src/views/Client/Recharge/BinancePayPanel.tsx`, `src/views/Client/Admin/BinanceDeposits/BinanceDepositsPage.tsx`,
 `src/hooks/apis/{useBinanceClaims,useBinanceDeposits,usePaymentMethods}.ts`,
