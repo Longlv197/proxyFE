@@ -498,6 +498,16 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
                 Quản lý nạp tiền
               </MenuItem>
             )}
+            {/* Khoản nạp Binance máy không tự khớp được — chỉ site mẹ, site con không bán crypto. */}
+            {!isChild && hasPermission('admin.depositHistory') && (
+              <MenuItem
+                icon={<Landmark size={20} strokeWidth={1.5} />}
+                {...nav('admin/binance-deposits')}
+                href={`/${locale}/admin/binance-deposits`}
+              >
+                Khoản nạp Binance
+              </MenuItem>
+            )}
 
             {/* Người dùng & Hỗ trợ */}
             {hasPermission('admin.users') && (

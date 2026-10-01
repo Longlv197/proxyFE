@@ -24,6 +24,7 @@ import CustomTextField from '@core/components/mui/TextField'
 
 import { useCreateBankQr, usePendingBankQr, useCancelBankQr, type PendingBankQr } from '@/hooks/apis/useBankQr'
 import { usePaymentMethods } from '@/hooks/apis/usePaymentMethods'
+import BinancePayPanel from './BinancePayPanel'
 import { useBankInfo } from '@/hooks/apis/useBankInfo'
 import { useUpdateTransferName } from '@/hooks/apis/useTransferName'
 import { useDepositHistory } from '@/hooks/apis/useDeponsitHistory'
@@ -899,6 +900,8 @@ export default function RechargePage() {
               )}
                 </Box>
               )}
+
+              {cachNap === 'binance_pay' && <BinancePayPanel />}
             </>
           )}
 
