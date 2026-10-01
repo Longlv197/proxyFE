@@ -847,6 +847,29 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+77 Cài đặt: màn cấu hình nạp crypto đầy đủ (tỷ giá, mức tối thiểu, khoá API) (01/10/2026)
+
+**Anh Long:** *"cấu hình thông tin binance và crypto ở đâu"* → *"có làm luôn"*.
+
+Mở rộng `SiteSettings/tabs/CryptoDisplaySection.tsx` từ 1 công tắc thành màn cấu hình đủ:
+- **Số liệu vận hành:** tỷ giá VNĐ/USDT · mức tối thiểu Binance · mức tối thiểu on-chain · tiền tố
+  ghi chú. Lưu bằng nút riêng "Lưu cấu hình crypto".
+- **4 ô khoá bí mật** kiểu `password`: Binance key/secret · BscScan key · xpub ví.
+- Công tắc "hiện cho IP Việt" vẫn **lưu ngay khi bật/tắt** (cần phản hồi tức thì để xem giao diện).
+
+**⚠ CÁCH Ô KHOÁ HOẠT ĐỘNG — đừng "sửa cho tiện":** máy chủ KHÔNG trả khoá nguyên văn về đây (trả về
+là khoá đi qua mạng + nằm trong trình duyệt), chỉ trả `{has_value, masked}`. Nên ô nhập **luôn rỗng**
+khi mở lại, và placeholder/helper hiện `đang lưu: ••••1234`. Máy chủ coi **rỗng = giữ nguyên** → admin
+sửa tỷ giá rồi bấm Lưu mà không mất khoá. Nếu ai đổi thành "rỗng = xoá" thì mất khoá API ngay.
+
+Có cảnh báo riêng khi **tỷ giá = 0**: nói rõ hệ thống sẽ không cộng đồng nào cho khách nạp crypto —
+đó là chốt an toàn có chủ đích, không phải lỗi.
+
+**Đã đo:** lỗi TypeScript 294 trước và sau (0 lỗi mới, không lỗi nào ở file vừa sửa).
+Dùng `toast.info`, không `toast.success`; không hardcode màu.
+
+**Files:** `SiteSettings/tabs/CryptoDisplaySection.tsx`
+
 #### 13.N+76 Cài đặt: công tắc hiện crypto cho cả IP Việt Nam (01/10/2026)
 
 **Vấn đề:** luật "chỉ IP nước ngoài thấy crypto" bị cứng hoá ở BE → admin **không có cách nào xem
