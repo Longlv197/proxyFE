@@ -9,6 +9,7 @@ import { toast } from 'react-toastify'
 import type { BankSettings } from '@/hooks/apis/useBankSettings'
 import type { BrandingSettings } from '@/hooks/apis/useBrandingSettings'
 
+import CryptoDisplaySection from './CryptoDisplaySection'
 import { sectionDescSx, sectionTitleSx } from './shared'
 
 const BANK_LIST = [
@@ -400,8 +401,11 @@ const TabPayment = ({
 
       <Alert severity='info' sx={{ fontSize: '13px', '& .MuiAlert-message': { fontSize: '13px' } }}>
         Pay2s và Telegram lưu cùng nút &quot;Lưu cấu hình&quot; ở trên cùng. Ngân hàng lưu riêng bằng nút
-        &quot;Lưu ngân hàng&quot;.
+        &quot;Lưu ngân hàng&quot;. Phần nạp crypto bên dưới lưu ngay khi bật/tắt.
       </Alert>
+
+      {/* Hiển thị cách nạp crypto — tự quản state, tự lưu qua admin/crypto-settings */}
+      <CryptoDisplaySection />
     </div>
   )
 }

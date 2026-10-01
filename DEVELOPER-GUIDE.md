@@ -847,6 +847,31 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+76 Cài đặt: công tắc hiện crypto cho cả IP Việt Nam (01/10/2026)
+
+**Vấn đề:** luật "chỉ IP nước ngoài thấy crypto" bị cứng hoá ở BE → admin **không có cách nào xem
+được giao diện nạp crypto**, vì máy dev không có header `CF-IPCountry` nên luôn bị coi là VN.
+
+**Thêm:** `SiteSettings/tabs/CryptoDisplaySection.tsx` (mới) — một công tắc "Hiện cách nạp crypto
+cho cả khách IP Việt Nam", tự tải/tự lưu qua `admin/crypto-settings`, **không dùng nút "Lưu cấu
+hình" chung** nên bật/tắt có hiệu lực ngay và không ảnh hưởng mục khác. Nhúng vào cuối
+`tabs/TabPayment.tsx`.
+
+⚠ **Vì sao nhúng vào tab có sẵn, KHÔNG thêm tab mới:** `availableTabs` trong `SiteSettingsForm.tsx`
+dùng **số thứ tự**, và tab đang mở được **lưu lại** (localStorage). Chèn tab mới vào giữa sẽ làm
+lệch toàn bộ chỉ số → admin mở ra thấy nhầm tab.
+
+Màn hình cũng hiện **trạng thái mở thật** của Binance Pay / USDT dạng chip **chỉ-để-xem** (không cho
+sửa ở chặng này), kèm cảnh báo: chúng chỉ được mở khi phần nối Binance/blockchain xong, mở sớm thì
+khách chọn xong không có màn hình nào để nạp.
+
+`RechargePage` **không phải sửa** — nó vốn vẽ theo đúng những gì máy chủ trả về.
+
+**Đã đo:** lỗi TypeScript 294 trước và sau (0 lỗi mới, không lỗi nào ở 2 file vừa sửa).
+Theo luật dự án: dùng `toast.info`, không `toast.success`; không hardcode màu (dùng MUI + biến CSS).
+
+**Files:** `SiteSettings/tabs/CryptoDisplaySection.tsx` (mới) · `SiteSettings/tabs/TabPayment.tsx`
+
 #### 13.N+75 Nút "xác nhận gia hạn thành công" ở 2 chỗ admin hay dùng (27/09/2026)
 
 **Vấn đề:** chức năng đã có đủ (BE + hook `useRenewalConfirm`), nhưng nút chỉ nằm ở trang chi tiết
