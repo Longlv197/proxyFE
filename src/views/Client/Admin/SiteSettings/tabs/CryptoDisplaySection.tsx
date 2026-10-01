@@ -2,8 +2,18 @@
 
 import React, { useEffect, useState } from 'react'
 
-import { Alert, Button, Chip, FormControlLabel, Switch, TextField } from '@mui/material'
-import { Loader2, Save } from 'lucide-react'
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Button,
+  Chip,
+  FormControlLabel,
+  Switch,
+  TextField
+} from '@mui/material'
+import { ChevronDown, Loader2, Save } from 'lucide-react'
 import { toast } from 'react-toastify'
 
 import useAxiosAuth from '@/hocs/useAxiosAuth'
@@ -264,6 +274,100 @@ const CryptoDisplaySection = () => {
         trống nghĩa là <b>giữ nguyên khoá cũ</b>, nên bạn có thể sửa tỷ giá rồi bấm Lưu mà không sợ mất
         khoá. Muốn đổi thì nhập lại cả chuỗi mới.
       </Alert>
+
+      {/* ── Hướng dẫn lấy khoá ── */}
+      <div>
+        <Accordion disableGutters sx={{ '&:before': { display: 'none' } }}>
+          <AccordionSummary expandIcon={<ChevronDown size={16} />}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Cách lấy khoá Binance (API Key + Secret)</span>
+          </AccordionSummary>
+          <AccordionDetails>
+            <ol style={{ fontSize: 13, lineHeight: 1.75, paddingLeft: 20, margin: 0 }}>
+              <li>Vào Binance → bấm vào ảnh đại diện → <b>API Management</b></li>
+              <li>
+                <b>Create API</b> → chọn loại <b>System generated</b> → đặt tên (ví dụ
+                &quot;mktproxy-nap-tien&quot;) → xác thực 2FA
+              </li>
+              <li>
+                ⚠ Ở phần quyền, <b>CHỈ tick &quot;Enable Reading&quot;</b>. Tuyệt đối <b>không</b> bật
+                quyền rút tiền (Enable Withdrawals) hay giao dịch — hệ thống chỉ cần đọc lịch sử nhận
+                tiền, không cần quyền gì khác.
+              </li>
+              <li>
+                Copy <b>API Key</b> và <b>Secret Key</b> dán vào hai ô ở trên.{' '}
+                <b>Secret chỉ hiện một lần duy nhất</b> — đóng trang là không xem lại được, phải tạo khoá mới.
+              </li>
+            </ol>
+            <Alert severity='info' sx={{ mt: 1.5, fontSize: '12.5px', '& .MuiAlert-message': { fontSize: '12.5px' } }}>
+              <b>Hai điều nên biết trước:</b>
+              <br />• Tài khoản <b>cá nhân dùng được</b>, không cần tài khoản doanh nghiệp (merchant).
+              <br />• Binance chỉ trả lịch sử <b>90 ngày gần nhất</b>. Khoản nạp cũ hơn 90 ngày sẽ không
+              được nhận tự động, phải xử tay.
+            </Alert>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion disableGutters sx={{ '&:before': { display: 'none' } }}>
+          <AccordionSummary expandIcon={<ChevronDown size={16} />}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Cách lấy khoá BscScan</span>
+          </AccordionSummary>
+          <AccordionDetails>
+            <ol style={{ fontSize: 13, lineHeight: 1.75, paddingLeft: 20, margin: 0 }}>
+              <li>
+                Vào <b>bscscan.com</b> → <b>Sign Up</b> (miễn phí, chỉ cần email) → xác nhận email
+              </li>
+              <li>
+                Đăng nhập → vào mục <b>API Keys</b> trong trang tài khoản → bấm <b>Add</b> → đặt tên
+              </li>
+              <li>Copy khoá dán vào ô &quot;BscScan API Key&quot;</li>
+            </ol>
+            <Alert severity='info' sx={{ mt: 1.5, fontSize: '12.5px', '& .MuiAlert-message': { fontSize: '12.5px' } }}>
+              Khoá này chỉ để <b>đọc</b> dữ liệu công khai trên blockchain — không liên quan tới ví và
+              không thể tiêu tiền. Gói miễn phí có giới hạn số lần gọi mỗi giây; hệ thống quét mỗi 30
+              giây nên bình thường không chạm giới hạn.
+            </Alert>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion disableGutters sx={{ '&:before': { display: 'none' } }}>
+          <AccordionSummary expandIcon={<ChevronDown size={16} />}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Cách lấy xpub ví nhận USDT — đọc kỹ phần này</span>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Alert severity='success' sx={{ mb: 1.5, fontSize: '12.5px', '& .MuiAlert-message': { fontSize: '12.5px' } }}>
+              <b>Vì sao đưa xpub cho hệ thống là an toàn:</b> xpub là <b>khoá CÔNG KHAI</b>. Từ nó hệ
+              thống tạo được địa chỉ nhận tiền cho từng khách, nhưng <b>không thể suy ra khoá riêng</b> —
+              nghĩa là máy chủ <b>không tiêu được tiền</b>. Bạn giữ seed/khoá riêng ngoại tuyến và là
+              người duy nhất rút được.
+            </Alert>
+
+            <div style={{ fontSize: 13, lineHeight: 1.75 }}>
+              <b>Cần đúng loại:</b> &quot;<b>Account Extended Public Key</b>&quot; ở cấp account —
+              đường dẫn <code>m/44&apos;/60&apos;/0&apos;</code>.
+              <br />
+              <b>KHÔNG phải</b> địa chỉ ví (<code>0x...</code>), <b>KHÔNG phải</b> khoá riêng,{' '}
+              <b>KHÔNG phải</b> 12/24 từ khôi phục. Đưa ba thứ đó là mất tiền.
+            </div>
+
+            <ol style={{ fontSize: 13, lineHeight: 1.75, paddingLeft: 20, marginTop: 10 }}>
+              <li>
+                Dùng ví hỗ trợ xuất khoá công khai mở rộng cho mạng <b>EVM/BSC</b> (Ledger, Trezor và
+                một số ví phần mềm có mục &quot;Export / Show extended public key&quot;).
+              </li>
+              <li>Chọn đúng loại đường dẫn Ethereum/EVM, không phải Bitcoin.</li>
+              <li>Copy chuỗi xpub dán vào ô &quot;Ví nhận USDT (xpub)&quot;.</li>
+            </ol>
+
+            <Alert severity='warning' sx={{ mt: 1.5, fontSize: '12.5px', '& .MuiAlert-message': { fontSize: '12.5px' } }}>
+              <b>⚠ Bắt buộc kiểm tra trước khi mở cho khách:</b> xpub xuất ở <b>sai cấp</b> vẫn trông
+              hợp lệ và vẫn sinh ra địa chỉ — nhưng là địa chỉ <b>bạn không kiểm soát</b>, tiền khách
+              nạp vào sẽ mất. Cách kiểm: sau khi lưu xpub, so <b>địa chỉ đầu tiên hệ thống sinh ra</b>{' '}
+              với <b>địa chỉ đầu tiên trong ví của bạn</b>. Khớp thì đúng cấp. Lệch thì sai — đừng mở,
+              báo lại để kiểm.
+            </Alert>
+          </AccordionDetails>
+        </Accordion>
+      </div>
 
       <div>
         <Button
