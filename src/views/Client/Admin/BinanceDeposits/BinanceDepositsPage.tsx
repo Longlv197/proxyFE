@@ -10,11 +10,18 @@ import {
   CircularProgress,
   Tab,
   Tabs,
+  TextField,
   Typography
 } from '@mui/material'
 import { CheckCircle2, ShieldCheck } from 'lucide-react'
 
-import { useBinanceDeposits, useHanhDongKhoanNap, type KhoanNapBinance } from '@/hooks/apis/useBinanceDeposits'
+import {
+  useBinanceDeposits,
+  useHanhDongKhoanNap,
+  useTimKhach,
+  type KhachTimDuoc,
+  type KhoanNapBinance
+} from '@/hooks/apis/useBinanceDeposits'
 
 /**
  * Màn admin xử lý khoản nạp Binance.
@@ -52,6 +59,92 @@ const TheBangChung = ({ ketQua }: { ketQua: KhoanNapBinance['ket_qua_so'] }) => 
   )
 }
 
+/**
+ * Ô tìm khách để admin TỰ GÁN khoản tiền không ai nhận.
+ *
+ * Đây là đường cứu CUỐI CÙNG: khách không ghi chú, cũng không khai mã giao dịch. Tiền vào
+ * ví mà KHÔNG có bằng chứng nào máy kiểm được — chỉ có quyết định của người. Vì vậy giao
+ * diện phải bắt admin **nhìn thấy rõ mình đang cộng cho ai** (tên + email + ID) trước khi
+ * bấm, và máy chủ ghi riêng một dòng lịch sử `admin_tu_gan_khach`.
+ */
+const ChonKhach = ({
+  daChon,
+  onChon
+}: {
+  daChon: KhachTimDuoc | null
+  onChon: (k: KhachTimDuoc | null) => void
+}) => {
+  const [tuKhoa, setTuKhoa] = useState('')
+  const { data: ketQua = [], isFetching } = useTimKhach(tuKhoa)
+
+  if (daChon) {
+    return (
+      <Box sx={{ mt: 1 }}>
+        <Alert
+          severity='info'
+          sx={{ fontSize: 13, py: 0.5 }}
+          action={
+            <Button size='small' onClick={() => onChon(null)} sx={{ textTransform: 'none' }}>
+              Đổi
+            </Button>
+          }
+        >
+          Sẽ cộng cho <strong>{daChon.name}</strong> · {daChon.email} · ID {daChon.id}
+        </Alert>
+      </Box>
+    )
+  }
+
+  return (
+    <Box sx={{ mt: 1 }}>
+      <TextField
+        fullWidth
+        size='small'
+        label='Tìm khách để cộng tiền'
+        placeholder='ID, email hoặc tên'
+        value={tuKhoa}
+        onChange={e => setTuKhoa(e.target.value)}
+      />
+
+      {isFetching && <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>Đang tìm…</Typography>}
+
+      {ketQua.length > 0 && (
+        <Box
+          sx={{
+            mt: 0.75,
+            maxHeight: 180,
+            overflowY: 'auto',
+            border: '1px solid var(--mui-palette-divider, #e2e8f0)',
+            borderRadius: '8px'
+          }}
+        >
+          {ketQua.map(k => (
+            <Box
+              key={k.id}
+              onClick={() => onChon(k)}
+              sx={{
+                px: 1.5,
+                py: 1,
+                cursor: 'pointer',
+                borderBottom: '1px solid var(--mui-palette-divider, #f1f5f9)',
+                '&:last-of-type': { borderBottom: 'none' },
+                '&:hover': { background: 'var(--mui-palette-action-hover, rgba(0,0,0,0.04))' }
+              }}
+            >
+              <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
+                {k.name} <span style={{ fontWeight: 400, opacity: 0.6 }}>· ID {k.id}</span>
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                {k.email} · số dư {k.sodu.toLocaleString('vi-VN')}đ
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  )
+}
+
 const BinanceDepositsPage = () => {
   const [tab, setTab] = useState(0)
   const trangThai = TRANG_THAI[tab].ma
@@ -60,12 +153,19 @@ const BinanceDepositsPage = () => {
   const hanhDong = useHanhDongKhoanNap()
   const [vuaLam, setVuaLam] = useState<{ id: number; loi?: string } | null>(null)
 
+  // Khách admin tự chọn, theo TỪNG khoản — không dùng một biến chung, không thì chọn ở
+  // khoản này lại vô tình cộng cho khoản khác.
+  const [khachDaChon, setKhachDaChon] = useState<Record<number, KhachTimDuoc | null>>({})
+
   const chay = (id: number, viec: 'duyet' | 'tu-choi' | 'bo-qua') => {
     hanhDong.mutate(
-      { id, hanhDong: viec },
+      { id, hanhDong: viec, userId: viec === 'duyet' ? khachDaChon[id]?.id : undefined },
       {
         // Phản hồi tại chỗ, không dùng toast success (quy ước dự án).
-        onSuccess: () => setVuaLam({ id }),
+        onSuccess: () => {
+          setVuaLam({ id })
+          setKhachDaChon(cu => ({ ...cu, [id]: null }))
+        },
         onError: (e: any) => setVuaLam({ id, loi: e?.response?.data?.message ?? 'Không thực hiện được.' })
       }
     )
@@ -196,10 +296,16 @@ const BinanceDepositsPage = () => {
                 )}
 
                 {!k.chu_he_thong_biet && !k.nguoi_xin_nhan && k.status === 'pending' && (
-                  <Alert severity='warning' sx={{ fontSize: 12, py: 0 }}>
-                    Chưa biết của ai và chưa có khách nào khai mã. Khách khai đúng mã giao dịch ở trang
-                    nạp tiền là tự cộng được; hoặc anh tự chọn khách rồi duyệt.
-                  </Alert>
+                  <>
+                    <Alert severity='warning' sx={{ fontSize: 12, py: 0 }}>
+                      Chưa biết của ai và chưa có khách nào khai mã. Khách khai đúng mã giao dịch ở trang
+                      nạp tiền là tự cộng được — hoặc chọn khách bên dưới rồi duyệt.
+                    </Alert>
+                    <ChonKhach
+                      daChon={khachDaChon[k.id] ?? null}
+                      onChon={khach => setKhachDaChon(cu => ({ ...cu, [k.id]: khach }))}
+                    />
+                  </>
                 )}
               </Box>
             </Box>
@@ -215,7 +321,10 @@ const BinanceDepositsPage = () => {
                 <Button
                   variant='contained'
                   size='small'
-                  disabled={hanhDong.isPending || (!k.nguoi_xin_nhan && !k.chu_he_thong_biet)}
+                  disabled={
+                    hanhDong.isPending ||
+                    (!k.nguoi_xin_nhan && !k.chu_he_thong_biet && !khachDaChon[k.id])
+                  }
                   onClick={() => chay(k.id, 'duyet')}
                   sx={{ textTransform: 'none' }}
                 >

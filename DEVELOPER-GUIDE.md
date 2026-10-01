@@ -847,6 +847,30 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+79 Màn admin: ô chọn khách để tự gán khoản nạp không ai nhận (01/10/2026)
+
+**Anh Long:** *"admin có quyền nạp cho user có gmail, username hoặc id bất kì nếu thấy và ghi vào phần
+lịch sử"*.
+
+**Vấn đề:** khoản tiền không ai nhận thì nút "Duyệt → cộng tiền" **bị mờ vĩnh viễn** — máy không biết
+cộng cho ai mà giao diện chưa có chỗ chọn. Đường cứu cuối cùng lại không bấm được.
+
+**Thêm:** component `ChonKhach` trong `BinanceDepositsPage` — ô tìm theo **ID / email / tên**, kết quả
+hiện tên + email + ID + số dư để admin **nhìn rõ mình đang cộng cho ai** trước khi bấm. Chọn xong hiện
+thanh xác nhận "Sẽ cộng cho …" kèm nút Đổi; lúc đó nút Duyệt mới bật.
+
+**2 điểm phải giữ khi sửa tiếp:**
+1. 🔴 **Khách đã chọn lưu theo TỪNG khoản** (`Record<depositId, khach>`), không dùng một biến chung —
+   dùng chung thì chọn ở khoản này lại vô tình cộng cho khoản khác.
+2. Kết quả tìm phải hiện **đủ tên + email + ID**, không chỉ tên: tiền vào ví ở đường này không có bằng
+   chứng nào máy kiểm được, chỉ có mắt người.
+
+**Nghiệm thu bằng trình duyệt thật:** gõ "khachtest" → chọn → Duyệt → số dư khách 0đ → **130.000đ**,
+lịch sử có `admin_tu_gan_khach` kèm email + ID + admin nào.
+
+**Files:** `src/views/Client/Admin/BinanceDeposits/BinanceDepositsPage.tsx`,
+`src/hooks/apis/useBinanceDeposits.ts`
+
 #### 13.N+78 Nạp Binance: khách tự nhận khoản tiền của mình + màn admin duyệt (01/10/2026)
 
 **Anh Long:** *"nếu không tự động được thì user điền mã giao dịch vào có cộng tiền nếu > min được không"*

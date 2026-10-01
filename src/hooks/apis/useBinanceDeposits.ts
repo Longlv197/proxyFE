@@ -49,6 +49,31 @@ export const useBinanceDeposits = (status: 'pending' | 'credited' | 'ignored' | 
   })
 }
 
+export type KhachTimDuoc = { id: number; name: string; email: string; sodu: number }
+
+/**
+ * Tìm khách để admin TỰ GÁN khoản tiền không ai nhận — theo ID, email hoặc tên.
+ *
+ * Dùng đường riêng chứ không dùng `admin/users`: chỗ đó không tìm được theo ID và trả về
+ * cả số đơn/số người giới thiệu — quá nặng cho một ô gợi ý.
+ */
+export const useTimKhach = (tuKhoa: string) => {
+  const axiosAuth = useAxiosAuth()
+  const q = tuKhoa.trim()
+
+  return useQuery({
+    queryKey: ['timKhachNapBinance', q],
+    // Khớp đúng luật máy chủ: tên/email cần >= 2 ký tự, nhưng ID thì 1 chữ số cũng được.
+    enabled: q.length >= 2 || /^\d+$/.test(q),
+    queryFn: async (): Promise<KhachTimDuoc[]> => {
+      const res = await axiosAuth.get('/admin/binance-deposits/tim-khach', { params: { q } })
+
+      return res?.data?.data ?? []
+    },
+    staleTime: 10 * 1000
+  })
+}
+
 /** Ba hành động của admin. Mọi hành động đều làm mất hiệu lực cache để số đếm cập nhật. */
 export const useHanhDongKhoanNap = () => {
   const axiosAuth = useAxiosAuth()
