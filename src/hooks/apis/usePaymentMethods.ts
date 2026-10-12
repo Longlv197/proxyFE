@@ -3,14 +3,18 @@ import { useQuery } from '@tanstack/react-query'
 import useAxiosAuth from '@/hocs/useAxiosAuth'
 
 export type PaymentMethod = {
-  code: 'bank_qr' | 'binance_pay' | 'usdt_bep20'
+  code: 'bank_qr' | 'binance_pay' | 'usdt_bep20' | 'manual'
   label: string
   available: boolean
   reason: string | null
+
+  /** Chỉ có ở `manual`: lời nhắn admin viết ở Cài đặt → Thanh toán. */
+  note?: string
 }
 
 /**
- * Cách nạp tiền khách được dùng. Máy chủ quyết định theo quốc gia IP — FE chỉ vẽ lại.
+ * Cách nạp tiền khách được dùng. Máy chủ quyết định theo công tắc admin + quốc gia IP,
+ * và CHỈ trả cách đang dùng được — FE chỉ vẽ lại.
  * Không tự đoán ở FE: ẩn nút không phải là chặn.
  */
 export const usePaymentMethods = () => {

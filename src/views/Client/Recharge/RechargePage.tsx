@@ -23,8 +23,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import CustomTextField from '@core/components/mui/TextField'
 
 import { useCreateBankQr, usePendingBankQr, useCancelBankQr, type PendingBankQr } from '@/hooks/apis/useBankQr'
-import { usePaymentMethods } from '@/hooks/apis/usePaymentMethods'
+import { usePaymentMethods, type PaymentMethod } from '@/hooks/apis/usePaymentMethods'
 import BinancePayPanel from './BinancePayPanel'
+import ManualDepositPanel from './ManualDepositPanel'
 import { useBankInfo } from '@/hooks/apis/useBankInfo'
 import { useUpdateTransferName } from '@/hooks/apis/useTransferName'
 import { useDepositHistory } from '@/hooks/apis/useDeponsitHistory'
@@ -76,8 +77,9 @@ export default function RechargePage() {
   const { data: bankInfo, isLoading: loadingBank } = useBankInfo()
 
   // Cách nạp tiền theo quốc gia IP (máy chủ quyết định). Khách VN chỉ nhận về bank_qr.
-  const { data: methods = [] } = usePaymentMethods()
-  const [cachNap, setCachNap] = useState<string>('bank_qr')
+  // Admin tắt cách nào thì máy chủ không trả cách đó → ở đây không hiện.
+  const { data: methodsTuMayChu = [], isLoading: dangTaiCachNap } = usePaymentMethods()
+  const [cachNap, setCachNap] = useState<string>('')
   const [, copy] = useCopy()
   const axiosAuth = useAxiosAuth()
 
@@ -90,6 +92,20 @@ export default function RechargePage() {
   const hasPending = !!pendingRecord
   const transferConfig = user?.transfer_config
   const hasTransferName = !!transferConfig?.name && !!transferConfig?.key
+
+  // Đang có QR chờ thanh toán mà admin vừa tắt bank → vẫn giữ ô bank để khách thấy QR đã tạo
+  // (tiền chuyển vào vẫn được cộng), chỉ không tạo được QR mới.
+  const methods = useMemo<PaymentMethod[]>(() => {
+    if (!hasPending || methodsTuMayChu.some(m => m.code === 'bank_qr')) return methodsTuMayChu
+
+    return [
+      { code: 'bank_qr', label: 'Chuyển khoản ngân hàng (QR)', available: true, reason: null },
+      ...methodsTuMayChu
+    ]
+  }, [methodsTuMayChu, hasPending])
+
+  // Ban đầu chưa biết máy chủ mở cách nào → chọn cách đầu tiên được trả về.
+  const cachNapHienTai = methods.some(m => m.code === cachNap) ? cachNap : (methods[0]?.code ?? '')
 
   // Countdown timer
   useEffect(() => {
@@ -287,8 +303,51 @@ export default function RechargePage() {
         </div>
 
         <Box sx={{ padding: { xs: '12px', md: '20px' }, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* ===== Chưa cấu hình tên → hiện form setup ===== */}
-          {!hasTransferName && (
+          {/* Thanh chọn cách nạp — chỉ hiện khi có từ 2 cách trở lên. */}
+          {methods.length > 1 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {methods.map(m => (
+                <button
+                  key={m.code}
+                  onClick={() => setCachNap(m.code)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    border: `1px solid ${cachNapHienTai === m.code ? 'var(--primary-color)' : 'var(--mui-palette-divider, #e2e8f0)'}`,
+                    background: cachNapHienTai === m.code ? 'var(--primary-color)' : 'var(--mui-palette-background-paper, #fff)',
+                    color: cachNapHienTai === m.code ? '#fff' : 'var(--mui-palette-text-primary, #374151)'
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Admin tắt hết mọi cách nạp */}
+          {!dangTaiCachNap && methods.length === 0 && (
+            <Box
+              sx={{
+                background: 'var(--mui-palette-background-paper, #fff)',
+                borderRadius: '12px',
+                border: '1px solid var(--mui-palette-divider, #e2e8f0)',
+                padding: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}
+            >
+              <CircleAlert size={18} color='var(--primary-color)' style={{ flexShrink: 0 }} />
+              <Typography sx={{ fontSize: '14px', color: 'var(--mui-palette-text-secondary, #64748b)' }}>
+                Hiện chưa mở nạp tiền trực tuyến. Vui lòng liên hệ bộ phận hỗ trợ để được nạp tiền.
+              </Typography>
+            </Box>
+          )}
+
+          {/* ===== Nạp bank mà chưa cấu hình tên → hiện form setup ===== */}
+          {cachNapHienTai === 'bank_qr' && !hasTransferName && (
             <Box
               sx={{
                 background: '#fff',
@@ -440,37 +499,9 @@ export default function RechargePage() {
             </Box>
           )}
 
-          {/* ===== Form nạp tiền / QR (chỉ hiện khi đã cấu hình tên) ===== */}
-          {hasTransferName && (
-            <>
-              {/* Thanh chọn cách nạp — chỉ hiện khi máy chủ trả về nhiều hơn 1 cách
-                  (khách VN chỉ có bank_qr nên thấy đúng như cũ, không có thanh này). */}
-              {methods.length > 1 && (
-                <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                  {methods.map(m => (
-                    <button
-                      key={m.code}
-                      onClick={() => m.available && setCachNap(m.code)}
-                      disabled={!m.available}
-                      title={m.reason ?? undefined}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: 8,
-                        fontSize: 13,
-                        cursor: m.available ? 'pointer' : 'not-allowed',
-                        border: `1px solid ${cachNap === m.code ? 'var(--primary-color)' : '#e2e8f0'}`,
-                        background: cachNap === m.code ? 'var(--primary-color)' : '#fff',
-                        color: cachNap === m.code ? '#fff' : m.available ? '#374151' : '#9ca3af'
-                      }}
-                    >
-                      {m.label}
-                      {!m.available && ' — chưa mở'}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {cachNap === 'bank_qr' && (
+          {/* ===== Form nạp tiền / QR / crypto / liên hệ ===== */}
+          <>
+              {cachNapHienTai === 'bank_qr' && hasTransferName && (
                 <Box
                   sx={{
                     display: 'grid',
@@ -901,9 +932,11 @@ export default function RechargePage() {
                 </Box>
               )}
 
-              {cachNap === 'binance_pay' && <BinancePayPanel />}
-            </>
-          )}
+              {cachNapHienTai === 'binance_pay' && <BinancePayPanel />}
+              {cachNapHienTai === 'manual' && (
+                <ManualDepositPanel note={methods.find(m => m.code === 'manual')?.note ?? ''} />
+              )}
+          </>
 
           {/* ===== PHẦN DƯỚI: TABS ===== */}
           <Box

@@ -847,6 +847,22 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+80 Bật/tắt từng cách nạp tiền + "Liên hệ admin để nạp" (13/10/2026)
+
+**Anh Long:** thêm lựa chọn tắt nạp bank / nạp tay / Binance ở Cài đặt, hiển thị tương ứng cho khách ở cả site mẹ và
+con; tắt thì không hiện gì (bỏ nút xám "chưa mở"), bật thì hiện thành lựa chọn để bấm.
+**Thêm:**
+- `DepositMethodsSection` (Cài đặt → Thanh toán, đầu tab): 3 công tắc + lời nhắn nạp tay, tự lưu qua
+  `admin/deposit-method-settings`. Cảnh báo nói hậu quả: bật Binance mà thiếu khoá/tỷ giá → "khách CHƯA thấy".
+- `ManualDepositPanel`: lời nhắn admin + mã khách + kênh liên hệ lấy từ branding của CHÍNH site (con hiện liên hệ con).
+**Sửa:** `RechargePage`
+- Thanh chọn cách nạp đưa lên đầu; chọn mặc định = cách đầu tiên máy chủ trả (trước cứng `bank_qr` → tắt bank là trắng trang).
+- Form "xác nhận tên chủ tài khoản" chỉ hiện khi đang chọn bank (trước chặn cả trang → tắt bank mà vẫn bắt nhập tên).
+- Tắt hết → lời nhắn "chưa mở nạp tiền trực tuyến". Đang có QR chờ mà admin vừa tắt bank → vẫn hiện QR đó.
+- Menu "Khoản nạp Binance" hiện cả site con (con bật được Binance Pay với khoá riêng; khoản thiếu ghi chú admin gán ở đây).
+**Files:** `views/Client/Recharge/{RechargePage,ManualDepositPanel}.tsx`, `views/Client/Admin/SiteSettings/tabs/{TabPayment,DepositMethodsSection}.tsx`,
+`hooks/apis/usePaymentMethods.ts`, `components/layout/vertical/VerticalMenu.tsx`
+
 #### 13.N+79 Màn admin: ô chọn khách để tự gán khoản nạp không ai nhận (01/10/2026)
 
 **Anh Long:** *"admin có quyền nạp cho user có gmail, username hoặc id bất kì nếu thấy và ghi vào phần

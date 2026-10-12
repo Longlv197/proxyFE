@@ -498,8 +498,9 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
                 Quản lý nạp tiền
               </MenuItem>
             )}
-            {/* Khoản nạp Binance máy không tự khớp được — chỉ site mẹ, site con không bán crypto. */}
-            {!isChild && hasPermission('admin.depositHistory') && (
+            {/* Khoản nạp Binance máy không tự khớp được (khách quên ghi chú) — admin gán tay ở đây.
+                Hiện cả site con: con cũng bật được Binance Pay với khoá Binance riêng (anh Long 13/10). */}
+            {hasPermission('admin.depositHistory') && (
               <MenuItem
                 icon={<Landmark size={20} strokeWidth={1.5} />}
                 {...nav('admin/binance-deposits')}

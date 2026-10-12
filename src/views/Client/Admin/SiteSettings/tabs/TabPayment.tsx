@@ -10,6 +10,7 @@ import type { BankSettings } from '@/hooks/apis/useBankSettings'
 import type { BrandingSettings } from '@/hooks/apis/useBrandingSettings'
 
 import CryptoDisplaySection from './CryptoDisplaySection'
+import DepositMethodsSection from './DepositMethodsSection'
 import { sectionDescSx, sectionTitleSx } from './shared'
 
 const BANK_LIST = [
@@ -62,8 +63,11 @@ const TabPayment = ({
 }: TabPaymentProps) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* ── Section 0: Bật/tắt từng cách nạp — tự lưu riêng ── */}
+      <DepositMethodsSection />
+
       {/* ── Section 1: Ngân hàng nhận tiền ── */}
-      <div>
+      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
         <h6 style={sectionTitleSx}>Ngân hàng nhận tiền</h6>
         <p style={sectionDescSx}>Thông tin ngân hàng hiển thị cho khách khi nạp tiền chuyển khoản</p>
       </div>
