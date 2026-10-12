@@ -78,7 +78,16 @@ export default function RechargePage() {
 
   // Cách nạp tiền theo quốc gia IP (máy chủ quyết định). Khách VN chỉ nhận về bank_qr.
   // Admin tắt cách nào thì máy chủ không trả cách đó → ở đây không hiện.
-  const { data: methodsTuMayChu = [], isLoading: dangTaiCachNap } = usePaymentMethods()
+  // Gọi lỗi (mạng/500) → KHÔNG được báo "chưa mở nạp tiền": quay về hiện bank như trước khi có công tắc.
+  // An toàn vì máy chủ vẫn chặn tạo QR nếu admin đang tắt bank.
+  const { data: methodsDaTai = [], isLoading: dangTaiCachNap, isError: loiCachNap } = usePaymentMethods()
+  const methodsTuMayChu = useMemo<PaymentMethod[]>(
+    () =>
+      loiCachNap
+        ? [{ code: 'bank_qr', label: 'Chuyển khoản ngân hàng (QR)', available: true, reason: null }]
+        : methodsDaTai,
+    [loiCachNap, methodsDaTai]
+  )
   const [cachNap, setCachNap] = useState<string>('')
   const [, copy] = useCopy()
   const axiosAuth = useAxiosAuth()
