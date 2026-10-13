@@ -13,12 +13,14 @@ import useAxiosAuth from '@/hocs/useAxiosAuth'
 import { formatDateTimeLocal } from '@/utils/formatDate'
 
 import { useModalContext } from '@/app/contexts/ModalContext'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 import HistoryLoginPage from '../HistoryLogin/HistoryLoginPage'
 import AutoLoginHandler from '@/components/AutoLoginHandler'
 
 export function OverviewPage() {
   const { openAuthModal } = useModalContext()
   const axiosAuth = useAxiosAuth()
+  const { hien } = useTienTe()
 
   // Hiện thông báo khi đổi mật khẩu thành công
   const searchParams = useSearchParams()
@@ -59,9 +61,7 @@ export function OverviewPage() {
             <h3 className='text-sm font-medium text-muted-foreground'>Số dư tài khoản</h3>
             <p className='text-2xl font-bold' style={{ color: 'var(--primary-hover, #f97316)' }}>
               {' '}
-              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                dataOverview?.total_amount ?? 0
-              )}
+              {hien(dataOverview?.total_amount ?? 0)}
             </p>
           </div>
           <div className='bg-card rounded-lg p-6 border' style={{ background: 'white' }}>

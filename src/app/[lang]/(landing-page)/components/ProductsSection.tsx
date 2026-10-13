@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'next/navigation'
 
 import Link from '@components/Link'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 
 interface LandingPricingItem {
   price?: string; originalPrice?: string; discount?: string; period?: string | Record<string, string>
@@ -30,6 +31,14 @@ function getPeriod(item: LandingPricingItem | undefined, locale: string): string
 export default function ProductsSection({ local, landingPricing }: { local: string; landingPricing?: LandingPricing | null }) {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
+  const { tienTe, hien } = useTienTe()
+
+  // Giá landing admin gõ tay dạng chuỗi VNĐ ("18.000"). Đọc ra số để quy đổi; đọc không được thì giữ nguyên.
+  const giaHien = (chuoi?: string) => {
+    const so = Number(String(chuoi ?? '').replace(/[^\d]/g, ''))
+
+    return tienTe === 'VND' || !so ? `${chuoi ?? ''}đ` : hien(so)
+  }
 
   // Preview mode: đọc pricing từ sessionStorage khi có ?preview=1
   const previewPricing = React.useMemo(() => {
@@ -128,9 +137,9 @@ export default function ProductsSection({ local, landingPricing }: { local: stri
 
                   {/* Pricing */}
                   <div className='pricing'>
-                    <div className='price-old'>{product.originalPrice}đ</div>
+                    <div className='price-old'>{giaHien(product.originalPrice)}</div>
                     <div className='price-current'>
-                      <span className='price-amount'>{product.price}đ</span>
+                      <span className='price-amount'>{giaHien(product.price)}</span>
                       {product.period && <span className='price-period'>/{product.period}</span>}
                     </div>
                   </div>

@@ -847,6 +847,24 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+84 Chọn tiền tệ hiển thị VNĐ/USD/CNY trong menu ngôn ngữ (13/10/2026)
+
+**Anh Long chốt:** CHỈ hiển thị quy đổi (ví/tính tiền vẫn VNĐ) · VNĐ + USD + CNY · gợi ý theo ngôn ngữ, khách chọn tay thì nhớ.
+**Thêm:** `app/contexts/TienTeContext.tsx` — `useTienTe().hien(vnd)`; tỷ giá từ `get-settings.ty_gia_hien_thi` (USD = tỷ giá USDT
+admin, CNY admin đặt riêng ở Cài đặt crypto); thiếu tỷ giá → rơi về VNĐ; lựa chọn lưu localStorage `tien_te` (đọc sau mount, tránh lệch hydrate).
+`LanguageDropdown`: mục "Ngôn ngữ" + "Tiền tệ", chip hiện `VI · $`; đổi ngôn ngữ GIỮ query (`?tab=…`).
+**Đổi hiển thị:** số dư (sidebar, menu user), ProxyCard, Proxy xoay, Checkout + Gia hạn (kèm dòng "Trừ ví: X đ" khi không phải VNĐ),
+lịch sử đơn/chi tiết đơn, lịch sử giao dịch, tổng quan, thống kê hoa hồng, giá landing.
+**CỐ Ý giữ VNĐ:** trang Nạp tiền ngân hàng, QR chờ thanh toán, rút hoa hồng, tài liệu API, màn admin, câu hỏi hoàn tiền.
+**Nghiệm thu local:** chọn USD → số dư $111.57 (2.900.800/26.000), giá $0.19/ngày, Checkout "$0.19 · Trừ ví: 5.000đ";
+xoá lựa chọn + vào `/cn` → ¥805.78 / ¥1.39. tsc 294 lỗi sẵn có, không thêm.
+
+#### 13.N+83 Giữ tab đang chọn trên URL khi tải lại (13/10/2026)
+
+**Thêm:** hook `hooks/useTabTrenUrl.ts` (`?tab=` qua `router.replace`, giá trị lạ → mặc định). Áp: Nạp tiền (`?cach=` cách nạp +
+`?lich_su=`), Khoản nạp Binance, Giao dịch ngân hàng, Chi tiết NCC, Hồ sơ, Theo dõi hàng đợi. (Cài đặt site đã tự nhớ bằng localStorage.)
+**Nghiệm thu:** chọn Binance + "Lịch sử giao dịch" → URL `?cach=binance_pay&lich_su=1` → tải lại vẫn đúng 2 tab.
+
 #### 13.N+82 Bill nạp Binance Pay — khách tạo bill, admin xem minh bạch (13/10/2026)
 
 **Thêm (BE 15.N+79):**

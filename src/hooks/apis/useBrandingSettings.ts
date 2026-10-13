@@ -100,6 +100,9 @@ export interface BrandingSettings {
   turnstile_site_key: string | null
   turnstile_pages: string[] | null
 
+  /** VNĐ cho 1 đơn vị — CHỈ để hiển thị. Chỉ có loại admin đã đặt tỷ giá (> 0). */
+  ty_gia_hien_thi?: Partial<Record<'VND' | 'USD' | 'CNY', number>>
+
   // Mode
   site_mode: SiteMode | null
 }

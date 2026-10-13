@@ -26,6 +26,7 @@ import { useQuery } from '@tanstack/react-query'
 import { formatDateTimeLocal } from '@/utils/formatDate'
 
 import useAxiosAuth from '@/hocs/useAxiosAuth'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 
 export default function TransactionHistoryPage() {
   const [columnFilters, setColumnFilters] = useState([])
@@ -38,6 +39,7 @@ export default function TransactionHistoryPage() {
   })
 
   const axiosAuth = useAxiosAuth()
+  const { hien } = useTienTe()
 
   const { data: dataOrders = [], isLoading } = useQuery({
     queryKey: ['getTransactionHistory'],
@@ -91,15 +93,9 @@ export default function TransactionHistoryPage() {
         size: 100,
         header: 'Số trước',
         cell: ({ row }) => {
-          // Tạo một formatter cho tiền tệ Việt Nam
-          const formatter = new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-          })
-
           return (
             <div>
-              <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.original.sotientruoc)}</span>
+              <span className='text-sm text-gray-500 font-bold'>{hien(row.original.sotientruoc)}</span>
             </div>
           )
         }
@@ -108,15 +104,9 @@ export default function TransactionHistoryPage() {
         size: 100,
         header: 'Số tiền',
         cell: ({ row }) => {
-          // Tạo một formatter cho tiền tệ Việt Nam
-          const formatter = new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-          })
-
           return (
             <div>
-              <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.original.sotienthaydoi)}</span>
+              <span className='text-sm text-gray-500 font-bold'>{hien(row.original.sotienthaydoi)}</span>
             </div>
           )
         }
@@ -125,15 +115,9 @@ export default function TransactionHistoryPage() {
         size: 100,
         header: 'Số tiền sau',
         cell: ({ row }) => {
-          // Tạo một formatter cho tiền tệ Việt Nam
-          const formatter = new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-          })
-
           return (
             <div>
-              <span className='text-sm text-gray-500 font-bold'>{formatter.format(row.original.sotiensau)}</span>
+              <span className='text-sm text-gray-500 font-bold'>{hien(row.original.sotiensau)}</span>
             </div>
           )
         }
@@ -153,7 +137,7 @@ export default function TransactionHistoryPage() {
         }
       }
     ],
-    []
+    [hien]
   )
 
   const table = useReactTable({

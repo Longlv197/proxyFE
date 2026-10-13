@@ -17,6 +17,7 @@ import type { PriceOption } from '@/components/checkout-modal/CheckoutModal'
 import { getTagStyle, shouldHideByTag } from '@/configs/tagConfig'
 import { getVisibleFields, renderFeatureRow } from './productFieldsHelper'
 import { useBranding } from '@/app/contexts/BrandingContext'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 import { protocols as defaultProtocols } from '@/utils/protocolProxy'
 
 import { useModalContext } from '@/app/contexts/ModalContext'
@@ -39,6 +40,7 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
   const routeParams = useParams<{ lang?: string }>()
   const locale = (routeParams?.lang as string) || 'vi'
   const { show_product_code, product_fields } = useBranding()
+  const { hien } = useTienTe()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   const isAvailable = provider?.is_purchasable !== false
@@ -405,7 +407,7 @@ const ProxyCard: React.FC<ProxyCardProps> = ({ provider, isFirstCard = false, co
           <div>
             <div className='price-amount'>
               <span style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8', marginRight: '2px' }}>{t('staticProxy.onlyFrom')} </span>
-              {headerPrice.toLocaleString('vi-VN')}đ{headerPriceSuffix}
+              {hien(headerPrice)}{headerPriceSuffix}
             </div>
             {maxDiscount > 0 && (
               <div style={{

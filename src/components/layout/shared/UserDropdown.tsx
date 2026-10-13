@@ -28,6 +28,7 @@ import { clearUser } from '@/store/userSlice'
 import type { RootState } from '@/store'
 
 import { useBranding } from '@/app/contexts/BrandingContext'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 
 import ConfirmDialog from '@components/confirm-modal/ConfirmDialog'
 
@@ -59,6 +60,7 @@ const UserDropdown = () => {
   // Balance lấy từ Redux — cùng nguồn với sidebar BalanceCard (đồng bộ)
   const { sodu } = useSelector((state: RootState) => state.user)
   const userBalance = sodu
+  const { hien } = useTienTe()
 
   const handleDropdownOpen = () => {
     setOpen(prev => !prev)
@@ -184,7 +186,7 @@ const UserDropdown = () => {
           </Typography>
           {userBalance !== undefined && (
             <Typography sx={{ fontSize: '0.7rem', lineHeight: 1.2, fontWeight: 700, color: primaryHover }}>
-              {Number(userBalance).toLocaleString('vi-VN')}đ
+              {hien(userBalance)}
             </Typography>
           )}
         </Box>
@@ -315,7 +317,7 @@ const UserDropdown = () => {
                           </Typography>
                         </Box>
                         <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>
-                          {Number(userBalance).toLocaleString('vi-VN')}đ
+                          {hien(userBalance)}
                         </Typography>
                       </Box>
                     </Box>

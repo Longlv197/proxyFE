@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { setBalance } from '@/store/userSlice'
 import type { AppDispatch, RootState } from '@/store'
 import { useRenewOrder } from '@/hooks/apis/useRenewal'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 
 import '../checkout-modal/styles.css'
 
@@ -53,6 +54,7 @@ const RenewalDialog: React.FC<RenewalDialogProps> = ({
 
   const dispatch = useDispatch<AppDispatch>()
   const { sodu } = useSelector((state: RootState) => state.user)
+  const { tienTe, hien } = useTienTe()
   const { mutate, isPending, isSuccess } = useRenewOrder()
 
   const isPerUnit = pricingMode === 'per_unit'
@@ -158,7 +160,7 @@ const RenewalDialog: React.FC<RenewalDialogProps> = ({
                   <span className='perunit-input-unit'>{timeUnit === 'month' ? 'tháng' : 'ngày'}</span>
                 </div>
                 <span className='perunit-calc'>
-                  = <strong>{unitPrice.toLocaleString('vi-VN')}đ</strong>/proxy
+                  = <strong>{hien(unitPrice)}</strong>/proxy
                 </span>
               </div>
             </div>
@@ -194,9 +196,9 @@ const RenewalDialog: React.FC<RenewalDialogProps> = ({
               <span>Thành tiền</span>
             </div>
             <div className='price-table-row'>
-              <span className='price-cell'>{unitPrice.toLocaleString('vi-VN')}đ</span>
+              <span className='price-cell'>{hien(unitPrice)}</span>
               <span style={{ fontWeight: 600 }}>{quantity}</span>
-              <span className='subtotal-cell'>{total.toLocaleString('vi-VN')}đ</span>
+              <span className='subtotal-cell'>{hien(total)}</span>
             </div>
           </div>
 
@@ -204,7 +206,7 @@ const RenewalDialog: React.FC<RenewalDialogProps> = ({
           {sodu < total && (
             <div className='checkout-warning'>
               <AlertTriangle size={16} />
-              <span>Số dư không đủ. Cần thêm {(total - sodu).toLocaleString('vi-VN')}đ</span>
+              <span>Số dư không đủ. Cần thêm {hien(total - sodu)}</span>
             </div>
           )}
         </div>
@@ -213,7 +215,14 @@ const RenewalDialog: React.FC<RenewalDialogProps> = ({
         <div className='checkout-footer'>
           <div className='checkout-total'>
             <span className='total-text'>Tổng Cộng:</span>
-            <span className='total-amount'>{total.toLocaleString('vi-VN')}đ</span>
+            <span className='total-amount'>
+              {hien(total)}
+              {tienTe !== 'VND' && (
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: 'var(--mui-palette-text-secondary)' }}>
+                  Trừ ví: {total.toLocaleString('vi-VN')}đ
+                </span>
+              )}
+            </span>
           </div>
           <button
             type='button'

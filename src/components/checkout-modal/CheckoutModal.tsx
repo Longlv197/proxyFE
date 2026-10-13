@@ -18,6 +18,7 @@ import { setBalance } from '@/store/userSlice'
 import type { AppDispatch, RootState } from '@/store'
 import useAxiosAuth from '@/hocs/useAxiosAuth'
 import { useValidateVoucher } from '@/hooks/apis/useVouchers'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 
 import './styles.css'
 
@@ -225,6 +226,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const axiosAuth = useAxiosAuth()
   const router = useRouter()
   const { sodu } = useSelector((state: RootState) => state.user)
+  const { tienTe, hien } = useTienTe()
   const isSubmitting = useRef(false)
 
   // Reset state khi options thay đổi (product khác)
@@ -512,7 +514,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
             setDiscountAmount(res.discount ?? 0)
             setVoucherFeedback({
               type: 'success',
-              text: `Áp dụng thành công — giảm ${(res.discount ?? 0).toLocaleString('vi-VN')}đ`
+              text: `Áp dụng thành công — giảm ${hien(res.discount ?? 0)}`
             })
           } else {
             setDiscountAmount(0)
@@ -613,7 +615,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             <span className='perunit-tier-days'>1</span>
                             <span className='perunit-tier-unit'>{unitLabel}</span>
                           </span>
-                          <span className='perunit-tier-price'>{pricePerUnit.toLocaleString('vi-VN')}đ</span>
+                          <span className='perunit-tier-price'>{hien(pricePerUnit)}</span>
                         </button>
                         {limit5Tiers.map((tier, i) => {
                           const minDays = parseInt(tier.min) || 1
@@ -632,7 +634,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                 <span className='perunit-tier-days'>{minDays}</span>
                                 <span className='perunit-tier-unit'>{unitLabel}</span>
                               </span>
-                              <span className='perunit-tier-price'>{tierPrice.toLocaleString('vi-VN')}đ</span>
+                              <span className='perunit-tier-price'>{hien(tierPrice)}</span>
                             </button>
                           )
                         })}
@@ -663,7 +665,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <span className='perunit-input-unit'>{timeUnit === 'month' ? 'tháng' : 'ngày'}</span>
                 </div>
                 <span className='perunit-calc'>
-                  = <strong>{unitPrice.toLocaleString('vi-VN')}đ</strong>
+                  = <strong>{hien(unitPrice)}</strong>
                 </span>
               </div>
 
@@ -672,8 +674,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <div className='perunit-saving'>
                   <span className='perunit-saving-pct'>-{discountPct}%</span>
                   <span className='perunit-saving-detail'>
-                    <s>{fullPriceTotal.toLocaleString('vi-VN')}đ</s> tiết kiệm{' '}
-                    <strong>{(fullPriceTotal - unitPrice).toLocaleString('vi-VN')}đ</strong>
+                    <s>{hien(fullPriceTotal)}</s> tiết kiệm{' '}
+                    <strong>{hien(fullPriceTotal - unitPrice)}</strong>
                   </span>
                 </div>
               )}
@@ -845,7 +847,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             {detail && <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 6 }}>{detail}</div>}
                             {typeof opt.price === 'number' && opt.price > 0 && (
                               <div style={{ fontSize: 16, fontWeight: 700, color: active ? '#6366f1' : '#16a34a' }}>
-                                {opt.price.toLocaleString('vi-VN')}đ
+                                {hien(opt.price)}
                               </div>
                             )}
                           </label>
@@ -1203,10 +1205,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <span className='price-cell'>
                 {hasQtyDiscount && (
                   <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: '11px', marginRight: 4 }}>
-                    {baseUnitPrice.toLocaleString('vi-VN')}đ
+                    {hien(baseUnitPrice)}
                   </span>
                 )}
-                {unitPrice.toLocaleString('vi-VN')}đ
+                {hien(unitPrice)}
               </span>
               <div className='qty-cell'>
                 {/* Respect SP min/max. Khi min=max (vd Proxyma residential) → control disabled. */}
@@ -1217,7 +1219,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   onChange={setQuantity}
                 />
               </div>
-              <span className='subtotal-cell'>{total.toLocaleString('vi-VN')}đ</span>
+              <span className='subtotal-cell'>{hien(total)}</span>
             </div>
 
             {/* Nói thẳng cái trần ra, ngay dưới ô số lượng.
@@ -1278,7 +1280,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           Đang được giảm giá!
                         </div>
                         <div style={{ fontSize: 11, color: '#166534' }}>
-                          Tiết kiệm {saveNow.toLocaleString('vi-VN')}đ cho {quantity} proxy
+                          Tiết kiệm {hien(saveNow)} cho {quantity} proxy
                         </div>
                       </div>
                     </div>
@@ -1311,7 +1313,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             <span className='perunit-tier-days'>1-{firstMin - 1}</span>
                             <span className='perunit-tier-unit'>proxy</span>
                           </span>
-                          <span className='perunit-tier-price'>{basePrice.toLocaleString('vi-VN')}đ</span>
+                          <span className='perunit-tier-price'>{hien(basePrice)}</span>
                         </button>
                       )
                     })()}
@@ -1337,7 +1339,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             <span className='perunit-tier-days'>{rangeLabel}</span>
                             <span className='perunit-tier-unit'>proxy</span>
                           </span>
-                          <span className='perunit-tier-price'>{tierPrice.toLocaleString('vi-VN')}đ</span>
+                          <span className='perunit-tier-price'>{hien(tierPrice)}</span>
                         </button>
                       )
                     })}
@@ -1433,7 +1435,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className='summary-row'>
               <span className='summary-label'>Giá:</span>
               <span className='summary-value'>
-                {unitPrice.toLocaleString('vi-VN')}đ
+                {hien(unitPrice)}
                 {(() => {
                   const disc = !isPerUnit ? calculateDiscount(selectedDuration, unitPrice) : null
 
@@ -1448,7 +1450,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: 600, marginLeft: 6 }}>
                       Tiết kiệm {disc}%{' '}
                       <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontWeight: 400 }}>
-                        ({originalPrice.toLocaleString('vi-VN')}đ)
+                        ({hien(originalPrice)})
                       </span>
                     </span>
                   )
@@ -1463,7 +1465,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className='summary-row'>
                 <span className='summary-label'>Giảm giá:</span>
                 <span className='summary-value' style={{ color: '#16a34a', fontWeight: 600 }}>
-                  −{discountAmount.toLocaleString('vi-VN')}đ
+                  −{hien(discountAmount)}
                 </span>
               </div>
             )}
@@ -1513,12 +1515,18 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     marginRight: 6
                   }}
                 >
-                  {total.toLocaleString('vi-VN')}đ
+                  {hien(total)}
                 </span>
               )}
-              {finalTotal.toLocaleString('vi-VN')}đ
+              {hien(finalTotal)}
             </span>
           </div>
+          {/* Đang xem bằng USD/CNY → nói rõ số VNĐ THẬT sẽ trừ khỏi ví (ví tính bằng VNĐ). */}
+          {tienTe !== 'VND' && (
+            <div style={{ fontSize: 12, color: 'var(--mui-palette-text-secondary)', textAlign: 'right', marginTop: -4 }}>
+              Trừ ví: {finalTotal.toLocaleString('vi-VN')}đ
+            </div>
+          )}
           {purchaseSuccess ? (
             <div style={{ display: 'flex', gap: 8, width: '100%' }}>
               <button

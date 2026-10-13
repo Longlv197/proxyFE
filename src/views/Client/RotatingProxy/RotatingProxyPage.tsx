@@ -30,6 +30,7 @@ import Switch from '@mui/material/Switch'
 import MenuItem from '@mui/material/MenuItem'
 import { useSession } from 'next-auth/react'
 import { useBranding } from '@/app/contexts/BrandingContext'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 
 import { Box, Grid2, Typography } from '@mui/material'
 
@@ -338,6 +339,7 @@ const PlanCard = ({ plan }) => {
   const { openAuthModal } = useModalContext()
   const session = useSession()
   const { show_product_code, product_fields } = useBranding()
+  const { hien } = useTienTe()
 
   const isAvailable = plan?.is_purchasable !== false
 
@@ -647,7 +649,7 @@ const PlanCard = ({ plan }) => {
               {priceOptions.length > 1 && (
                 <span style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8', marginRight: '2px' }}>từ </span>
               )}
-              {headerPrice.toLocaleString('vi-VN')}đ
+              {hien(headerPrice)}
             </div>
             {maxDiscount > 0 && (
               <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#22c55e', marginTop: 1 }}>

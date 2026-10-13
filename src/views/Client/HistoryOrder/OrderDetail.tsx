@@ -62,9 +62,9 @@ import '@/components/checkout-modal/styles.css'
 import PurchaseAttributes from '@/components/PurchaseAttributes'
 import PackageUsage from '@/components/PackageUsage'
 import ResidentialPackageBox from './ResidentialPackageBox'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 import ProxyDetailModal from '@/views/Client/OrderRotatingProxy/ProxyDetailModal'
 
-const formatVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
 
 interface OrderDetailProps {
   open: boolean
@@ -91,6 +91,7 @@ interface OrderDetailProps {
 }
 
 const OrderDetail: React.FC<OrderDetailProps> = ({ open, onClose, order }) => {
+  const { hien: formatVND } = useTienTe()
   const [rowSelection, setRowSelection] = useState({})
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
   const [, copy] = useCopy()
@@ -838,10 +839,9 @@ function RenewalHistory({ renewals, viewLogId, onViewLog }: {
   const { isAdmin } = useRole()
   const refundMutation = useRenewalRefund()
   const confirmMutation = useRenewalConfirm()
+  const { hien: fmtVND } = useTienTe()
 
   if (!renewals.length) return null
-
-  const fmtVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
 
   const canRefund = (status: number) => [3, 6].includes(status) // FAILED, PARTIAL
   const canConfirm = (status: number) => [3, 6].includes(status) // FAILED, PARTIAL — NCC đã xử lý OK
@@ -858,7 +858,8 @@ function RenewalHistory({ renewals, viewLogId, onViewLog }: {
   }
 
   const handleRefund = async (h: OrderHistoryItem) => {
-    if (!confirm(`Hoàn ${fmtVND(h.amount)} cho lần gia hạn #${h.id}?`)) return
+    // Hoàn tiền là tiền THẬT vào ví VNĐ → hỏi bằng VNĐ, không theo tiền tệ hiển thị.
+    if (!confirm(`Hoàn ${Number(h.amount).toLocaleString('vi-VN')}đ cho lần gia hạn #${h.id}?`)) return
 
     try {
       const res = await refundMutation.mutateAsync({ historyId: h.id })
@@ -1067,6 +1068,7 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
   const { data: renewInfo, isLoading: infoLoading } = useRenewInfo(order.id)
   const dispatch = useDispatch<AppDispatch>()
   const { sodu } = useSelector((state: RootState) => state.user)
+  const { tienTe, hien } = useTienTe()
   const { mutate, isPending, isSuccess } = useRenewOrder()
 
   const isOriginal = renewInfo?.renewal_duration_mode === 'original'
@@ -1190,7 +1192,7 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
                           <span className='perunit-tier-days'>1</span>
                           <span className='perunit-tier-unit'>{unitLabel}</span>
                         </span>
-                        <span className='perunit-tier-price'>{perUnit.price_per_unit.toLocaleString('vi-VN')}đ</span>
+                        <span className='perunit-tier-price'>{hien(perUnit.price_per_unit)}</span>
                       </button>
                       {perUnit.discount_tiers.slice(0, 5).map((tier, i) => {
                         const minDays = parseInt(tier.min) || 1
@@ -1208,7 +1210,7 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
                               <span className='perunit-tier-days'>{minDays}</span>
                               <span className='perunit-tier-unit'>{unitLabel}</span>
                             </span>
-                            <span className='perunit-tier-price'>{tierPrice.toLocaleString('vi-VN')}đ</span>
+                            <span className='perunit-tier-price'>{hien(tierPrice)}</span>
                           </button>
                         )
                       })}
@@ -1236,7 +1238,7 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
                       />
                       <span className='perunit-input-unit'>{unitLabel}</span>
                     </div>
-                    <span className='perunit-calc'>= <strong>{unitPrice.toLocaleString('vi-VN')}đ</strong></span>
+                    <span className='perunit-calc'>= <strong>{hien(unitPrice)}</strong></span>
                   </div>
 
                   {/* Discount info */}
@@ -1244,8 +1246,8 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
                     <div className='perunit-saving'>
                       <span className='perunit-saving-pct'>-{discount.pct}%</span>
                       <span className='perunit-saving-detail'>
-                        <s>{fullPriceTotal.toLocaleString('vi-VN')}đ</s> tiết kiệm{' '}
-                        <strong>{discount.saved.toLocaleString('vi-VN')}đ</strong>
+                        <s>{hien(fullPriceTotal)}</s> tiết kiệm{' '}
+                        <strong>{hien(discount.saved)}</strong>
                       </span>
                     </div>
                   )}
@@ -1260,9 +1262,9 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
                   <span>Thành tiền</span>
                 </div>
                 <div className='price-table-row'>
-                  <span className='price-cell'>{unitPrice.toLocaleString('vi-VN')}đ</span>
+                  <span className='price-cell'>{hien(unitPrice)}</span>
                   <span className='price-cell'>{quantity}</span>
-                  <span className='subtotal-cell'>{total.toLocaleString('vi-VN')}đ</span>
+                  <span className='subtotal-cell'>{hien(total)}</span>
                 </div>
               </div>
 
@@ -1270,7 +1272,7 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
               {sodu < total && (
                 <div className='checkout-warning'>
                   <AlertTriangle size={16} />
-                  Thiếu {(total - sodu).toLocaleString('vi-VN')}đ — vui lòng nạp thêm
+                  Thiếu {hien(total - sodu)} — vui lòng nạp thêm
                 </div>
               )}
             </>
@@ -1282,7 +1284,14 @@ function RenewalInlinePanel({ order, quantity, selectedItemKeys, onClose }: {
           <div className='checkout-footer'>
             <div className='checkout-total'>
               <span className='total-text'>Tổng Cộng:</span>
-              <span className='total-amount'>{total.toLocaleString('vi-VN')}đ</span>
+              <span className='total-amount'>
+                {hien(total)}
+                {tienTe !== 'VND' && (
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: 'var(--mui-palette-text-secondary)' }}>
+                    Trừ ví: {total.toLocaleString('vi-VN')}đ
+                  </span>
+                )}
+              </span>
             </div>
             <button
               className='checkout-pay-btn'

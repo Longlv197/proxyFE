@@ -6,9 +6,11 @@ import AffiliatePage from '@/views/Client/Affiliate/AffiliatePage'
 import BoxCustom from '@/components/UI/BoxCustom'
 import WithdrawalTable from '@/views/Client/Affiliate/WithdrawalTable'
 import { useAffiliate } from '@/hooks/apis/useAffiliate'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 
 export default function Affiliate() {
   const { data: affiliateData, isLoading } = useAffiliate()
+  const { hien } = useTienTe()
 
   return (
     <>
@@ -21,7 +23,7 @@ export default function Affiliate() {
                 <div>
                   <p className='text-sm text-gray-500 mb-1'>Thu nhập tháng này</p>
                   <p className='text-2xl font-bold text-gray-900'>
-                    {isLoading ? '...' : (new Intl.NumberFormat('vi-VN').format(affiliateData?.month ?? 0) + ' đ')}
+                    {isLoading ? '...' : hien(affiliateData?.month ?? 0)}
                   </p>
                 </div>
                 <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
@@ -35,7 +37,7 @@ export default function Affiliate() {
                 <div>
                   <p className='text-sm text-gray-500 mb-1'>Thu nhập tổng</p>
                   <p className='text-2xl font-bold text-gray-900'>
-                    {isLoading ? '...' : (new Intl.NumberFormat('vi-VN').format(affiliateData?.total ?? 0) + ' đ')}
+                    {isLoading ? '...' : hien(affiliateData?.total ?? 0)}
                   </p>
                 </div>
                 <div className='w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center'>
@@ -49,7 +51,7 @@ export default function Affiliate() {
                 <div>
                   <p className='text-sm text-gray-500 mb-1'>Số dư affiliate</p>
                   <p className='text-2xl font-bold text-gray-900'>
-                    {isLoading ? '...' : (new Intl.NumberFormat('vi-VN').format(affiliateData?.affiliate_balance ?? 0) + ' đ')}
+                    {isLoading ? '...' : hien(affiliateData?.affiliate_balance ?? 0)}
                   </p>
                   <p className='text-xs text-gray-400 mt-1'>Chưa hỗ trợ rút</p>
                 </div>

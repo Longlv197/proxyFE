@@ -6,6 +6,7 @@ import { Wallet } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import type { RootState } from '@/store'
+import { useTienTe } from '@/app/contexts/TienTeContext'
 
 interface BalanceCardClientProps {
   isWalletVisible: boolean
@@ -16,11 +17,13 @@ interface BalanceCardClientProps {
 export default function BalanceCardClient({ isWalletVisible, isInitialLoad }: BalanceCardClientProps) {
   const { status } = useSession()
   const { sodu } = useSelector((state: RootState) => state.user)
+  const { tienTe, hien } = useTienTe()
 
   // Ẩn balance card khi chưa đăng nhập
   if (status !== 'authenticated') return null
 
-  const formatted = new Intl.NumberFormat('vi-VN').format(sodu ?? 0)
+  // VNĐ: giữ kiểu cũ (số + "đ" nhỏ). USD/CNY: chuỗi đã có ký hiệu ($, ¥).
+  const formatted = tienTe === 'VND' ? new Intl.NumberFormat('vi-VN').format(sodu ?? 0) : hien(sodu ?? 0)
 
   return (
     <>
@@ -47,7 +50,7 @@ export default function BalanceCardClient({ isWalletVisible, isInitialLoad }: Ba
                 <div className='text-[11px] font-medium text-slate-400 leading-none mb-1'>Số dư</div>
                 <div className='text-[15px] font-bold text-slate-700 tracking-tight leading-none'>
                   {formatted}
-                  <span className='text-[11px] font-semibold text-slate-400 ml-0.5'>đ</span>
+                  {tienTe === 'VND' && <span className='text-[11px] font-semibold text-slate-400 ml-0.5'>đ</span>}
                 </div>
               </div>
             </div>

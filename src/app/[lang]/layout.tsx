@@ -42,6 +42,7 @@ import TranslationWrapper from '@/hocs/TranslationWrapper'
 
 import { ModalContextProvider } from '@/app/contexts/ModalContext'
 import { BrandingProvider } from '@/app/contexts/BrandingContext'
+import { TienTeProvider } from '@/app/contexts/TienTeContext'
 
 import { authOptions } from '@/libs/auth'
 
@@ -230,6 +231,7 @@ const RootLayout = async (props: ChildrenType & { params: Promise<{ lang: string
               <TanstackProvider>
                 <InitColorSchemeScript attribute='data' defaultMode={systemMode} />
                 <BrandingProvider initialData={branding}>
+                  <TienTeProvider lang={params.lang}>
                   <StoreProvider initialUser={user}>
                     <ModalContextProvider>
                       <Suspense fallback={null}>
@@ -240,6 +242,7 @@ const RootLayout = async (props: ChildrenType & { params: Promise<{ lang: string
                       <ToastProvider />
                     </ModalContextProvider>
                   </StoreProvider>
+                  </TienTeProvider>
                 </BrandingProvider>
               </TanstackProvider>
             </NextAuthProvider>

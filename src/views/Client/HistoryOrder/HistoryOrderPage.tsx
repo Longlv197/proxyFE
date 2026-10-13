@@ -40,6 +40,8 @@ import { useHistoryOrders, PENDING_STATUSES } from '@/hooks/apis/useHistoryOrder
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/constants/orderStatus'
 import PurchaseAttributes from '@/components/PurchaseAttributes'
 import PackageUsage from '@/components/PackageUsage'
+import { useTienTe } from '@/app/contexts/TienTeContext'
+
 import OrderDetail from './OrderDetail'
 
 const inputSx = {
@@ -109,7 +111,8 @@ export default function HistoryOrderPage() {
     return <Chip label={label} size='small' color={color} />
   }
 
-  const fmtVND = (v: number) => new Intl.NumberFormat('vi-VN').format(v) + 'đ'
+  // Hiển thị theo tiền tệ khách chọn (giá trị gốc vẫn VNĐ).
+  const { hien: fmtVND } = useTienTe()
 
   const columns = useMemo(
     () => [
@@ -213,7 +216,8 @@ export default function HistoryOrderPage() {
         }
       },
     ],
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fmtVND]
   )
 
   const table = useReactTable({

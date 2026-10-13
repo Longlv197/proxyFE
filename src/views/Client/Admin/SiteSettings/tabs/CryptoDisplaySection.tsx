@@ -42,6 +42,7 @@ const CryptoDisplaySection = () => {
   const [moOnchain, setMoOnchain] = useState(false)
 
   const [rate, setRate] = useState('0')
+  const [rateCny, setRateCny] = useState('0')
   const [minBinance, setMinBinance] = useState('0')
   const [minOnchain, setMinOnchain] = useState('0')
   const [notePrefix, setNotePrefix] = useState('mktproxy')
@@ -74,6 +75,7 @@ const CryptoDisplaySection = () => {
       setMoBinance(Boolean(d?.enabled_binance))
       setMoOnchain(Boolean(d?.enabled_onchain))
       setRate(String(d?.rate_usdt ?? 0))
+      setRateCny(String(d?.rate_cny ?? 0))
       setMinBinance(String(d?.min_binance ?? 0))
       setMinOnchain(String(d?.min_onchain ?? 0))
       setNotePrefix(String(d?.note_prefix ?? 'mktproxy'))
@@ -106,6 +108,7 @@ const CryptoDisplaySection = () => {
       const res = await axiosAuth.post('/admin/crypto-settings', {
         show_for_vn: showForVn,
         rate_usdt: Number(rate) || 0,
+        rate_cny: Number(rateCny) || 0,
         min_binance: Number(minBinance) || 0,
         min_onchain: Number(minOnchain) || 0,
         note_prefix: notePrefix,
@@ -251,7 +254,16 @@ const CryptoDisplaySection = () => {
           label='Tỷ giá (VNĐ cho 1 USDT)'
           value={rate}
           onChange={e => setRate(e.target.value)}
-          helperText='Ví dụ 26000. Làm tròn XUỐNG khi cộng tiền, không bao giờ cộng dư cho khách.'
+          helperText='Ví dụ 26000. Làm tròn XUỐNG khi cộng tiền. Cũng là tỷ giá khi khách chọn xem giá bằng USD.'
+          sx={{ flex: 1, minWidth: 220 }}
+        />
+        <TextField
+          size='small'
+          type='number'
+          label='Tỷ giá hiển thị CNY (VNĐ cho 1 ¥)'
+          value={rateCny}
+          onChange={e => setRateCny(e.target.value)}
+          helperText='CHỈ để khách xem giá bằng ¥ (ví vẫn VNĐ). 0 = không cho chọn CNY.'
           sx={{ flex: 1, minWidth: 220 }}
         />
         <TextField

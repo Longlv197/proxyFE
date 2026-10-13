@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 
 // Next Imports
 import Link from 'next/link'
-import { usePathname, useParams } from 'next/navigation'
+import { usePathname, useParams, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 
 // MUI Imports
@@ -16,6 +16,8 @@ import Paper from '@mui/material/Paper'
 import ClickAwayListener from '@mui/material/ClickAwayListener'
 import MenuList from '@mui/material/MenuList'
 import MenuItem from '@mui/material/MenuItem'
+import ListSubheader from '@mui/material/ListSubheader'
+import Divider from '@mui/material/Divider'
 
 // Type Imports
 import { Box } from '@mui/material'
@@ -26,6 +28,7 @@ import type { Locale } from '@/configs/configi18n'
 import { useSettings } from '@core/hooks/useSettings'
 import { useLanguageSync } from '@/hooks/useLanguageSync'
 import { useBranding } from '@/app/contexts/BrandingContext'
+import { DANH_SACH_TIEN_TE, useTienTe } from '@/app/contexts/TienTeContext'
 
 // Flags
 import flagEn from '@/../public/images/flags/united-states-of-america.png'
@@ -45,6 +48,12 @@ const getLocalePath = (pathName: string, locale: string) => {
   segments[1] = locale
 
   return segments.join('/')
+}
+
+const NHAN_MUC: Record<string, { ngonNgu: string; tienTe: string }> = {
+  vi: { ngonNgu: 'Ngôn ngữ', tienTe: 'Tiền tệ' },
+  en: { ngonNgu: 'Language', tienTe: 'Currency' },
+  cn: { ngonNgu: '语言', tienTe: '货币' }
 }
 
 // Vars
@@ -81,6 +90,11 @@ const LanguageDropdown = () => {
   // Sync i18n với URL language
   useLanguageSync()
   const { primaryHover } = useBranding()
+  const { tienTe, coTheChon, datTienTe } = useTienTe()
+  const nhan = NHAN_MUC[String(lang)] ?? NHAN_MUC.vi
+
+  // Đổi ngôn ngữ giữ nguyên `?tab=...` (tab đang xem không bị mất).
+  const query = useSearchParams()?.toString() ?? ''
 
   const handleClose = () => {
     setOpen(false)
@@ -124,6 +138,7 @@ const LanguageDropdown = () => {
             />
             <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155', textTransform: 'uppercase' }}>
               {currentLanguage.langCode}
+              {coTheChon.length > 1 && ` · ${DANH_SACH_TIEN_TE.find(c => c.ma === tienTe)?.kyHieu ?? ''}`}
             </span>
           </>
         ) : (
@@ -146,11 +161,14 @@ const LanguageDropdown = () => {
             <Paper className={settings.skin === 'bordered' ? 'border shadow-none' : 'shadow-lg'}>
               <ClickAwayListener onClickAway={handleClose}>
                 <MenuList onKeyDown={handleClose}>
+                  <ListSubheader sx={{ lineHeight: '28px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+                    {nhan.ngonNgu}
+                  </ListSubheader>
                   {languageData.map(locale => (
                     <MenuItem
                       key={locale.langCode}
                       component={Link}
-                      href={getLocalePath(pathName, locale.langCode)}
+                      href={getLocalePath(pathName, locale.langCode) + (query ? `?${query}` : '')}
                       scroll={false}
                       onClick={handleClose}
                       selected={lang === locale.langCode}
@@ -161,6 +179,30 @@ const LanguageDropdown = () => {
                       </div>
                     </MenuItem>
                   ))}
+
+                  {/* Tiền tệ HIỂN THỊ — ví/tính tiền vẫn VNĐ (xem TienTeContext). Chỉ hiện loại admin đã đặt tỷ giá. */}
+                  {coTheChon.length > 1 && <Divider sx={{ my: 0.5 }} />}
+                  {coTheChon.length > 1 && (
+                    <ListSubheader sx={{ lineHeight: '28px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+                      {nhan.tienTe}
+                    </ListSubheader>
+                  )}
+                  {coTheChon.length > 1 &&
+                    DANH_SACH_TIEN_TE.filter(c => coTheChon.includes(c.ma)).map(c => (
+                      <MenuItem
+                        key={c.ma}
+                        selected={tienTe === c.ma}
+                        onClick={() => {
+                          datTienTe(c.ma)
+                          handleClose()
+                        }}
+                      >
+                        <Box component='span' sx={{ width: 20, me: 1, fontWeight: 700, textAlign: 'center' }}>
+                          {c.kyHieu}
+                        </Box>
+                        {c.ma} · {c.ten}
+                      </MenuItem>
+                    ))}
                 </MenuList>
               </ClickAwayListener>
             </Paper>
