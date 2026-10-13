@@ -86,8 +86,12 @@ const BinancePayPanel = ({ receiver }: { receiver?: BinanceReceiver }) => {
           <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
             1. Mở app Binance → <strong>Pay</strong> → <strong>Gửi</strong>, chuyển USDT tới:
           </Typography>
-          {receiver?.pay_id && (
+          {receiver?.pay_id ? (
             <DongSaoChep nhan='Pay ID / Binance ID' giaTri={receiver.pay_id} onCopy={() => copy(receiver.pay_id)} />
+          ) : (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              Liên hệ bộ phận hỗ trợ để nhận Pay ID tài khoản nhận tiền.
+            </Typography>
           )}
           {receiver?.name && (
             <Typography sx={{ fontSize: 13 }}>

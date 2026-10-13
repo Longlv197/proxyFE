@@ -17,6 +17,7 @@ type CauHinh = {
   binance_enabled: boolean
   bank_configured: boolean
   binance_configured: boolean
+  binance_pay_id_missing?: boolean
 }
 
 /**
@@ -90,6 +91,12 @@ const DepositMethodsSection = () => {
         control={<Switch checked={cauHinh.binance_enabled} onChange={e => doi('binance_enabled', e.target.checked)} />}
         label={<span style={{ fontSize: 13 }}>Binance Pay (chỉ khách IP nước ngoài, trừ khi bật &quot;hiện cho khách VN&quot;)</span>}
       />
+      {cauHinh.binance_enabled && cauHinh.binance_configured && cauHinh.binance_pay_id_missing && (
+        <Alert severity='warning' sx={{ fontSize: 13 }}>
+          Khách đang thấy Binance Pay nhưng CHƯA có Pay ID nhận tiền — khách sẽ được nhắc liên hệ hỗ trợ. Điền Pay ID ở
+          mục &quot;Tài khoản nhận tiền Binance Pay&quot; bên dưới.
+        </Alert>
+      )}
       {cauHinh.binance_enabled && !cauHinh.binance_configured && (
         <Alert severity='info' sx={{ fontSize: 13 }}>
           Đã bật nhưng khách CHƯA thấy: còn thiếu khoá API Binance / secret / tỷ giá USDT ở mục &quot;Nạp crypto&quot; bên dưới.
