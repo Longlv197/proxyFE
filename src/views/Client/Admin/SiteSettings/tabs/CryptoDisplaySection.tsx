@@ -50,6 +50,7 @@ const CryptoDisplaySection = () => {
   const [payId, setPayId] = useState('')
   const [payName, setPayName] = useState('')
   const [qrUrl, setQrUrl] = useState('')
+  const [uidTuDong, setUidTuDong] = useState('')
   const [dangTaiQr, setDangTaiQr] = useState(false)
 
   // Ô nhập khoá: luôn bắt đầu rỗng. `trangThai` cho biết máy chủ đang giữ khoá nào.
@@ -79,6 +80,7 @@ const CryptoDisplaySection = () => {
       setPayId(String(d?.binance_pay_id ?? ''))
       setPayName(String(d?.binance_pay_name ?? ''))
       setQrUrl(String(d?.binance_qr_url ?? ''))
+      setUidTuDong(String(d?.binance_uid_tu_dong ?? ''))
       setTrangThai({
         binance_api_key: d?.binance_api_key,
         binance_api_secret: d?.binance_api_secret,
@@ -291,8 +293,8 @@ const CryptoDisplaySection = () => {
       <div>
         <h6 style={sectionTitleSx}>Tài khoản nhận tiền Binance Pay</h6>
         <p style={sectionDescSx}>
-          Khách sẽ chuyển USDT tới tài khoản này. <b>Chưa điền Pay ID thì khách không thấy Binance Pay</b> — vì
-          không biết chuyển tới đâu.
+          Khách sẽ chuyển USDT tới tài khoản này. <b>Không bắt buộc điền</b> — để trống thì hệ thống tự lấy Binance ID
+          của tài khoản gắn với khoá API bên dưới.
         </p>
       </div>
 
@@ -302,7 +304,12 @@ const CryptoDisplaySection = () => {
           label='Binance Pay ID / Binance ID'
           value={payId}
           onChange={e => setPayId(e.target.value.replace(/[^0-9]/g, ''))}
-          helperText='App Binance → Pay → Nhận → dãy số "Pay ID". Phải đúng tài khoản có khoá API ở dưới.'
+          placeholder={uidTuDong ? `tự dùng: ${uidTuDong}` : ''}
+          helperText={
+            uidTuDong
+              ? `Để trống = khách thấy Binance ID ${uidTuDong} (tự lấy từ khoá API). Chỉ điền khi muốn dùng số khác.`
+              : 'Chưa lấy được ID từ khoá API — điền tay: App Binance → Pay → Nhận.'
+          }
           sx={{ flex: 1, minWidth: 220 }}
         />
         <TextField
