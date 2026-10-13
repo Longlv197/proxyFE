@@ -30,6 +30,7 @@ import { useBankInfo } from '@/hooks/apis/useBankInfo'
 import { useUpdateTransferName } from '@/hooks/apis/useTransferName'
 import { useDepositHistory } from '@/hooks/apis/useDeponsitHistory'
 import { useCopy } from '@/app/hooks/useCopy'
+import { useTabTrenUrl } from '@/hooks/useTabTrenUrl'
 import { formatDateTimeLocal } from '@/utils/formatDate'
 import useAxiosAuth from '@/hocs/useAxiosAuth'
 import { setUser } from '@/store/userSlice'
@@ -55,7 +56,9 @@ export default function RechargePage() {
     return DEFAULT_DENOMINATIONS
   }, [branding?.deposit_preset_amounts])
   const queryClient = useQueryClient()
-  const [tabIndex, setTabIndex] = useState(0)
+
+  // Tab nằm trên URL → tải lại vẫn giữ (anh Long 13/10).
+  const [tabIndex, setTabIndex] = useTabTrenUrl<number>('lich_su', 0, [0, 1])
 
   // Transfer name (chỉ dùng khi chưa cấu hình)
   const [transferNameInput, setTransferNameInput] = useState('')
@@ -88,7 +91,9 @@ export default function RechargePage() {
         : methodsDaTai,
     [loiCachNap, methodsDaTai]
   )
-  const [cachNap, setCachNap] = useState<string>('')
+
+  // `?cach=binance_pay` — cách nạp không còn mở thì tự rơi về cách đầu tiên (dòng `cachNapHienTai`).
+  const [cachNap, setCachNap] = useTabTrenUrl<string>('cach', '')
   const [, copy] = useCopy()
   const axiosAuth = useAxiosAuth()
 

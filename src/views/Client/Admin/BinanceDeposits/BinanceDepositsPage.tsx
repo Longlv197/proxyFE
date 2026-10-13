@@ -23,6 +23,8 @@ import {
   type KhoanNapBinance
 } from '@/hooks/apis/useBinanceDeposits'
 
+import { useTabTrenUrl } from '@/hooks/useTabTrenUrl'
+
 import AdminBinanceBills from './AdminBinanceBills'
 
 /**
@@ -158,7 +160,7 @@ const ChonKhach = ({
 }
 
 const BinanceDepositsPage = () => {
-  const [tab, setTab] = useState(0)
+  const [tab, setTab] = useTabTrenUrl<number>('tab', 0, [0, 1, 2, 3])
   const tabBill = tab === TRANG_THAI.length
   const trangThai = TRANG_THAI[tab]?.ma ?? 'pending'
 

@@ -3,6 +3,7 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 
 import { useQueueStatus, useClearCircuitBreaker } from '@/hooks/apis/useQueueStatus'
+import { useTabTrenUrl } from '@/hooks/useTabTrenUrl'
 import type { LogEntry, WorkerState, CircuitBreaker } from '@/hooks/apis/useQueueStatus'
 
 // ─── Tab config ─────────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ const TABS: TabDef[] = [
 
 export default function QueueMonitorPage() {
   const [enabled, setEnabled] = useState(true)
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useTabTrenUrl<string>('tab', 'all')
   const { data, isLoading } = useQueueStatus(enabled)
   const clearCB = useClearCircuitBreaker()
 

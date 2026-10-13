@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
 import { Tabs, Tab, Box, Typography, Button, Paper, Grid, Card, CardContent, Divider } from '@mui/material'
@@ -18,6 +18,8 @@ import {
   Legend
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
+
+import { useTabTrenUrl } from '@/hooks/useTabTrenUrl'
 
 import { useProviders, useProviderStatistics, useProviderInvoices, useProviderInvoiceSummary } from '@/hooks/apis/useProviders'
 import ProviderInvoiceTab from './ProviderInvoiceTab'
@@ -52,7 +54,7 @@ function a11yProps(index: number) {
 }
 
 export default function ProviderDetailPage() {
-  const [tabValue, setTabValue] = useState(0)
+  const [tabValue, setTabValue] = useTabTrenUrl<number>('tab', 0, [0, 1, 2])
   const router = useRouter()
   const params = useParams()
   const { id } = params

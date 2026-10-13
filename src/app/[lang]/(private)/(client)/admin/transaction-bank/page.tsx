@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
@@ -11,6 +10,7 @@ import TableWebhookLogs from '@views/Client/Admin/WebhookLogs/TableWebhookLogs'
 import TabDepositRequests from '@views/Client/Admin/DepositManagement/TabDepositRequests'
 import { useTransactionBankSummary } from '@/hooks/apis/useTransactionBank'
 import { useAdminDeposits } from '@/hooks/apis/useDepositManagement'
+import { useTabTrenUrl } from '@/hooks/useTabTrenUrl'
 
 // Badge dot for tab labels
 function TabBadge({ count, children }: { count: number; children: React.ReactNode }) {
@@ -31,7 +31,7 @@ function TabBadge({ count, children }: { count: number; children: React.ReactNod
 }
 
 export default function TransactionBankPage() {
-  const [tab, setTab] = useState(0)
+  const [tab, setTab] = useTabTrenUrl<number>('tab', 0, [0, 1, 2])
 
   // Badge counts
   const { data: bankSummary } = useTransactionBankSummary()

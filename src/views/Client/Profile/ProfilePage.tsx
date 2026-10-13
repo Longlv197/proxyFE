@@ -12,6 +12,7 @@ import ChangePassword from './ChangePassword'
 import SettingsPanel from './SettingsPanel'
 import CredentialsPanel from './CredentialsPanel'
 import useAxiosAuth from '@/hocs/useAxiosAuth'
+import { useTabTrenUrl } from '@/hooks/useTabTrenUrl'
 
 type TabType = 'account' | 'password' | 'settings' | 'credentials'
 
@@ -30,7 +31,7 @@ interface ProfileProps {
 }
 
 export default function ProfilePage({ dataProfile }: ProfileProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('account')
+  const [activeTab, setActiveTab] = useTabTrenUrl<TabType>('tab', 'account', ['account', 'password', 'settings', 'credentials'])
   const [avatar, setAvatar] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
