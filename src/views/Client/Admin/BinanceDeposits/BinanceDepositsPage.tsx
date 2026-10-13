@@ -23,6 +23,8 @@ import {
   type KhoanNapBinance
 } from '@/hooks/apis/useBinanceDeposits'
 
+import AdminBinanceBills from './AdminBinanceBills'
+
 /**
  * Màn admin xử lý khoản nạp Binance.
  *
@@ -38,6 +40,15 @@ const TRANG_THAI: Array<{ ma: 'pending' | 'credited' | 'ignored'; nhan: string }
   { ma: 'credited', nhan: 'Đã cộng tiền' },
   { ma: 'ignored', nhan: 'Đã bỏ qua' }
 ]
+
+/** Vì sao khoản còn treo — nói HẬU QUẢ, không chỉ tên trạng thái. */
+const LY_DO_CHO: Record<string, string> = {
+  no_note: 'Chưa rõ chủ — tiền đang treo',
+  below_min: 'Dưới mức tối thiểu — chưa cộng',
+  amount_mismatch: 'Đúng mã bill nhưng lệch số tiền — chờ khách dán mã GD',
+  bill_used: 'Bill đã xử lý khoản khác — cần admin quyết',
+  bill_expired: 'Bill quá hạn hơn 24h — cần admin quyết'
+}
 
 /**
  * Bằng chứng khách đưa ra. Phải nói NGHĨA, không hiện chữ trơ.
@@ -147,7 +158,8 @@ const ChonKhach = ({
 
 const BinanceDepositsPage = () => {
   const [tab, setTab] = useState(0)
-  const trangThai = TRANG_THAI[tab].ma
+  const tabBill = tab === TRANG_THAI.length
+  const trangThai = TRANG_THAI[tab]?.ma ?? 'pending'
 
   const { data, isLoading } = useBinanceDeposits(trangThai)
   const hanhDong = useHanhDongKhoanNap()
@@ -201,15 +213,18 @@ const BinanceDepositsPage = () => {
         {TRANG_THAI.map(t => (
           <Tab key={t.ma} label={t.nhan} />
         ))}
+        <Tab label='Bill nạp' />
       </Tabs>
 
-      {isLoading && <CircularProgress size={22} />}
+      {tabBill && <AdminBinanceBills />}
 
-      {!isLoading && (data?.data?.length ?? 0) === 0 && (
+      {!tabBill && isLoading && <CircularProgress size={22} />}
+
+      {!tabBill && !isLoading && (data?.data?.length ?? 0) === 0 && (
         <Alert severity='success'>Không có khoản nào ở trạng thái này.</Alert>
       )}
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Box sx={{ display: tabBill ? 'none' : 'flex', flexDirection: 'column', gap: 1.5 }}>
         {data?.data?.map(k => (
           <Box
             key={k.id}
@@ -236,13 +251,7 @@ const BinanceDepositsPage = () => {
                 <Chip
                   size='small'
                   color='warning'
-                  label={
-                    k.reason === 'no_note'
-                      ? 'Chưa rõ chủ — tiền đang treo'
-                      : k.reason === 'below_min'
-                        ? 'Dưới mức tối thiểu — chưa cộng'
-                        : 'Đang chờ'
-                  }
+                  label={LY_DO_CHO[k.reason ?? ''] ?? 'Đang chờ'}
                 />
               )}
               {k.status === 'credited' && (
@@ -268,6 +277,19 @@ const BinanceDepositsPage = () => {
                 <Typography sx={{ fontSize: 13 }}>
                   Ghi chú: <strong>{k.note ? k.note : '(trống)'}</strong>
                 </Typography>
+                <Typography sx={{ fontSize: 13, wordBreak: 'break-all' }}>
+                  Mã giao dịch: <strong>{k.transaction_id}</strong>
+                </Typography>
+                {k.amount_currency && k.currency !== 'USDT' && (
+                  <Typography sx={{ fontSize: 13 }}>
+                    Thực nhận: <strong>{k.amount_currency} {k.currency}</strong> (chỉ USDT được tự quy đổi)
+                  </Typography>
+                )}
+                {k.bill && (
+                  <Typography sx={{ fontSize: 13 }}>
+                    Bill <strong>{k.bill.code}</strong> · khách muốn nạp <strong>{k.bill.usdt_muon_nap} USDT</strong>
+                  </Typography>
+                )}
               </Box>
 
               <Box>
@@ -301,6 +323,25 @@ const BinanceDepositsPage = () => {
                       Chưa biết của ai và chưa có khách nào khai mã. Khách khai đúng mã giao dịch ở trang
                       nạp tiền là tự cộng được — hoặc chọn khách bên dưới rồi duyệt.
                     </Alert>
+                    {/* Gợi ý theo Binance ID người gửi — KHÔNG tự cộng, admin phải tự chọn. */}
+                    {k.goi_y_khach && !khachDaChon[k.id] && (
+                      <Alert
+                        severity='info'
+                        sx={{ fontSize: 12, py: 0, mt: 1 }}
+                        action={
+                          <Button
+                            size='small'
+                            sx={{ textTransform: 'none' }}
+                            onClick={() => setKhachDaChon(cu => ({ ...cu, [k.id]: { ...k.goi_y_khach!, sodu: 0 } }))}
+                          >
+                            Chọn
+                          </Button>
+                        }
+                      >
+                        Gợi ý: Binance ID người gửi từng nạp thành công cho <strong>{k.goi_y_khach.name}</strong> ·{' '}
+                        {k.goi_y_khach.email} · ID {k.goi_y_khach.id}
+                      </Alert>
+                    )}
                     <ChonKhach
                       daChon={khachDaChon[k.id] ?? null}
                       onChon={khach => setKhachDaChon(cu => ({ ...cu, [k.id]: khach }))}

@@ -847,6 +847,23 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+82 Bill nạp Binance Pay — khách tạo bill, admin xem minh bạch (13/10/2026)
+
+**Thêm (BE 15.N+79):**
+- `BinancePayPanel`: nhập số USDT (xem trước VNĐ theo tỷ giá admin) → "Tạo bill nạp" → thẻ bill: Pay ID · số tiền ·
+  ghi chú `<prefix> <mã bill>` (đều có Sao chép) · QR · đếm ngược giữ tỷ giá 30'. Tự hỏi lại 10s khi còn bill chờ
+  (kể cả quá hạn trong 24h). Lệch số tiền → ô dán mã giao dịch gắn với bill. Đã cộng → 3 con số: muốn nạp · thực nhận
+  (thừa/thiếu) · thực cộng (USDT × tỷ giá = VNĐ) + mã GD. Danh sách "Bill của bạn". Giữ đường "Đã chuyển mà không tạo bill?".
+  Bill chuyển sang "đã cộng" → gọi lại `/me` làm mới số dư (Redux).
+- Admin "Khoản nạp Binance": tab mới **Bill nạp** (`AdminBinanceBills.tsx`) lọc trạng thái / mã bill / ID khách, hiện đủ
+  3 con số + cách cộng + mọi giao dịch mang mã bill. Thẻ khoản chờ: mã GD, bill, lý do mới (lệch số / bill đã dùng /
+  quá hạn), coin khác USDT, **gợi ý** khách theo Binance ID (bấm "Chọn" mới gán — không tự cộng).
+**Nghiệm thu local (Playwright 1366 + 400px):** tạo bill 10 USDT → giả lập nhận 12 USDT → bill "lệch", số dư không đổi →
+dán mã → +312.000đ (12 × 26.000), bill hiện đủ 3 con số. Khoản thứ 2 cùng mã bill → admin thấy "Bill đã xử lý khoản khác".
+Sửa trong lúc nghiệm thu: nhãn cách cộng lấy nhầm nguồn ghi nhận; khối 3 con số tràn ngang ở 400px.
+**Files:** `hooks/apis/useBinanceBills.ts` (mới), `hooks/apis/useBinanceDeposits.ts`, `views/Client/Recharge/BinancePayPanel.tsx`,
+`views/Client/Admin/BinanceDeposits/{BinanceDepositsPage,AdminBinanceBills}.tsx`
+
 #### 13.N+81 Binance Pay: hiện tài khoản nhận tiền cho khách + ô nhập cho admin (13/10/2026)
 
 **Vấn đề:** khối Binance Pay không nói chuyển tới đâu (không Pay ID, QR, tỷ giá).

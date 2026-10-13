@@ -7,6 +7,15 @@ export type KhoanNapBinance = {
   transaction_id: string
   amount_usdt: string
   currency: string
+
+  /** Số coin thực nhận (theo `currency`). */
+  amount_currency?: string
+
+  /** Bill khớp theo ghi chú (nếu có). */
+  bill: { code: string; usdt_muon_nap: string; trang_thai: string } | null
+
+  /** GỢI Ý (không tự cộng): Binance ID người gửi từng nạp cho khách này. */
+  goi_y_khach: { id: number; name: string; email: string } | null
   gross_vnd: number
   credited_vnd: number | null
   rate_vnd: number
@@ -14,12 +23,14 @@ export type KhoanNapBinance = {
   payer_name: string | null
   payer_binance_id: string | null
   status: 'pending' | 'credited' | 'ignored'
-  reason: 'no_note' | 'below_min' | null
+  reason: 'no_note' | 'below_min' | 'amount_mismatch' | 'bill_used' | 'bill_expired' | null
   source: 'scanner' | 'user_claim' | 'admin'
   chu_he_thong_biet: { id: number; name: string; email: string } | null
   nguoi_xin_nhan: { id: number; name: string; email: string } | null
+
   /** MÃ GIAO DỊCH khách khai — bằng chứng sở hữu (chỉ người đã chuyển tiền mới biết). */
   bang_chung_khach: string | null
+
   /**
    * Kết quả đối chiếu. Nay chỉ còn `khop` (khai đúng mã) hoặc `null` (chưa ai khai).
    * `lech`/`khong_ro` là của bản cũ đối chiếu theo TÊN tài khoản — đã bỏ vì Binance che
@@ -63,6 +74,7 @@ export const useTimKhach = (tuKhoa: string) => {
 
   return useQuery({
     queryKey: ['timKhachNapBinance', q],
+
     // Khớp đúng luật máy chủ: tên/email cần >= 2 ký tự, nhưng ID thì 1 chữ số cũng được.
     enabled: q.length >= 2 || /^\d+$/.test(q),
     queryFn: async (): Promise<KhachTimDuoc[]> => {
