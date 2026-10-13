@@ -10,6 +10,17 @@ export type PaymentMethod = {
 
   /** Chỉ có ở `manual`: lời nhắn admin viết ở Cài đặt → Thanh toán. */
   note?: string
+
+  /** Chỉ có ở `binance_pay`: chuyển tới đâu + quy đổi. */
+  receiver?: BinanceReceiver
+}
+
+export type BinanceReceiver = {
+  pay_id: string
+  name: string
+  qr_url: string
+  rate_vnd: number
+  min_usdt: number
 }
 
 /**

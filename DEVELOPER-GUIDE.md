@@ -847,6 +847,16 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+81 Binance Pay: hiện tài khoản nhận tiền cho khách + ô nhập cho admin (13/10/2026)
+
+**Vấn đề:** khối Binance Pay không nói chuyển tới đâu (không Pay ID, QR, tỷ giá).
+**Thêm:**
+- `CryptoDisplaySection`: mục "Tài khoản nhận tiền Binance Pay" — Pay ID (chỉ cho gõ số), tên hiển thị, tải ảnh QR
+  (`admin/upload-image`, folder branding). Lưu cùng nút "Lưu cấu hình crypto". Sửa lời Alert cũ nhắc nhãn "chưa mở".
+- `BinancePayPanel` nhận `receiver`: 3 bước (Pay ID + sao chép · ghi chú + sao chép · tự cộng), tỷ giá, mức tối
+  thiểu quy VNĐ, ví dụ 10 USDT, ảnh QR nếu có, cảnh báo quên ghi chú.
+**Files:** `views/Client/Recharge/{BinancePayPanel,RechargePage}.tsx`, `views/Client/Admin/SiteSettings/tabs/CryptoDisplaySection.tsx`, `hooks/apis/usePaymentMethods.ts`
+
 #### 13.N+80 Bật/tắt từng cách nạp tiền + "Liên hệ admin để nạp" (13/10/2026)
 
 **Anh Long:** thêm lựa chọn tắt nạp bank / nạp tay / Binance ở Cài đặt, hiển thị tương ứng cho khách ở cả site mẹ và

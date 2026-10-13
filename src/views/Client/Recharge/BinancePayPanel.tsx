@@ -3,10 +3,29 @@
 import { useState } from 'react'
 
 import { Alert, Box, Button, TextField, Typography } from '@mui/material'
-import { CheckCircle2, Clock, HelpCircle, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock, Copy, HelpCircle, XCircle } from 'lucide-react'
 
+import { useCopy } from '@/app/hooks/useCopy'
 import { useBinanceClaims, useXinNhanKhoan } from '@/hooks/apis/useBinanceClaims'
-import { useDepositNote } from '@/hooks/apis/usePaymentMethods'
+import { useDepositNote, type BinanceReceiver } from '@/hooks/apis/usePaymentMethods'
+
+const dinhDangVnd = (n: number) => new Intl.NumberFormat('vi-VN').format(Math.floor(n))
+
+/** Một dòng "nhãn: giá trị [sao chép]" — khách phải chép CHÍNH XÁC Pay ID và ghi chú. */
+const DongSaoChep = ({ nhan, giaTri, onCopy }: { nhan: string; giaTri: string; onCopy: () => void }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+    <Typography sx={{ fontSize: 13, color: 'text.secondary', minWidth: 110 }}>{nhan}</Typography>
+    <Box
+      component='code'
+      sx={{ px: 1, py: 0.25, borderRadius: '6px', fontWeight: 700, fontSize: 14, background: 'var(--mui-palette-action-hover, rgba(0,0,0,0.06))' }}
+    >
+      {giaTri}
+    </Box>
+    <Button size='small' startIcon={<Copy size={13} />} onClick={onCopy} sx={{ textTransform: 'none', minWidth: 0 }}>
+      Sao chép
+    </Button>
+  </Box>
+)
 
 /**
  * Nạp tiền qua Binance Pay + đường cứu "tiền của tôi đâu?".
@@ -16,7 +35,7 @@ import { useDepositNote } from '@/hooks/apis/usePaymentMethods'
  * (`Tran V***`) nên ai gõ "Tran" cũng khớp. Nay khách khai MÃ GIAO DỊCH: chỉ người đã
  * chuyển tiền mới thấy nó trong lịch sử Binance của chính họ. Đừng thêm lại danh sách.
  */
-const BinancePayPanel = () => {
+const BinancePayPanel = ({ receiver }: { receiver?: BinanceReceiver }) => {
   const [moForm, setMoForm] = useState(false)
   const [maGiaoDich, setMaGiaoDich] = useState('')
   const [ketQua, setKetQua] = useState<{ daCong: boolean; soTien: number | null; loi?: string } | null>(null)
@@ -24,6 +43,12 @@ const BinancePayPanel = () => {
   const { data } = useBinanceClaims(moForm)
   const { data: ghiChuCanDien = '' } = useDepositNote()
   const xinNhan = useXinNhanKhoan()
+  const [, copy] = useCopy()
+
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/?$/, '')
+  const qr = receiver?.qr_url ? (receiver.qr_url.startsWith('http') ? receiver.qr_url : `${apiBase}${receiver.qr_url}`) : ''
+  const tyGia = receiver?.rate_vnd ?? 0
+  const toiThieu = receiver?.min_usdt ?? 0
 
   const gui = () => {
     const ma = maGiaoDich.trim()
@@ -56,22 +81,52 @@ const BinancePayPanel = () => {
     >
       <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1.5 }}>Nạp tiền qua Binance Pay</Typography>
 
-      <Alert severity='info' sx={{ mb: 2, fontSize: 13 }}>
-        Khi chuyển tiền, hãy điền <strong>ghi chú</strong> đúng như sau — tiền sẽ tự cộng sau 1–5 phút:
-        <Box
-          component='code'
-          sx={{
-            display: 'inline-block',
-            ml: 0.75,
-            px: 1,
-            py: 0.25,
-            borderRadius: '6px',
-            fontWeight: 700,
-            background: 'var(--mui-palette-action-hover, rgba(0,0,0,0.06))'
-          }}
-        >
-          {ghiChuCanDien}
+      <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap', alignItems: 'flex-start', mb: 2 }}>
+        <Box sx={{ flex: 1, minWidth: 260, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
+            1. Mở app Binance → <strong>Pay</strong> → <strong>Gửi</strong>, chuyển USDT tới:
+          </Typography>
+          {receiver?.pay_id && (
+            <DongSaoChep nhan='Pay ID / Binance ID' giaTri={receiver.pay_id} onCopy={() => copy(receiver.pay_id)} />
+          )}
+          {receiver?.name && (
+            <Typography sx={{ fontSize: 13 }}>
+              Tên người nhận hiện trên app: <strong>{receiver.name}</strong> — sai tên thì đừng chuyển.
+            </Typography>
+          )}
+
+          <Typography sx={{ fontSize: 13, fontWeight: 600, mt: 0.5 }}>
+            2. Ở ô <strong>Ghi chú</strong>, điền chính xác:
+          </Typography>
+          <DongSaoChep nhan='Ghi chú' giaTri={ghiChuCanDien} onCopy={() => copy(ghiChuCanDien)} />
+
+          <Typography sx={{ fontSize: 13, fontWeight: 600, mt: 0.5 }}>3. Tiền tự cộng vào ví sau 1–5 phút.</Typography>
+          {tyGia > 0 && (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              Tỷ giá: 1 USDT = <strong>{dinhDangVnd(tyGia)}đ</strong>
+              {toiThieu > 0 && (
+                <>
+                  {' · '}Tối thiểu <strong>{toiThieu} USDT</strong> ({dinhDangVnd(toiThieu * tyGia)}đ)
+                </>
+              )}
+              {' · '}VD: 10 USDT = {dinhDangVnd(10 * tyGia)}đ
+            </Typography>
+          )}
         </Box>
+
+        {qr && (
+          <Box sx={{ textAlign: 'center' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt='QR Binance Pay' style={{ width: 180, maxWidth: '100%', borderRadius: 8, border: '1px solid var(--mui-palette-divider)' }} />
+            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Hoặc quét mã trong app Binance</Typography>
+          </Box>
+        )}
+      </Box>
+
+      <Alert severity='warning' sx={{ mb: 2, fontSize: 13 }}>
+        Quên ghi chú hoặc ghi sai thì tiền <strong>không tự cộng</strong> — bấm &quot;Đã chuyển tiền mà chưa được
+        cộng?&quot; bên dưới và dán mã giao dịch.
+        {toiThieu > 0 && ` Chuyển dưới ${toiThieu} USDT sẽ phải chờ admin duyệt tay.`}
       </Alert>
 
       {/* ── Đường cứu khi khách quên ghi chú ───────────────────────────── */}

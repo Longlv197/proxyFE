@@ -46,6 +46,12 @@ const CryptoDisplaySection = () => {
   const [minOnchain, setMinOnchain] = useState('0')
   const [notePrefix, setNotePrefix] = useState('mktproxy')
 
+  // Thông tin NHẬN tiền Binance Pay — hiện cho khách (không phải bí mật). Thiếu Pay ID = Binance đóng.
+  const [payId, setPayId] = useState('')
+  const [payName, setPayName] = useState('')
+  const [qrUrl, setQrUrl] = useState('')
+  const [dangTaiQr, setDangTaiQr] = useState(false)
+
   // Ô nhập khoá: luôn bắt đầu rỗng. `trangThai` cho biết máy chủ đang giữ khoá nào.
   const [khoa, setKhoa] = useState({
     binance_api_key: '',
@@ -70,6 +76,9 @@ const CryptoDisplaySection = () => {
       setMinBinance(String(d?.min_binance ?? 0))
       setMinOnchain(String(d?.min_onchain ?? 0))
       setNotePrefix(String(d?.note_prefix ?? 'mktproxy'))
+      setPayId(String(d?.binance_pay_id ?? ''))
+      setPayName(String(d?.binance_pay_name ?? ''))
+      setQrUrl(String(d?.binance_qr_url ?? ''))
       setTrangThai({
         binance_api_key: d?.binance_api_key,
         binance_api_secret: d?.binance_api_secret,
@@ -98,6 +107,9 @@ const CryptoDisplaySection = () => {
         min_binance: Number(minBinance) || 0,
         min_onchain: Number(minOnchain) || 0,
         note_prefix: notePrefix,
+        binance_pay_id: payId.trim(),
+        binance_pay_name: payName.trim(),
+        binance_qr_url: qrUrl,
         ...payloadThem
       })
 
@@ -156,6 +168,28 @@ const CryptoDisplaySection = () => {
 
   const rateSo = Number(rate) || 0
 
+  const taiQr = async (file: File) => {
+    const fd = new FormData()
+
+    fd.append('image', file)
+    fd.append('folder', 'branding')
+    fd.append('field', 'binance-qr')
+    setDangTaiQr(true)
+
+    try {
+      const res = await axiosAuth.post('/admin/upload-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+
+      if (res?.data?.url) setQrUrl(res.data.url)
+    } catch {
+      toast.error('Tải ảnh QR không thành công')
+    } finally {
+      setDangTaiQr(false)
+    }
+  }
+
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/?$/, '')
+  const qrHienThi = qrUrl && !qrUrl.startsWith('http') ? `${apiBase}${qrUrl}` : qrUrl
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
@@ -179,9 +213,8 @@ const CryptoDisplaySection = () => {
       />
 
       <Alert severity='info' sx={{ fontSize: '13px', '& .MuiAlert-message': { fontSize: '13px' } }}>
-        Bật công tắc này để <b>tự xem giao diện nạp crypto</b> — kể cả khi bạn đang ở Việt Nam. Hai cách
-        nạp crypto sẽ hiện kèm nhãn &quot;chưa mở&quot; và khách <b>không bấm được</b>, nên bật lên cũng
-        không có ai đi vào màn hình trống.
+        Bật công tắc này để <b>tự xem giao diện nạp crypto</b> — kể cả khi bạn đang ở Việt Nam. Cách nạp nào
+        chưa cấu hình đủ thì khách <b>không thấy</b>, nên bật lên cũng không có ai đi vào màn hình trống.
       </Alert>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -253,6 +286,55 @@ const CryptoDisplaySection = () => {
           tỷ giá — đây là chốt an toàn có chủ đích, không phải lỗi.
         </Alert>
       )}
+
+      {/* ── Thông tin nhận tiền Binance Pay (khách nhìn thấy) ── */}
+      <div>
+        <h6 style={sectionTitleSx}>Tài khoản nhận tiền Binance Pay</h6>
+        <p style={sectionDescSx}>
+          Khách sẽ chuyển USDT tới tài khoản này. <b>Chưa điền Pay ID thì khách không thấy Binance Pay</b> — vì
+          không biết chuyển tới đâu.
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <TextField
+          size='small'
+          label='Binance Pay ID / Binance ID'
+          value={payId}
+          onChange={e => setPayId(e.target.value.replace(/[^0-9]/g, ''))}
+          helperText='App Binance → Pay → Nhận → dãy số "Pay ID". Phải đúng tài khoản có khoá API ở dưới.'
+          sx={{ flex: 1, minWidth: 220 }}
+        />
+        <TextField
+          size='small'
+          label='Tên hiển thị (tuỳ chọn)'
+          value={payName}
+          onChange={e => setPayName(e.target.value)}
+          helperText='Tên khách thấy trên app Binance khi nhập Pay ID — để khách đối chiếu không chuyển nhầm.'
+          sx={{ flex: 1, minWidth: 220 }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        {qrHienThi ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={qrHienThi} alt='QR Binance Pay' style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--mui-palette-divider)' }} />
+        ) : (
+          <span style={{ fontSize: 12.5, color: 'var(--mui-palette-text-secondary)' }}>Chưa có ảnh QR (tuỳ chọn)</span>
+        )}
+        <Button component='label' size='small' variant='outlined' disabled={dangTaiQr} sx={{ textTransform: 'none' }}>
+          {dangTaiQr ? 'Đang tải…' : qrUrl ? 'Đổi ảnh QR' : 'Tải ảnh QR nhận tiền'}
+          <input hidden type='file' accept='image/*' onChange={e => e.target.files?.[0] && taiQr(e.target.files[0])} />
+        </Button>
+        {qrUrl && (
+          <Button size='small' color='error' onClick={() => setQrUrl('')} sx={{ textTransform: 'none' }}>
+            Bỏ ảnh QR
+          </Button>
+        )}
+        <span style={{ fontSize: 12, color: 'var(--mui-palette-text-secondary)' }}>
+          Ảnh chụp mã QR ở App Binance → Pay → Nhận. Bấm &quot;Lưu cấu hình crypto&quot; bên dưới để áp dụng.
+        </span>
+      </div>
 
       {/* ── Khoá bí mật ── */}
       <div>

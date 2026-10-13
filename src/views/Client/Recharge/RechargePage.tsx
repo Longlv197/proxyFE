@@ -941,7 +941,9 @@ export default function RechargePage() {
                 </Box>
               )}
 
-              {cachNapHienTai === 'binance_pay' && <BinancePayPanel />}
+              {cachNapHienTai === 'binance_pay' && (
+                <BinancePayPanel receiver={methods.find(m => m.code === 'binance_pay')?.receiver} />
+              )}
               {cachNapHienTai === 'manual' && (
                 <ManualDepositPanel note={methods.find(m => m.code === 'manual')?.note ?? ''} />
               )}
