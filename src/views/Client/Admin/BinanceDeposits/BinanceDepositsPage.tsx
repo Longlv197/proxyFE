@@ -47,7 +47,8 @@ const LY_DO_CHO: Record<string, string> = {
   below_min: 'Dưới mức tối thiểu — chưa cộng',
   amount_mismatch: 'Đúng mã bill nhưng lệch số tiền — chờ khách dán mã GD',
   bill_used: 'Bill đã xử lý khoản khác — cần admin quyết',
-  bill_expired: 'Bill quá hạn hơn 24h — cần admin quyết'
+  bill_expired: 'Bill quá hạn hơn 24h — cần admin quyết',
+  bill_cancelled: 'Khách đã huỷ bill nhưng tiền vẫn về — cần admin quyết'
 }
 
 /**

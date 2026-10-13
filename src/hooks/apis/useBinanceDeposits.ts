@@ -23,7 +23,7 @@ export type KhoanNapBinance = {
   payer_name: string | null
   payer_binance_id: string | null
   status: 'pending' | 'credited' | 'ignored'
-  reason: 'no_note' | 'below_min' | 'amount_mismatch' | 'bill_used' | 'bill_expired' | null
+  reason: 'no_note' | 'below_min' | 'amount_mismatch' | 'bill_used' | 'bill_expired' | 'bill_cancelled' | null
   source: 'scanner' | 'user_claim' | 'admin'
   chu_he_thong_biet: { id: number; name: string; email: string } | null
   nguoi_xin_nhan: { id: number; name: string; email: string } | null
