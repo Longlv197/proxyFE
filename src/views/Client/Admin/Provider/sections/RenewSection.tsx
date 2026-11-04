@@ -17,6 +17,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import CustomTextField from '@core/components/mui/TextField'
 import FieldHint from '../components/FieldHint'
 import SectionSummaryBar, { shortUrl } from '../components/SectionSummaryBar'
+import { ErrorRuleNote } from '../components/ErrorDecisionNote'
 import type { SectionProps, FormValues, RenewParamConfig, DurationMapRow } from '../ProviderFormTypes'
 import { ORDER_FIELDS, ITEM_FIELDS } from '../ProviderFormTypes'
 
@@ -501,6 +502,16 @@ function RenewSection({ control }: SectionProps) {
                       <MenuItem value='deferred'>Cần gọi lại API khác để kiểm tra</MenuItem>
                     </CustomTextField>
                   )} />
+                </Grid2>
+                <Grid2 size={{ xs: 12 }}>
+                  <ErrorRuleNote
+                    title='Khi nào gia hạn bị coi là lỗi'
+                    lines={[
+                      'Không kết nối được, quá thời gian chờ, HTTP 4xx/5xx hoặc kết quả không phải JSON là lỗi.',
+                      'Có khai Field báo thành công: trường không có hoặc khác giá trị là lỗi. Bỏ trống thì mọi kết quả JSON đều tính là gia hạn thành công.',
+                      'Form này chưa có ô khai mã lỗi và trường lý do lỗi, nên NCC từ chối thường chỉ hiện "Provider returned error". Lời gốc của NCC xem trong log đơn.'
+                    ]}
+                  />
                 </Grid2>
               </Grid2>
             </Box>

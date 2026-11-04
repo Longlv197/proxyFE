@@ -45,6 +45,7 @@ import { useOrderHistories, type OrderHistoryItem } from '@/hooks/apis/useOrderH
 import { useOrderHistoryLogs, useRenewalConfirm, type HistoryLogItem } from '@/hooks/apis/useRenewal'
 import { toast } from 'react-toastify'
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
+import LogKetLuan, { NoiDungDanhDau } from '@/components/LogKetLuan'
 import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 import { usePingProxy } from '@/hooks/apis/usePingProxy'
 import { useProxyCheck } from '@/hooks/apis/useProxyCheck'
@@ -2013,6 +2014,8 @@ function ItemLogPanel({ itemKey }: { itemKey: string }) {
               {log.message}
             </div>
 
+            <LogKetLuan ketLuan={log.context?.ket_luan} />
+
             {log.request && (
               <details style={{ marginTop: 3 }}>
                 <summary style={{ fontSize: '11px', color: '#3b82f6', cursor: 'pointer', fontWeight: 500 }}>Request payload</summary>
@@ -2028,9 +2031,11 @@ function ItemLogPanel({ itemKey }: { itemKey: string }) {
             )}
 
             {log.response && (
-              <details style={{ marginTop: 3 }} open={isError}>
+              <details style={{ marginTop: 3 }} open={isError || !!log.context?.ket_luan?.danh_dau?.length}>
                 <summary style={{ fontSize: '11px', color: isError ? '#ef4444' : '#22c55e', cursor: 'pointer', fontWeight: 500 }}>Response{log.status_code ? ` (${log.status_code})` : ''}</summary>
-                <CodeBlock value={log.response} color={isError ? '#fca5a5' : '#86efac'} />
+                <NoiDungDanhDau noiDung={log.response} danhDau={log.context?.ket_luan?.danh_dau}>
+                  <CodeBlock value={log.response} color={isError ? '#fca5a5' : '#86efac'} />
+                </NoiDungDanhDau>
               </details>
             )}
           </div>

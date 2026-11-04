@@ -8,6 +8,7 @@ import CustomTextField from '@core/components/mui/TextField'
 import { useOrderItems, useUnlockRotate, type OrderItemRecord } from '@/hooks/apis/useOrderItems'
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import { extractProxyValue, extractProtocol } from '@/utils/protocolProxy'
+import LogKetLuan, { NoiDungDanhDau } from '@/components/LogKetLuan'
 
 const STATUS_MAP: Record<number, { label: string; color: string; bg: string }> = {
   0: { label: 'Hoạt động', color: '#16a34a', bg: '#dcfce7' },
@@ -270,6 +271,7 @@ export default function AdminProxyKeysPage() {
                   {log.message && (
                     <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.5 }}>{log.message}</div>
                   )}
+                  <LogKetLuan ketLuan={log.context?.ket_luan} />
                   {log.request && (
                     <div style={{ fontSize: 10, color: '#6366f1', fontFamily: 'monospace', marginTop: 4, padding: '4px 8px', background: '#f8fafc', borderRadius: 4 }}>
                       {log.request.method} {log.request.url}
@@ -286,13 +288,15 @@ export default function AdminProxyKeysPage() {
                     </details>
                   )}
                   {log.response && (
-                    <details style={{ marginTop: 3 }} open={log.action === 'rotate_error'}>
+                    <details style={{ marginTop: 3 }} open={log.action === 'rotate_error' || !!log.context?.ket_luan?.danh_dau?.length}>
                       <summary style={{ fontSize: 10, color: log.action === 'rotate_error' ? '#dc2626' : '#16a34a', cursor: 'pointer' }}>
                         Đối tác trả về{log.status_code ? ` (HTTP ${log.status_code})` : ''}
                       </summary>
-                      <pre style={{ fontSize: 10, margin: '3px 0 0', padding: '6px 8px', background: '#0f172a', color: log.action === 'rotate_error' ? '#fca5a5' : '#86efac', borderRadius: 4, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                        {log.response}
-                      </pre>
+                      <NoiDungDanhDau noiDung={log.response} danhDau={log.context?.ket_luan?.danh_dau}>
+                        <pre style={{ fontSize: 10, margin: '3px 0 0', padding: '6px 8px', background: '#0f172a', color: log.action === 'rotate_error' ? '#fca5a5' : '#86efac', borderRadius: 4, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                          {log.response}
+                        </pre>
+                      </NoiDungDanhDau>
                     </details>
                   )}
                   {log.context?.called_by != null && (

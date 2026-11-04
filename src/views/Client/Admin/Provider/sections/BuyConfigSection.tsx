@@ -26,6 +26,7 @@ import ResponseDryRun from '../components/ResponseDryRun'
 import StepDigestBox from '../components/StepDigestBox'
 import NeedsCodeAlert from '../components/NeedsCodeAlert'
 import FieldExamples from '../components/FieldExamples'
+import { BuyErrorDecisionNote, BuyErrorReasonNote, ErrorRuleNote } from '../components/ErrorDecisionNote'
 import { useConfigSteps } from '@/hooks/apis/useConfigTools'
 import {
   detectSellKinds,
@@ -370,7 +371,7 @@ function StepSuccessCheck({ prefix, control }: BuySectionProps) {
       step={2}
       title='Kiểm tra kết quả — thành công hay lỗi?'
       summary={summary}
-      description='Sau khi nhận response từ NCC → hệ thống ĐỌC trường kiểm tra (VD: "statusCode") → SO SÁNH với giá trị OK (VD: 200). Khớp → đơn thành công, chuyển sang bước 3. Không khớp → đơn lỗi, hoàn tiền. Sai config → hệ thống không phân biệt được, đơn bị treo mãi.'
+      description='Sau khi nhận kết quả từ NCC, hệ thống đọc Trường kiểm tra (VD: "statusCode") rồi so với Giá trị OK (VD: 200). Khớp thì sang bước 3, khác thì coi là NCC báo lỗi.'
     >
       <Grid2 container spacing={2}>
         {/* Giải thích 2 dạng response — ẩn được bằng công tắc "Hướng dẫn" */}
@@ -437,9 +438,9 @@ function StepSuccessCheck({ prefix, control }: BuySectionProps) {
         <Grid2 size={{ xs: 6, sm: 2 }}>
           <Controller name={`${prefix}.response.success_field`} control={control} render={({ field }) => (
             <CustomTextField {...field} fullWidth
-              label={<>Trường kiểm tra <FieldHint text='Khi mua xong, hệ thống đọc trường này để biết thành công hay thất bại.\n\nVD: NCC trả {"success": true} → điền "success"\nVD: NCC trả {"statusCode": 200} → điền "statusCode"\n\nSai → hệ thống không phân biệt được lỗi, đơn hàng bị treo.' /></>}
+              label={<>Trường kiểm tra <FieldHint text='Khi mua xong, hệ thống đọc trường này để biết thành công hay thất bại.\n\nVD: NCC trả {"success": true} → điền "success"\nVD: NCC trả {"statusCode": 200} → điền "statusCode"\n\nXem bảng bên dưới để biết sai tên trường thì chuyện gì xảy ra.' /></>}
               placeholder='statusCode'
-              helperText='Sai → đơn hàng bị treo'
+              helperText={responseType && responseType !== 'object' ? 'Sai tên → mọi lần mua đều báo lỗi' : 'Sai tên → lỗi không bị phát hiện'}
             />
           )} />
         </Grid2>
@@ -463,6 +464,10 @@ function StepSuccessCheck({ prefix, control }: BuySectionProps) {
             )} />
           </Grid2>
         )}
+
+        <Grid2 size={{ xs: 12 }}>
+          <BuyErrorDecisionNote prefix={prefix} control={control} />
+        </Grid2>
       </Grid2>
     </PipelineStepCard>
   )
@@ -802,6 +807,16 @@ const NhomKiemTraResponse = memo(function NhomKiemTraResponse({ prefix, control 
           )} />
         </Grid2>
       )}
+      <Grid2 size={{ xs: 12 }}>
+        <ErrorRuleNote
+          title='Khi nào lấy proxy bị coi là lỗi'
+          lines={[
+            'Có khai trường kiểm tra: trường không có hoặc khác Giá trị OK là lỗi. Bỏ trống thì không kiểm tra.',
+            'Không kết nối được, HTTP 4xx/5xx hoặc kết quả không phải JSON cũng là lỗi.',
+            'Lỗi thì thử tối đa 3 lần rồi khoá đơn chờ admin. Đơn đã mua bên NCC nên không tự hoàn tiền.'
+          ]}
+        />
+      </Grid2>
     </FieldGroup>
   )
 })
@@ -1025,16 +1040,20 @@ function StepErrorHandling({ prefix, control }: BuySectionProps) {
       step={5}
       title='Xử lý lỗi — thông báo rõ ràng thay vì lỗi chung'
       summary={summary}
-      description='Khi NCC trả lỗi → hệ thống ĐỌC mã lỗi từ response → TÌM trong bảng lỗi bên dưới → HIỆN thông báo tiếng Việt cho admin. Không config → admin chỉ thấy "Lỗi không xác định". Trường lý do lỗi = field chứa message lỗi gốc của NCC (VD: "message", "error.msg").'
+      description='Khi bước 2 kết luận lỗi, hệ thống tìm trong bảng mã lỗi bên dưới để lấy câu báo lỗi và cách xử lý đơn. Trường lý do lỗi = trường chứa lời báo lỗi gốc của NCC (VD: "message", "error.msg").'
     >
       <Grid2 container spacing={2}>
+        <Grid2 size={{ xs: 12 }}>
+          <BuyErrorReasonNote prefix={prefix} control={control} />
+        </Grid2>
+
         {/* Error message field */}
         <Grid2 size={{ xs: 12, sm: 6 }}>
           <Controller name={`${prefix}.response.error_message_field`} control={control} render={({ field }) => (
             <CustomTextField {...field} fullWidth
               label={<>Trường lý do lỗi <FieldHint text='Khi đối tác trả lỗi, hệ thống đọc trường này để lấy lý do hiển thị cho admin.\n\nVD: NCC trả {"statusCode":101, "message":"Hết hàng"}\n→ điền "message"' /></>}
               placeholder='message'
-              helperText='Bỏ trống → admin không thấy lý do lỗi'
+              helperText='Chỉ được đọc khi đã có ít nhất 1 mã lỗi hợp lệ'
             />
           )} />
         </Grid2>
@@ -1043,7 +1062,7 @@ function StepErrorHandling({ prefix, control }: BuySectionProps) {
         <Grid2 size={{ xs: 12, sm: 6 }}>
           <Controller name={`${prefix}.response.fallback_message`} control={control} render={({ field }) => (
             <CustomTextField {...field} fullWidth
-              label={<>Thông báo mặc định khi lỗi <FieldHint text='Hiển thị khi có lỗi nhưng không khớp mã lỗi nào ở trên' /></>}
+              label={<>Thông báo mặc định khi lỗi <FieldHint text='Dùng khi các nguồn đứng trước nó trong thứ tự ở trên không có lý do nào.' /></>}
               placeholder='Lỗi không xác định từ nhà cung cấp'
             />
           )} />
@@ -1149,7 +1168,7 @@ function StepErrorHandling({ prefix, control }: BuySectionProps) {
           <Box sx={{ p: 1.5, background: '#fefce8', borderRadius: 1.5, border: '1px solid #fde68a' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant='caption' sx={{ fontWeight: 600, color: '#854d0e' }}>
-                Lỗi HTTP (server/mạng) <FieldHint text='Khi nhà cung cấp trả lỗi HTTP (500, 524...) thay vì JSON bình thường.' />
+                Lỗi HTTP (server/mạng) <FieldHint text='Bảng này hiện chưa có tác dụng ở bước mua vì hệ thống không dựa vào mã HTTP để báo lỗi. Trang lỗi 500, 524 dạng HTML sẽ ra câu "NCC trả dữ liệu không đọc được".' />
               </Typography>
               <Button size='small' startIcon={<Plus size={14} />}
                 onClick={() => appendHttpError({ status: '', message: '' })}
@@ -1172,11 +1191,9 @@ function StepErrorHandling({ prefix, control }: BuySectionProps) {
                 </IconButton>
               </Box>
             ))}
-            {httpErrorFields.length === 0 && (
-              <Typography variant='caption' sx={{ color: '#a8a29e', fontStyle: 'italic' }}>
-                Không bắt buộc. Hệ thống sẽ tự trích nội dung từ HTML nếu chưa cấu hình.
-              </Typography>
-            )}
+            <Typography variant='caption' sx={{ color: 'warning.dark', fontWeight: 600, display: 'block' }}>
+              Hiện chưa có tác dụng ở bước mua: hệ thống không dựa vào mã HTTP để báo lỗi. Trang lỗi HTML sẽ ra câu "NCC trả dữ liệu không đọc được".
+            </Typography>
           </Box>
         </Grid2>
       </Grid2>

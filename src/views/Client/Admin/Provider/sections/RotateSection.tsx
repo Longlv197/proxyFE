@@ -11,6 +11,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import CustomTextField from '@core/components/mui/TextField'
 import FieldHint from '../components/FieldHint'
 import SectionSummaryBar, { shortUrl } from '../components/SectionSummaryBar'
+import { ErrorRuleNote } from '../components/ErrorDecisionNote'
 import type { SectionProps } from '../ProviderFormTypes'
 
 function RotateParamsTable({ control }: SectionProps) {
@@ -283,6 +284,16 @@ function RotateSection({ control }: SectionProps) {
                       <MenuItem value='true'>Double (&&)</MenuItem>
                     </CustomTextField>
                   )} />
+                </Grid2>
+                <Grid2 size={{ xs: 12 }}>
+                  <ErrorRuleNote
+                    title='Khi nào xoay bị coi là lỗi'
+                    lines={[
+                      'Không kết nối được, HTTP 4xx/5xx hoặc kết quả không phải JSON là lỗi.',
+                      'HTTP 200 có JSON: form này không có ô kiểm tra lỗi, hệ thống chỉ xét có đọc được proxy hợp lệ hay không.',
+                      'Không ra proxy hợp lệ thì báo lỗi và giữ nguyên proxy đang chạy của khách.'
+                    ]}
+                  />
                 </Grid2>
               </Grid2>
             </Box>

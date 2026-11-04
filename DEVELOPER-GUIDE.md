@@ -847,6 +847,24 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+86 Log xoay hiện "Do: ..." và tô đúng trường sai (04/11/2026)
+
+**Vấn đề:** log xoay chỉ có câu báo chung + nội dung thô, không biết lỗi do đối tác hay do cấu hình bên mình.
+**Sửa:** `components/LogKetLuan.tsx` (mới) hiện `context.ket_luan` do BE viết (xem BE 15.N+83), dùng ở 2 màn admin: Proxy Keys + chi tiết đơn. Mục "Đối tác trả về" tô dòng bị sai kèm ghi chú và tự mở khi có đánh dấu. Log cũ và lần xoay bình thường hiện như trước. Màn của khách không dùng.
+**Files:** `components/LogKetLuan.tsx`, `admin/order-items/page.tsx`, `TransactionHistory/OrderDetailModal.tsx`
+
+#### 13.N+85 Form NCC: ghi chú hệ thống quyết định lỗi thế nào + sửa các câu hướng dẫn sai (04/11/2026)
+
+**Vấn đề:** form NCC không nói rõ lỗi được kết luận thế nào nên admin không biết sửa cấu hình ra sao; một số câu còn trái với code
+("không khớp → hoàn tiền", "bỏ trống trường lý do → admin không thấy lý do", "tự trích nội dung từ HTML").
+**Thêm:** `components/ErrorDecisionNote.tsx`, LUÔN HIỆN (không theo công tắc Hướng dẫn), đổi theo dạng kết quả đang chọn.
+Tab Mua: bước 2 có bảng thứ tự quyết định, bước 5 có thứ tự lấy câu báo lỗi + cảnh báo khi trường lý do bị bỏ qua hoặc dòng mã lỗi sẽ bị bỏ khi Lưu.
+Lấy proxy, Gia hạn, Xoay: mỗi nơi một ghi chú riêng vì mỗi luồng có code riêng.
+**Sửa chữ:** mô tả bước 2 + 5, helper Trường kiểm tra + Trường lý do lỗi, hint Thông báo mặc định, ghi rõ bảng Lỗi HTTP chưa có tác dụng ở bước mua.
+**Không đổi:** logic BE, dữ liệu form, serializer. Ghi chú ghi đúng hành vi HIỆN TẠI, kể cả chỗ chưa hợp lý; sửa BE thì phải sửa lại ghi chú.
+**Nghiệm thu:** chạy `DefaultHandler::checkError` với 16 phản hồi mẫu; mở form thật ở 1366×768 + 1600×960, đổi Dạng 1/2/3, bật/tắt Hướng dẫn. tsc 294 lỗi sẵn có, không thêm.
+**Files:** `components/ErrorDecisionNote.tsx` (mới), `sections/BuyConfigSection.tsx`, `sections/RenewSection.tsx`, `sections/RotateSection.tsx`
+
 #### 13.N+84 Chọn tiền tệ hiển thị VNĐ/USD/CNY trong menu ngôn ngữ (13/10/2026)
 
 **Anh Long chốt:** CHỈ hiển thị quy đổi (ví/tính tiền vẫn VNĐ) · VNĐ + USD + CNY · gợi ý theo ngôn ngữ, khách chọn tay thì nhớ.
