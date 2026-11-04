@@ -850,7 +850,7 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 #### 13.N+86 Log xoay hiện "Do: ..." và tô đúng trường sai (04/11/2026)
 
 **Vấn đề:** log xoay chỉ có câu báo chung + nội dung thô, không biết lỗi do đối tác hay do cấu hình bên mình.
-**Sửa:** `components/LogKetLuan.tsx` (mới) hiện `context.ket_luan` do BE viết (xem BE 15.N+83), dùng ở 2 màn admin: Proxy Keys + chi tiết đơn. Mục "Đối tác trả về" tô dòng bị sai kèm ghi chú và tự mở khi có đánh dấu. Log cũ và lần xoay bình thường hiện như trước. Màn của khách không dùng.
+**Sửa:** `components/LogKetLuan.tsx` (mới) hiện `context.ket_luan` do BE viết (xem BE 15.N+83), dùng ở 2 màn admin: Proxy Keys + chi tiết đơn. Thêm 2 dòng "Hệ thống cần" + "Đọc được". Mục "Đối tác trả về" tô dòng bị sai kèm ghi chú và tự mở khi có đánh dấu. Log cũ và lần xoay bình thường hiện như trước. Màn của khách không dùng.
 **Files:** `components/LogKetLuan.tsx`, `admin/order-items/page.tsx`, `TransactionHistory/OrderDetailModal.tsx`
 
 #### 13.N+85 Form NCC: ghi chú hệ thống quyết định lỗi thế nào + sửa các câu hướng dẫn sai (04/11/2026)

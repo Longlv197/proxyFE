@@ -12,7 +12,7 @@ import Box from '@mui/material/Box'
 
 export type DanhDauTruong = { truong: string; ghi_chu?: string }
 
-export type KetLuanLog = { nhom?: string; cau?: string; danh_dau?: DanhDauTruong[] }
+export type KetLuanLog = { nhom?: string; cau?: string; danh_dau?: DanhDauTruong[]; can?: string; doc_duoc?: string }
 
 const NHOM: Record<string, { nhan: string; mau: string }> = {
   doi_tac: { nhan: 'Đối tác', mau: 'error.main' },
@@ -30,6 +30,8 @@ export default function LogKetLuan({ ketLuan }: { ketLuan?: KetLuanLog | null })
   return (
     <Box sx={{ mt: 0.5, px: 1, py: 0.5, fontSize: 11, lineHeight: 1.5, bgcolor: 'action.hover', borderRadius: 1, borderLeft: '3px solid', borderColor: nhom.mau, wordBreak: 'break-word' }}>
       <Box component='strong' sx={{ color: nhom.mau }}>Do: {nhom.nhan}.</Box> {ketLuan.cau}
+      {ketLuan.can && <Box><strong>Hệ thống cần:</strong> {ketLuan.can}</Box>}
+      {ketLuan.doc_duoc && <Box><strong>Đọc được:</strong> {ketLuan.doc_duoc}</Box>}
     </Box>
   )
 }
