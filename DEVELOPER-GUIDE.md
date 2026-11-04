@@ -849,7 +849,7 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 #### 13.N+87 Log đỏ trong chi tiết đơn hiện lỗi do đâu + tô trường sai (04/11/2026)
 
-**Sửa:** tab Logs của chi tiết đơn + `LogModal` hiện `ket_luan` do BE tính (xem BE 15.N+84). `NoiDungDanhDau` đọc thêm dạng mảng và `{..}{..}`, tô theo tên + giá trị để không tô nhầm dòng. Màn của khách không dùng.
+**Sửa:** tab Logs của chi tiết đơn + `LogModal` hiện `ket_luan` do BE tính (xem BE 15.N+84). `NoiDungDanhDau` đọc thêm dạng mảng và `{..}{..}`, tô theo tên + giá trị để không tô nhầm dòng. Thêm khối "Response hệ thống cần (mô phỏng)" và nhóm "Đối tác đang xử lý". Màn của khách không dùng.
 **Files:** `components/LogKetLuan.tsx`, `TransactionHistory/OrderDetailModal.tsx`, `TransactionHistory/LogModal.tsx`, `hooks/apis/useOrderLogs.ts`
 
 #### 13.N+86 Log xoay hiện "Do: ..." và tô đúng trường sai (04/11/2026)

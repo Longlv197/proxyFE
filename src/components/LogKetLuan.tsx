@@ -12,11 +12,12 @@ import Box from '@mui/material/Box'
 
 export type DanhDauTruong = { truong: string; ghi_chu?: string; gia_tri?: unknown }
 
-export type KetLuanLog = { nhom?: string; cau?: string; danh_dau?: DanhDauTruong[]; can?: string; doc_duoc?: string }
+export type KetLuanLog = { nhom?: string; cau?: string; danh_dau?: DanhDauTruong[]; can?: string; doc_duoc?: string; mau_dung?: string }
 
 const NHOM: Record<string, { nhan: string; mau: string }> = {
   doi_tac: { nhan: 'Đối tác', mau: 'error.main' },
   tu_choi: { nhan: 'Đối tác từ chối', mau: 'error.main' },
+  dang_xu_ly: { nhan: 'Đối tác đang xử lý', mau: 'info.dark' },
   cau_hinh: { nhan: 'Cấu hình bên mình', mau: 'warning.dark' },
   he_thong: { nhan: 'Hệ thống bên mình', mau: 'warning.dark' },
   ket_noi: { nhan: 'Kết nối', mau: 'info.dark' },
@@ -33,6 +34,14 @@ export default function LogKetLuan({ ketLuan }: { ketLuan?: KetLuanLog | null })
       <Box component='strong' sx={{ color: nhom.mau }}>Do: {nhom.nhan}.</Box> {ketLuan.cau}
       {ketLuan.can && <Box><strong>Hệ thống cần:</strong> {ketLuan.can}</Box>}
       {ketLuan.doc_duoc && <Box><strong>Đọc được:</strong> {ketLuan.doc_duoc}</Box>}
+      {ketLuan.mau_dung && (
+        <>
+          <Box sx={{ mt: 0.5 }}><strong>Response hệ thống cần (mô phỏng):</strong></Box>
+          <Box component='pre' sx={{ fontSize: 10, m: 0, mt: 0.25, px: 1, py: 0.5, bgcolor: 'success.dark', color: 'common.white', borderRadius: 1, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            {ketLuan.mau_dung}
+          </Box>
+        </>
+      )}
     </Box>
   )
 }
