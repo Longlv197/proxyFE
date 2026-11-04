@@ -1510,6 +1510,8 @@ function OrderLogsTimeline({ logs, isLoading }: { logs: OrderLog[]; isLoading: b
                 </div>
               )}
 
+              <LogKetLuan ketLuan={log.ket_luan} />
+
               {!isChild && log.provider_code && (
                 <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: 2 }}>
                   NCC: <span style={{ fontWeight: 500, color: '#64748b' }}>{log.provider_code}</span>
@@ -1528,11 +1530,13 @@ function OrderLogsTimeline({ logs, isLoading }: { logs: OrderLog[]; isLoading: b
 
               {/* Response body — luôn hiện khi có data */}
               {(log.response_body || log.context?.response) && (
-                <details style={{ marginTop: 4 }} open={isError}>
+                <details style={{ marginTop: 4 }} open={isError || !!log.ket_luan?.danh_dau?.length}>
                   <summary style={{ fontSize: '11px', color: isError ? '#ef4444' : '#22c55e', cursor: 'pointer', fontWeight: 500 }}>
                     Response {log.duration_ms ? `(${log.duration_ms}ms)` : ''}
                   </summary>
-                  <CodeBlock value={log.response_body || log.context?.response} color={isError ? '#fca5a5' : '#86efac'} />
+                  <NoiDungDanhDau noiDung={log.response_body} danhDau={log.ket_luan?.danh_dau}>
+                    <CodeBlock value={log.response_body || log.context?.response} color={isError ? '#fca5a5' : '#86efac'} />
+                  </NoiDungDanhDau>
                 </details>
               )}
 

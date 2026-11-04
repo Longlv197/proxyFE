@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import useAxiosAuth from '@/hocs/useAxiosAuth'
+import type { KetLuanLog } from '@/components/LogKetLuan'
 
 export interface OrderLog {
   _id: string
@@ -19,6 +20,7 @@ export interface OrderLog {
   response_body: string | null
   duration_ms: number | null
   context: any
+  ket_luan?: KetLuanLog
   created_at: string
 }
 

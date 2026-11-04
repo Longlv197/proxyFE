@@ -8,6 +8,7 @@ import { formatDateTimeLocal } from '@/utils/formatDate'
 import { ORDER_STATUS_LABELS_ADMIN } from '@/constants'
 import { useOrderLogs } from '@/hooks/apis/useTickets'
 import { useBranding } from '@/app/contexts/BrandingContext'
+import LogKetLuan, { NoiDungDanhDau } from '@/components/LogKetLuan'
 
 const ACTION_LABELS: Record<string, string> = {
   created: 'Tạo đơn hàng',
@@ -142,6 +143,8 @@ export default function LogModal({
                           <p className='text-sm text-gray-700 mt-1'>{log.message}</p>
                         )}
 
+                        <LogKetLuan ketLuan={log.ket_luan} />
+
                         {/* Order meta — service, provider, giá, số lượng */}
                         {log.context?.service_name && (
                           <div className='flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-500'>
@@ -178,17 +181,19 @@ export default function LogModal({
                             }`}>
                               Response {log.duration_ms ? `(${log.duration_ms}ms)` : ''}
                             </div>
-                            <pre className={`p-3 bg-slate-900 text-xs font-mono whitespace-pre-wrap max-h-40 overflow-y-auto m-0 ${
-                              ['api_call_error', 'failed', 'exception', 'retry'].includes(log.action) ? 'text-red-300' : 'text-green-300'
-                            }`}>
-                              {(() => {
-                                const raw = log.response_body || log.context?.response
-                                if (typeof raw === 'string') {
-                                  try { return JSON.stringify(JSON.parse(raw), null, 2) } catch { return raw }
-                                }
-                                return JSON.stringify(raw, null, 2)
-                              })()}
-                            </pre>
+                            <NoiDungDanhDau noiDung={log.response_body} danhDau={log.ket_luan?.danh_dau}>
+                              <pre className={`p-3 bg-slate-900 text-xs font-mono whitespace-pre-wrap max-h-40 overflow-y-auto m-0 ${
+                                ['api_call_error', 'failed', 'exception', 'retry'].includes(log.action) ? 'text-red-300' : 'text-green-300'
+                              }`}>
+                                {(() => {
+                                  const raw = log.response_body || log.context?.response
+                                  if (typeof raw === 'string') {
+                                    try { return JSON.stringify(JSON.parse(raw), null, 2) } catch { return raw }
+                                  }
+                                  return JSON.stringify(raw, null, 2)
+                                })()}
+                              </pre>
+                            </NoiDungDanhDau>
                           </div>
                         )}
 
