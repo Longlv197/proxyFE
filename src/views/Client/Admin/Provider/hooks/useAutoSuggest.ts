@@ -233,6 +233,15 @@ export function autoSuggestConfig(jsonStr: string): Suggestion[] {
 
         // Proxy format from first item
         const sample = arr.value[0]
+
+        suggestions.push({
+          id: 'proxies_shape',
+          label: sample !== null && typeof sample === 'object' ? 'Giá trị là mảng, mỗi phần tử là object' : 'Giá trị là mảng, mỗi phần tử là chuỗi',
+          detail: '',
+          field: 'response.proxies_shape',
+          value: sample !== null && typeof sample === 'object' ? 'list_object' : 'list_string',
+        })
+
         const proxyInfo = detectProxyFormat(sample)
         if (proxyInfo.format) {
           suggestions.push({

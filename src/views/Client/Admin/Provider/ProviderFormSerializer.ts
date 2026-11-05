@@ -233,6 +233,7 @@ export function parseBuySection(buy: any): ApiConfigBuy {
         success_field: fpResp.success_field || '',
         success_value: fpResp.success_value != null ? String(fpResp.success_value) : '',
         proxies_path: fpResp.proxies_path || 'data.proxies',
+        proxies_shape: fpResp.proxies_shape || '',
         proxy_format: fpResp.proxy_format || 'fields',
         proxy_key_field: fpResp.proxy_key_field || fpResp.proxy_string_field || '',
         proxy_fields_ip: fpFields.ip || 'ip',
@@ -270,6 +271,7 @@ export function parseBuySection(buy: any): ApiConfigBuy {
       })(),
       fallback_message: buyResp.fallback_message || '',
       proxies_path: (buy.response_mode === 'deferred' ? buyResp.order_id_field : buyResp.proxies_path) || 'data.proxies',
+      proxies_shape: buyResp.proxies_shape || '',
       proxy_format: buyResp.proxy_format || 'key',
       proxy_key_field: buyResp.proxy_key_field || buyResp.proxy_string_field || 'keyxoay',
       proxy_fields_ip: proxyFields.ip || '',
@@ -532,6 +534,7 @@ export function buildBuySection(buy: ApiConfigBuy, prevBuy?: any): object | null
   }
 
   if (buy.response.type === 'object' && buy.response.proxies_path) resp.proxies_path = buy.response.proxies_path
+  if (buy.response.type === 'object' && !isDeferred && buy.response.proxies_shape) resp.proxies_shape = buy.response.proxies_shape
 
   // Deferred: response lúc MUA chỉ có mã đơn — mọi field mô tả proxy ở đây đều vô nghĩa.
   // Form luôn có sẵn giá trị mặc định (proxy_key_field='keyxoay'...) nên không chặn thì
@@ -614,6 +617,7 @@ export function buildBuySection(buy: ApiConfigBuy, prevBuy?: any): object | null
         fpResp.success_value = isNaN(numVal) ? fp.success_value : numVal
       }
       if (fp.response_type === 'object' && fp.proxies_path) fpResp.proxies_path = fp.proxies_path
+      if (fp.response_type === 'object' && fp.proxies_shape) fpResp.proxies_shape = fp.proxies_shape
 
       // Bước này có handler riêng → chính handler quyết định cách đọc proxy, không phải config.
       // Ghi proxy_format/proxy_fields vào là BỊA: config gốc proxyma-isp không hề có

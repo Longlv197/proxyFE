@@ -59,5 +59,45 @@ phaiBang('rotate.response.proxy_fields.real_ip giữ nguyên', raLai?.rotate?.re
 phaiBang('rotate.key_source giữ nguyên (khoá cũ, chống hồi quy)', raLai?.rotate?.key_source, 'provider_key')
 phaiBang('rotate.url giữ nguyên', raLai?.rotate?.url, cauHinh2Proxy.rotate.url)
 
+console.log('\nÔ "Giá trị tại đường dẫn là gì" (proxies_shape):')
+
+/** Cấu hình lấy proxy thật của 2proxy (05/11/2026), thêm khoá mới. */
+const cauHinhLaySau = (dang?: string) => ({
+  buy_rotating: {
+    url: 'https://app.2proxy.vn/api/proxyv3.php',
+    method: 'GET',
+    response_mode: 'deferred',
+    response: { type: 'object', success_field: 'maloi', success_value: 0, order_id_field: 'ma_don' },
+    fetch_proxies: {
+      url: 'https://app.2proxy.vn/api/proxyv3.php',
+      method: 'GET',
+      order_code_param: 'ma_don',
+      response: {
+        type: 'object', proxies_path: 'proxy', proxy_format: 'string', proxy_string_field: 'proxy',
+        item_id_field: 'idproxy', success_field: 'maloi', success_value: 0,
+        ...(dang ? { proxies_shape: dang } : {}),
+      },
+    },
+  },
+})
+
+const khuHoi = (cfg: any) => buildApiConfig({ ...defaultValues, ...parseApiConfig(cfg) } as FormValues, cfg) as any
+const dangLaySau = (cfg: any) => cfg?.buy_rotating?.fetch_proxies?.response?.proxies_shape
+
+phaiBang('đã khai list_object thì giữ nguyên', dangLaySau(khuHoi(cauHinhLaySau('list_object'))), 'list_object')
+phaiBang('đã khai object thì giữ nguyên', dangLaySau(khuHoi(cauHinhLaySau('object'))), 'object')
+phaiBang('NCC cũ chưa khai thì KHÔNG tự thêm', dangLaySau(khuHoi(cauHinhLaySau())), undefined)
+
+const cauHinhGiaoNgay = (dang?: string) => ({
+  buy_static: {
+    url: 'https://ncc.test/mua', method: 'GET',
+    response: { type: 'object', success_field: 'status', success_value: 200, proxies_path: 'data.list', proxy_format: 'string', proxy_string_field: 'p', ...(dang ? { proxies_shape: dang } : {}) },
+  },
+})
+const dangGiaoNgay = (cfg: any) => cfg?.buy_static?.response?.proxies_shape
+
+phaiBang('bước mua giao ngay đã khai thì giữ nguyên', dangGiaoNgay(khuHoi(cauHinhGiaoNgay('list_string'))), 'list_string')
+phaiBang('bước mua giao ngay chưa khai thì không tự thêm', dangGiaoNgay(khuHoi(cauHinhGiaoNgay())), undefined)
+
 console.log(hong === 0 ? '\nTẤT CẢ ĐẠT — form không ăn mất khoá nào.' : `\n${hong} MỤC HỎNG — bấm Lưu sẽ mất cấu hình.`)
 process.exit(hong === 0 ? 0 : 1)

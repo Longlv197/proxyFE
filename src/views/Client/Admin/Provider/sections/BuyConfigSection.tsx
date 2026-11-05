@@ -41,7 +41,7 @@ import Chip from '@mui/material/Chip'
 import Tooltip from '@mui/material/Tooltip'
 import Alert from '@mui/material/Alert'
 import type { BuySectionProps, ParamsMappingEntry } from '../ProviderFormTypes'
-import { STANDARD_VARIABLES, VARIABLE_FORMAT_OPTIONS, defaultParamsMappingEntry } from '../ProviderFormTypes'
+import { PROXIES_SHAPE_OPTIONS, STANDARD_VARIABLES, VARIABLE_FORMAT_OPTIONS, defaultParamsMappingEntry } from '../ProviderFormTypes'
 
 // ─── Duration Units Table (đơn vị thời gian + URL) ──────────────
 const UNIT_OPTIONS = [
@@ -533,6 +533,11 @@ function StepProxyExtract({ prefix, control, setValue }: BuySectionProps & { set
                 )} />
               </Grid2>
             )}
+            {responseType === 'object' && (
+              <Grid2 size={{ xs: 12, sm: 6 }}>
+                <OChonDangDanhSach name={`${prefix}.response.proxies_shape`} control={control} />
+              </Grid2>
+            )}
             <Grid2 size={{ xs: 12, sm: responseType === 'object' ? 6 : 4 }}>
               <Controller name={`${prefix}.response.proxy_format`} control={control} render={({ field }) => (
                 <CustomTextField {...field} fullWidth select label={<>Nhà cung cấp trả proxy dạng gì? <FieldHint text='Mỗi proxy trong kết quả trả về có dạng gì? Chọn đúng để hệ thống đọc được.' /></>}>
@@ -766,6 +771,30 @@ const NhomKetNoiApi = memo(function NhomKetNoiApi({ prefix, control }: BuySectio
   )
 })
 
+/** Nói rõ giá trị tại đường dẫn là gì. Dùng chung cho bước mua giao ngay và bước lấy proxy. */
+function OChonDangDanhSach({ name, control }: { name: string; control: BuySectionProps['control'] }) {
+  return (
+    <Controller name={name as any} control={control} render={({ field }) => (
+      <CustomTextField
+        {...field}
+        value={field.value ?? ''}
+        fullWidth
+        select
+        label='Giá trị tại đường dẫn là gì'
+        helperText='Đối tác trả sai dạng này thì báo lỗi, không giao hàng trống.'
+        SelectProps={{ displayEmpty: true }}
+        InputLabelProps={{ shrink: true }}
+      >
+        {PROXIES_SHAPE_OPTIONS.map(o => (
+          <MenuItem key={o.value} value={o.value}>
+            {o.label}{o.mau ? `  ${o.mau}` : ''}
+          </MenuItem>
+        ))}
+      </CustomTextField>
+    )} />
+  )
+}
+
 // Nhóm 2: Kiểm tra response — chỉ watch response_type
 const NhomKiemTraResponse = memo(function NhomKiemTraResponse({ prefix, control }: BuySectionProps) {
   const respType = useWatch({ control, name: `${prefix}.fetch_proxies.response_type` })
@@ -803,8 +832,13 @@ const NhomKiemTraResponse = memo(function NhomKiemTraResponse({ prefix, control 
       {isObject && (
         <Grid2 size={{ xs: 12, sm: 6 }}>
           <Controller name={`${prefix}.fetch_proxies.proxies_path`} control={control} render={({ field }) => (
-            <CustomTextField {...field} fullWidth label='Đường dẫn danh sách proxy' helperText='VD: data.proxies, result' placeholder='data.proxies' />
+            <CustomTextField {...field} fullWidth label='Đường dẫn danh sách proxy' helperText='VD: data.proxies, result. Dừng ở chỗ chứa danh sách, không đi vào từng phần tử.' placeholder='data.proxies' />
           )} />
+        </Grid2>
+      )}
+      {isObject && (
+        <Grid2 size={{ xs: 12, sm: 6 }}>
+          <OChonDangDanhSach name={`${prefix}.fetch_proxies.proxies_shape`} control={control} />
         </Grid2>
       )}
       <Grid2 size={{ xs: 12 }}>
@@ -813,6 +847,7 @@ const NhomKiemTraResponse = memo(function NhomKiemTraResponse({ prefix, control 
           lines={[
             'Có khai trường kiểm tra: trường không có hoặc khác Giá trị OK là lỗi. Bỏ trống thì không kiểm tra.',
             'Không kết nối được, HTTP 4xx/5xx hoặc kết quả không phải JSON cũng là lỗi.',
+            'Giá trị tại đường dẫn sai dạng đã khai, hoặc không phần tử nào đọc ra proxy hay khoá, cũng là lỗi. Đơn không được giao trống.',
             'Lỗi thì thử tối đa 3 lần rồi khoá đơn chờ admin. Đơn đã mua bên NCC nên không tự hoàn tiền.'
           ]}
         />

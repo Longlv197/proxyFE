@@ -30,6 +30,7 @@ export default function ResponseDryRun({ prefix, control, setValue }: ResponseDr
   const successValue = useWatch({ control, name: `${prefix}.response.success_value` as any })
   const responseType = useWatch({ control, name: `${prefix}.response.type` as any })
   const proxiesPath = useWatch({ control, name: `${prefix}.response.proxies_path` as any })
+  const proxiesShape = useWatch({ control, name: `${prefix}.response.proxies_shape` as any })
   const proxyFormat = useWatch({ control, name: `${prefix}.response.proxy_format` as any })
   const proxyKeyField = useWatch({ control, name: `${prefix}.response.proxy_key_field` as any })
   const proxyFieldsIp = useWatch({ control, name: `${prefix}.response.proxy_fields_ip` as any })
@@ -65,11 +66,20 @@ export default function ResponseDryRun({ prefix, control, setValue }: ResponseDr
         lines.push({ label: 'Danh sách proxy (bỏ phần tử cuối)', value: `Tìm thấy ${proxies.length} proxy`, status: proxies.length > 0 ? 'ok' : 'error' })
       } else if (proxiesPath) {
         const found = getByDotPath(data, proxiesPath)
-        if (Array.isArray(found)) {
-          proxies = found
-          lines.push({ label: `Danh sách proxy tại "${proxiesPath}"`, value: `Tìm thấy ${proxies.length} proxy`, status: proxies.length > 0 ? 'ok' : 'error' })
-        } else if (found !== undefined) {
-          lines.push({ label: `"${proxiesPath}"`, value: `Giá trị: ${JSON.stringify(found).substring(0, 50)} (không phải mảng)`, status: 'info' })
+        const laObject = found !== null && typeof found === 'object' && !Array.isArray(found)
+        if (proxiesShape === 'object' && laObject) {
+          proxies = [found]
+          lines.push({ label: `"${proxiesPath}"`, value: '1 object, là 1 item', status: 'ok' })
+        } else if (Array.isArray(found) && proxiesShape !== 'object') {
+          const canObject = proxiesShape === 'list_object'
+          const canChuoi = proxiesShape === 'list_string'
+          const saiPhanTu = found.some(x => (canObject && (x === null || typeof x !== 'object')) || (canChuoi && typeof x === 'object'))
+          proxies = saiPhanTu ? [] : found
+          lines.push(saiPhanTu
+            ? { label: `"${proxiesPath}"`, value: `Phần tử không đúng dạng đã khai (cần mảng ${canObject ? 'object' : 'chuỗi'})`, status: 'error' }
+            : { label: `Danh sách proxy tại "${proxiesPath}"`, value: `Tìm thấy ${proxies.length} proxy`, status: proxies.length > 0 ? 'ok' : 'error' })
+        } else if (found !== undefined && found !== null) {
+          lines.push({ label: `"${proxiesPath}"`, value: `Giá trị: ${JSON.stringify(found).substring(0, 50)} (không đúng dạng đã khai)`, status: 'error' })
         } else {
           lines.push({ label: `"${proxiesPath}"`, value: 'Không tìm thấy', status: 'error' })
         }

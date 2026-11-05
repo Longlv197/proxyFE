@@ -57,6 +57,7 @@ export interface ApiConfigBuyResponse {
   http_errors: HttpErrorRule[]
   fallback_message: string
   proxies_path: string
+  proxies_shape: string          // '' = cấu hình cũ chưa khai, xem PROXIES_SHAPE_OPTIONS
   proxy_format: string
   proxy_key_field: string
   proxy_fields_ip: string
@@ -83,6 +84,7 @@ export interface FetchProxiesConfig {
   success_field: string
   success_value: string
   proxies_path: string
+  proxies_shape: string
   proxy_format: string
   proxy_key_field: string
   proxy_fields_ip: string
@@ -374,6 +376,7 @@ export const defaultFetchProxies: FetchProxiesConfig = {
   success_field: '',
   success_value: '',
   proxies_path: 'data.proxies',
+  proxies_shape: 'list_object',
   proxy_format: 'fields',
   proxy_key_field: '',
   proxy_fields_ip: 'ip',
@@ -388,6 +391,14 @@ export const defaultFetchProxies: FetchProxiesConfig = {
   per_page: '50',
   last_page_path: 'data.last_page',
 }
+
+/** Giá trị tại đường dẫn danh sách proxy là gì. Khớp `DanhSachProxy::CAC_DANG` bên BE. */
+export const PROXIES_SHAPE_OPTIONS = [
+  { value: 'list_object', label: 'Mảng, mỗi phần tử là object', mau: '[ { }, { } ]' },
+  { value: 'list_string', label: 'Mảng, mỗi phần tử là chuỗi', mau: '[ "...", "..." ]' },
+  { value: 'object', label: '1 object, là 1 item', mau: '{ }' },
+  { value: '', label: 'Chưa khai (chỉ kiểm tra là mảng)', mau: '' },
+]
 
 export const defaultBuy: ApiConfigBuy = {
   enabled: false,
@@ -424,6 +435,7 @@ export const defaultBuy: ApiConfigBuy = {
     http_errors: [],
     fallback_message: '',
     proxies_path: 'data.proxies',
+    proxies_shape: 'list_object',
     proxy_format: 'key',
     proxy_key_field: 'keyxoay',
     proxy_fields_ip: '', proxy_fields_port: '',

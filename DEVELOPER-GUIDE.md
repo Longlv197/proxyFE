@@ -847,6 +847,11 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+89 Form NCC: ô "Giá trị tại đường dẫn là gì" (05/11/2026)
+
+**Thêm:** ô chọn `proxies_shape` (Mảng object, Mảng chuỗi, 1 object, Chưa khai) ở nhóm "Kiểm tra response" của bước lấy proxy và bước mua giao ngay; chỉ hiện khi Dạng kết quả là Object. Công cụ dán response mẫu kiểm tra theo dạng đã khai và tự gợi ý dạng. NCC cũ mở form bấm Lưu không tự thêm khoá (có trong `scripts/check-provider-form-roundtrip.ts`).
+**Files:** `Provider/ProviderFormTypes.ts`, `Provider/ProviderFormSerializer.ts`, `Provider/sections/BuyConfigSection.tsx`, `Provider/components/ResponseDryRun.tsx`, `Provider/hooks/useAutoSuggest.ts`, `scripts/check-provider-form-roundtrip.ts`
+
 #### 13.N+88 Nút nhập mã đơn NCC tại log đỏ · nhãn log huỷ đơn (05/11/2026)
 
 **Thêm:** `NutNhapMaDonNcc` trên dòng log đỏ cuối của tab Logs và `LogModal`: tự điền mã đọc được, báo lỗi ngay trong hộp, lưu xong làm mới log. BE quyết định khi nào hiện (xem BE 15.N+85), nên đơn đã hoàn và site con không có nút. Thêm nhãn `admin_cancel`, `admin_confirm_order`.
