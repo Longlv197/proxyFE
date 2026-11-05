@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import useAxiosAuth from '@/hocs/useAxiosAuth'
 import type { KetLuanLog } from '@/components/LogKetLuan'
+import type { ThongTinNhapMaDon } from '@/components/NutNhapMaDonNcc'
 
 export interface OrderLog {
   _id: string
@@ -21,6 +22,7 @@ export interface OrderLog {
   duration_ms: number | null
   context: any
   ket_luan?: KetLuanLog
+  nhap_ma_don?: ThongTinNhapMaDon
   created_at: string
 }
 

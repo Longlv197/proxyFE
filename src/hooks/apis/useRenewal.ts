@@ -114,6 +114,8 @@ export const useOrderConfirm = () => {
       return res?.data
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orderLogs'] })
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] })
       queryClient.invalidateQueries({ queryKey: ['userOrders'] })
       queryClient.invalidateQueries({ queryKey: ['orderApiKeys'] })
       queryClient.invalidateQueries({ queryKey: ['orderProxyStatic'] })

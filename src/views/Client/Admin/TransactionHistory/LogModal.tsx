@@ -9,6 +9,7 @@ import { ORDER_STATUS_LABELS_ADMIN } from '@/constants'
 import { useOrderLogs } from '@/hooks/apis/useTickets'
 import { useBranding } from '@/app/contexts/BrandingContext'
 import LogKetLuan, { NoiDungDanhDau } from '@/components/LogKetLuan'
+import NutNhapMaDonNcc from '@/components/NutNhapMaDonNcc'
 
 const ACTION_LABELS: Record<string, string> = {
   created: 'Tạo đơn hàng',
@@ -30,6 +31,8 @@ const ACTION_LABELS: Record<string, string> = {
   exception: 'Lỗi hệ thống',
   admin_retry_partial: 'Admin mua bù',
   admin_refund_partial: 'Admin hoàn tiền',
+  admin_cancel: 'Admin huỷ đơn',
+  admin_confirm_order: 'Admin xác nhận',
   auto_recovered: 'Tự phục hồi (stuck)',
 }
 
@@ -53,6 +56,8 @@ const ACTION_STYLES: Record<string, { icon: React.ReactNode; bg: string; text: s
   exception:            { icon: <Bug size={14} />,            bg: 'bg-red-100',    text: 'text-red-700' },
   admin_retry_partial:  { icon: <Zap size={14} />,           bg: 'bg-purple-100', text: 'text-purple-600' },
   admin_refund_partial: { icon: <DollarSign size={14} />,    bg: 'bg-purple-100', text: 'text-purple-600' },
+  admin_cancel:         { icon: <XCircle size={14} />,       bg: 'bg-purple-100', text: 'text-purple-600' },
+  admin_confirm_order:  { icon: <CheckCircle2 size={14} />,  bg: 'bg-purple-100', text: 'text-purple-600' },
   auto_recovered:       { icon: <RefreshCw size={14} />,     bg: 'bg-amber-100',  text: 'text-amber-600' },
 }
 
@@ -144,6 +149,7 @@ export default function LogModal({
                         )}
 
                         <LogKetLuan ketLuan={log.ket_luan} />
+                        <NutNhapMaDonNcc orderId={log.order_id} thongTin={log.nhap_ma_don} />
 
                         {/* Order meta — service, provider, giá, số lượng */}
                         {log.context?.service_name && (

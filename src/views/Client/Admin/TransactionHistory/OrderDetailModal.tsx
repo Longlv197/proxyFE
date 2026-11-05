@@ -46,6 +46,7 @@ import { useOrderHistoryLogs, useRenewalConfirm, type HistoryLogItem } from '@/h
 import { toast } from 'react-toastify'
 import { useOrderItemLogs, type OrderItemLog } from '@/hooks/apis/useOrderItemLogs'
 import LogKetLuan, { NoiDungDanhDau } from '@/components/LogKetLuan'
+import NutNhapMaDonNcc from '@/components/NutNhapMaDonNcc'
 import { useUnlockRotate, useUpdateOrderItem } from '@/hooks/apis/useOrderItems'
 import { usePingProxy } from '@/hooks/apis/usePingProxy'
 import { useProxyCheck } from '@/hooks/apis/useProxyCheck'
@@ -155,6 +156,8 @@ const LOG_ACTION_CONFIG: Record<string, { icon: any; color: string; label: strin
   api_call_error: { icon: AlertTriangle, color: '#ef4444', label: 'API lỗi' },
   admin_retry_partial: { icon: RefreshCw, color: '#a855f7', label: 'Admin mua bù' },
   admin_refund_partial: { icon: RotateCcw, color: '#ec4899', label: 'Admin hoàn tiền' },
+  admin_cancel: { icon: CircleX, color: '#ec4899', label: 'Admin huỷ đơn' },
+  admin_confirm_order: { icon: BadgeCheck, color: '#a855f7', label: 'Admin xác nhận' },
   auto_recovered: { icon: Zap, color: '#14b8a6', label: 'Tự động phục hồi' }
 }
 
@@ -1511,6 +1514,7 @@ function OrderLogsTimeline({ logs, isLoading }: { logs: OrderLog[]; isLoading: b
               )}
 
               <LogKetLuan ketLuan={log.ket_luan} />
+              <NutNhapMaDonNcc orderId={log.order_id} thongTin={log.nhap_ma_don} />
 
               {!isChild && log.provider_code && (
                 <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: 2 }}>

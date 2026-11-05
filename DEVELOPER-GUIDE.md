@@ -847,6 +847,11 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+88 Nút nhập mã đơn NCC tại log đỏ · nhãn log huỷ đơn (05/11/2026)
+
+**Thêm:** `NutNhapMaDonNcc` trên dòng log đỏ cuối của tab Logs và `LogModal`: tự điền mã đọc được, báo lỗi ngay trong hộp, lưu xong làm mới log. BE quyết định khi nào hiện (xem BE 15.N+85), nên đơn đã hoàn và site con không có nút. Thêm nhãn `admin_cancel`, `admin_confirm_order`.
+**Files:** `components/NutNhapMaDonNcc.tsx` (mới), `TransactionHistory/OrderDetailModal.tsx`, `TransactionHistory/LogModal.tsx`, `hooks/apis/useOrderLogs.ts`, `hooks/apis/useRenewal.ts`
+
 #### 13.N+87 Log đỏ trong chi tiết đơn hiện lỗi do đâu + tô trường sai (04/11/2026)
 
 **Sửa:** tab Logs của chi tiết đơn + `LogModal` hiện `ket_luan` do BE tính (xem BE 15.N+84). `NoiDungDanhDau` đọc thêm dạng mảng và `{..}{..}`, tô theo tên + giá trị để không tô nhầm dòng. Thêm khối "Response hệ thống cần (mô phỏng)" và nhóm "Đối tác đang xử lý". Màn của khách không dùng.
