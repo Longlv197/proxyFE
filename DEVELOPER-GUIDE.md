@@ -847,6 +847,14 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+90 Form SP: mục "Proxy tĩnh ISP / Gói NCC" — chọn gói là tự điền đúng (25/11/2026)
+
+**Vấn đề:** form không biết SP proxy tĩnh ISP. Ô "Giá theo số lượng" chỉ hiện khi Proxy Type = "Dân cư" → admin đổi sang Dân cư để chọn "theo gói" → form gắn `kind=residential` (đổi Proxy Type về "—" cũng không gỡ được vì form không quản lý `kind` SP ISP); SL để mặc định 1 → gói 3 IP chỉ tạo 1 dòng, khách mất 2 IP (SP #46).
+**Sửa:**
+- `IspPackageSection` (mới) hiện khi NCC `api_config.kind = 'isp'`: dropdown gói lấy TRỰC TIẾP từ NCC qua `GET admin/isp-providers/{id}/tariffs` (BE 15.N+90, cache 10 phút, nút "Làm mới bảng giá từ NCC" bỏ cache; NCC lỗi → bản chụp `api_config.isp_tariffs`, có ghi chú nguồn) → tự điền `body_api {"tariff_id"}`, SL min = max = số IP, giá "Cố định theo gói", metadata `isp_*` (ports/tariff/plan/cost_usd/country/purpose). Cảnh báo: tariff không có trong danh sách · SL ≠ số IP · Proxy Type "Dân cư" · có Quốc gia (NCC cấp ngẫu nhiên).
+- Lưu SP thuộc NCC ISP: `kind` LUÔN `isp`, `price_quantity_mode` LUÔN `package` (đè cả khi lỡ chọn Dân cư).
+**Files:** `views/Client/Admin/ServiceType/{IspPackageSection.tsx (mới), ServiceFormModal.tsx}`, `hooks/apis/useIspTariffs.ts` (mới)
+
 #### 13.N+89 Form NCC: ô "Giá trị tại đường dẫn là gì" (05/11/2026)
 
 **Thêm:** ô chọn `proxies_shape` (Mảng object, Mảng chuỗi, 1 object, Chưa khai) ở nhóm "Kiểm tra response" của bước lấy proxy và bước mua giao ngay; chỉ hiện khi Dạng kết quả là Object. Công cụ dán response mẫu kiểm tra theo dạng đã khai và tự gợi ý dạng. NCC cũ mở form bấm Lưu không tự thêm khoá (có trong `scripts/check-provider-form-roundtrip.ts`).

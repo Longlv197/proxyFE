@@ -91,4 +91,4 @@
 - Workspace: `SETUP.md` ở root — clone, config, deploy, supervisor
 - Dev mới: đọc `SETUP.md` → `BE/CLAUDE.md` → `FE/CLAUDE.md`
 - [Prod SSH giữ đăng nhập mật khẩu](feedback_prod_ssh_keep_password.md) — VPS prod 103.77.182.93: KHÔNG tắt password login; key login qua `ssh prod`; VPS .118 đã bỏ
-- [Proxyma ISP whitelist + swap IP](project_proxyma_isp_whitelist_swap.md) — whitelist xong (BE c9fcd3d7, chưa deploy, NCC 13 chưa bật ip_whitelist); đổi IP code xong nhưng TẮT (isp_swap_enabled) vì Proxyma bỏ route swap-ip; gói test 1657
+- [Proxyma ISP whitelist + swap IP + form SP](project_proxyma_isp_whitelist_swap.md) — NCC #13 (không dùng #10); whitelist + đổi IP (TẮT) deployed 25/11; form SP ISP + bảng giá live chưa commit; SP #46 sai chờ sửa bằng form mới

@@ -46,6 +46,7 @@ import MultiInputModal from '@/views/Client/Admin/ServiceType/MultiInputModal'
 // PriceByDurationModal removed — giá theo thời gian giờ inline trong form
 import CollapsibleSection from '@/views/Client/Admin/ServiceType/CollapsibleSection'
 import ResidentialConfigSection from '@/views/Client/Admin/ServiceType/ResidentialConfigSection'
+import IspPackageSection, { readTariffId, type IspMetadata } from '@/views/Client/Admin/ServiceType/IspPackageSection'
 import { useBranding } from '@/app/contexts/BrandingContext'
 
 import { ROTATION_MODE_LABELS } from '@/constants/rotationMode'
@@ -1382,6 +1383,16 @@ return { values: {}, errors: formattedErrors }
   const isResidential = watchedProxyType === 'residential'
   const selectedProviderMain = providers?.find((p: any) => String(p.id) === String(watchedProviderId))
 
+  // NCC proxy tĩnh ISP (Proxyma) → section "Proxy tĩnh ISP / Gói NCC" + lưu kind='isp' (xem IspPackageSection)
+  const isIspProvider = selectedProviderMain?.api_config?.kind === 'isp'
+
+  const [watchedBodyApi, watchedMinQty, watchedMaxQty, watchedCountry] = useWatch({
+    control, name: ['body_api', 'min_quantity', 'max_quantity', 'country'] as const
+  })
+
+  // Chỉ set khi admin CHỌN gói trong phiên này — null = giữ nguyên isp_* cũ (đã sống sót qua khoaLa)
+  const [ispMetaOverride, setIspMetaOverride] = useState<IspMetadata | null>(null)
+
   // Danh sách domain thay host (ẩn đối tác) — lấy từ provider.api_config.proxy_host_options. CHUNG, không gate residential.
   const hostOverrideOptions: string[] = (() => {
     const raw = selectedProviderMain?.api_config?.proxy_host_options
@@ -1504,6 +1515,7 @@ return { values: {}, errors: formattedErrors }
           : []
       )
       setPriceQuantityMode(meta.price_quantity_mode === 'package' ? 'package' : 'multiply')
+      setIspMetaOverride(null)
       setCountryDisplay(nguonQuocGiaCua({ metadata: meta }))
       setTrackPackageUsage(meta.track_package_usage === true)
       // Cấu hình chế độ xoay — default cho cả 2 mode; SP cũ chưa có metadata.rotation thì lấy rotation_interval cũ làm min (sàn 60s)
@@ -1587,6 +1599,7 @@ return { values: {}, errors: formattedErrors }
       setRotationConfig({ allow_manual: true, allow_auto: true, min_interval: 60 })
       setPricingMode('fixed')
       setPriceQuantityMode('multiply')
+      setIspMetaOverride(null)
       setCountryDisplay('auto')
       setTrackPackageUsage(false)
       setTimeUnit('day')
@@ -1794,6 +1807,14 @@ return { values: {}, errors: formattedErrors }
     if (isResidential) {
       metadataFinal.kind = 'residential'
       if (residentialMeta?.shared_proxy_hosts)  metadataFinal.shared_proxy_hosts = residentialMeta.shared_proxy_hosts
+    }
+
+    // SP thuộc NCC ISP: kind LUÔN là 'isp' (kể cả khi lỡ chọn Proxy Type "Dân cư") + giá theo gói.
+    // Trước đây kind='residential' dính lại vì form không quản lý kind của SP ISP (SP #46).
+    if (isIspProvider) {
+      ;(metadataFinal as any).kind = 'isp'
+      metadataFinal.price_quantity_mode = 'package'
+      if (ispMetaOverride) Object.assign(metadataFinal, ispMetaOverride)
     }
 
     // Cấu hình chế độ xoay — chỉ SP xoay (type=1). min_interval sàn 60s.
@@ -2843,6 +2864,28 @@ return <Chip key={val} label={p?.label || val} size='small' />
                   onDoiCachTinhTien={setPriceQuantityMode}
                 />
               </CollapsibleSection>
+
+              {/* ========== Section: Proxy tĩnh ISP (chỉ khi NCC kind = isp) ========== */}
+              {isIspProvider && (
+                <CollapsibleSection title='Proxy tĩnh ISP / Gói NCC' icon={Tag} iconColor='#0891b2' iconBg='#ecfeff' defaultOpen={true}>
+                  <IspPackageSection
+                    providerId={selectedProviderMain?.id ?? null}
+                    providerApiConfig={selectedProviderMain?.api_config}
+                    currentTariffId={readTariffId(watchedBodyApi)}
+                    minQuantity={watchedMinQty}
+                    maxQuantity={watchedMaxQty}
+                    proxyType={watchedProxyType || ''}
+                    country={Array.isArray(watchedCountry) ? watchedCountry : []}
+                    onPickTariff={(t, meta) => {
+                      setValue('body_api', JSON.stringify({ tariff_id: Number(t.tariff_id) }))
+                      setValue('min_quantity', Number(t.ports))
+                      setValue('max_quantity', Number(t.ports))
+                      setPriceQuantityMode('package')
+                      setIspMetaOverride(meta)
+                    }}
+                  />
+                </CollapsibleSection>
+              )}
 
               {/* ========== Section: Residential / Gói GB (chỉ khi proxy_type = Dân cư) ========== */}
               {isResidential && (
