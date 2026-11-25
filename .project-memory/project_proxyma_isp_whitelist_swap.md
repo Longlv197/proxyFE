@@ -27,6 +27,12 @@ Service chung: `app/Services/Providers/ProxymaIspService.php` (đổi tên từ 
 - NCC 25/11 có 16 gói (1–700 IP); số dư Proxyma $51.5.
 - **SP #46 "ISP 3 IP"** đang sai: SL 1/1, proxy_type Dân cư, kind residential, có 10 quốc gia, isp_* chép từ SP 43. Sửa bằng form mới: chọn gói 3 IP, Proxy Type "—", xoá Quốc gia, Lưu. Giá đã nhập: 370.000 / vốn 351.000 (tỷ giá 26.000).
 
+## Lệnh mua ISP — quantity = SỐ GÓI (BE 8e229b69, 15.N+91)
+- Anh xác nhận: Proxyma `quantity` là số gói; gói 3 IP mua quantity=1 → 3 IP. Trước sửa hệ thống gửi quantity = số dòng proxy (3/10) → NCC mua 3/10 gói. Nay NCC kind=isp + SP theo gói → luôn 1.
+- Body mua SP 46: `{"purpose_id":"14","country":"Any","quantity":1,"tariff_id":91}` POST /api/isp/buy, header api-key.
+- **Anh chốt 25/11: SL mua 1 lần = 1 = 1 gói, nhận đủ IP của gói** (BE 15.N+92): SP ISP đặt SL 1–1; BE tạo `isp_ports` dòng proxy, gửi NCC quantity=1; SL khác 1 bị từ chối. Deploy code TRƯỚC rồi mới đặt SL 1–1 (code cũ + SL 1 = khách mất IP). Tạm 1 đơn = 1 gói. Mỗi lần gọi API chỉ mua 1 gói; khách cần nhiều gói thì đặt nhiều đơn. 'Nhiều gói/đơn' (gọi API P lần, nhiều mã gói/đơn, whitelist theo gói) để sau khi khách thật sự cần — đã cân 2 hướng: SL=số gói (đơn P×IP dòng, giá ×gói) hoặc SL=số IP bước nhảy = cỡ gói (cần kiểu giá '× số gói').
+- Bật whitelist NCC 13 → mode `both` (KHÔNG on_buy: on_buy gắn `ip` vào lệnh mua). Mua bù đơn ISP = mua nguyên gói mới → xử lý tay.
+
 ## Liên quan
 - [[residential-proxy-provider-proxyma]] · [[prod-ssh-keep-password-login]]
 - Gia hạn Proxyma: anh bảo bỏ qua. Reseller `/api/reseller/update/{key}` chỉ POST, body chưa rõ; ISP `/api/isp/packages/{id}/update` (POST) body chỉ `promo`.

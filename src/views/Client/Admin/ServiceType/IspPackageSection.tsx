@@ -10,15 +10,15 @@ import { useIspTariffs } from '@/hooks/apis/useIspTariffs'
  * Section trong ServiceFormModal khi SP gắn NCC có `api_config.kind = 'isp'` (proxy tĩnh Proxyma ISP).
  *
  * Vì sao cần: trước đây form KHÔNG biết SP ISP → admin phải đi đường vòng (đổi Proxy Type sang "Dân cư"
- * để hiện ô "Giá theo số lượng") → form gắn nhầm `kind=residential`, còn min/max số lượng để 1 thì
- * khách mua gói 3 IP chỉ nhận 1 IP (SP #46, 25/11/2026).
+ * để hiện ô "Giá theo số lượng") → form gắn nhầm `kind=residential` (SP #46, 25/11/2026).
  *
  * Danh sách gói lấy TRỰC TIẾP từ NCC lúc mở form (BE `admin/isp-providers/{id}/tariffs`, cache 10 phút,
  * nút "Làm mới" bỏ cache). NCC lỗi → BE trả snapshot `api_config.isp_tariffs`; BE lỗi hẳn → dùng snapshot tại chỗ.
  *
  * Chọn 1 gói NCC là tự điền đúng hết:
  *   - api_body `{"tariff_id": N}`
- *   - SL min = max = số IP của gói (mỗi IP = 1 dòng proxy; thiếu dòng là mất IP)
+ *   - SL min = max = 1 = 1 GÓI (anh chốt 25/11: khách đặt 1 là nhận đủ IP của gói). BE tạo `isp_ports`
+ *     dòng proxy cho 1 gói + gửi NCC quantity=1; SL khác 1 bị BE từ chối (mỗi lần gọi API chỉ mua 1 gói).
  *   - giá "Cố định theo gói" (không × SL)
  *   - metadata `isp_*` (tham khảo) — `kind='isp'` do ServiceFormModal ghi khi lưu
  */
@@ -93,8 +93,7 @@ const IspPackageSection = ({ providerId, providerApiConfig, currentTariffId, min
     })
   }
 
-  const ports = current ? Number(current.ports) : null
-  const qtyWrong = ports !== null && (Number(minQuantity) !== ports || Number(maxQuantity) !== ports)
+  const qtyWrong = Number(minQuantity) !== 1 || Number(maxQuantity) !== 1
 
   return (
     <Box>
@@ -130,7 +129,7 @@ const IspPackageSection = ({ providerId, providerApiConfig, currentTariffId, min
 
       {current && (
         <Typography sx={{ fontSize: 12, color: '#475569', mt: 1 }}>
-          Giá theo số lượng: <strong>Cố định theo gói</strong> (khách trả 1 lần giá gói cho {current.ports} IP).
+          Giá theo số lượng: <strong>Cố định theo gói</strong> (khách đặt số lượng 1 = 1 gói, nhận {current.ports} IP).
           Nhập ở &quot;Mốc giá theo thời gian&quot; đúng <strong>1 mốc {current.period || 30} ngày</strong>: giá bán cả gói
           + giá vốn = ${current.price_usd} × tỷ giá.
         </Typography>
@@ -143,7 +142,7 @@ const IspPackageSection = ({ providerId, providerApiConfig, currentTariffId, min
       )}
       {qtyWrong && (
         <Alert severity='error' sx={{ mt: 1, py: 0 }}>
-          Số lượng phải là {ports} – {ports} (đang {minQuantity} – {maxQuantity}). Thiếu dòng là khách mất IP. Chọn lại gói để tự sửa.
+          Số lượng phải là 1 – 1 (1 gói, đang {minQuantity} – {maxQuantity}). Khác 1 thì khách không đặt được đơn. Chọn lại gói để tự sửa.
         </Alert>
       )}
       {proxyType === 'residential' && (

@@ -847,6 +847,11 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+91 Form SP ISP: chọn gói đặt SL 1–1 (1 gói) (25/11/2026)
+
+**Sửa:** theo quy ước mới (BE 15.N+92) khách đặt SL 1 = 1 gói và nhận đủ IP của gói → chọn gói trong mục "Proxy tĩnh ISP / Gói NCC" đặt SL min = max = **1** (trước: = số IP). Cảnh báo đỏ khi SL khác 1–1 (BE từ chối đơn SL khác 1).
+**Files:** `views/Client/Admin/ServiceType/{IspPackageSection.tsx, ServiceFormModal.tsx}`
+
 #### 13.N+90 Form SP: mục "Proxy tĩnh ISP / Gói NCC" — chọn gói là tự điền đúng (25/11/2026)
 
 **Vấn đề:** form không biết SP proxy tĩnh ISP. Ô "Giá theo số lượng" chỉ hiện khi Proxy Type = "Dân cư" → admin đổi sang Dân cư để chọn "theo gói" → form gắn `kind=residential` (đổi Proxy Type về "—" cũng không gỡ được vì form không quản lý `kind` SP ISP); SL để mặc định 1 → gói 3 IP chỉ tạo 1 dòng, khách mất 2 IP (SP #46).

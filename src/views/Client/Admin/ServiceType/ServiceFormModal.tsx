@@ -2877,9 +2877,10 @@ return <Chip key={val} label={p?.label || val} size='small' />
                     proxyType={watchedProxyType || ''}
                     country={Array.isArray(watchedCountry) ? watchedCountry : []}
                     onPickTariff={(t, meta) => {
+                      // SL = SỐ GÓI = 1 (BE tự tạo isp_ports dòng proxy cho 1 gói, gửi NCC quantity=1)
                       setValue('body_api', JSON.stringify({ tariff_id: Number(t.tariff_id) }))
-                      setValue('min_quantity', Number(t.ports))
-                      setValue('max_quantity', Number(t.ports))
+                      setValue('min_quantity', 1)
+                      setValue('max_quantity', 1)
                       setPriceQuantityMode('package')
                       setIspMetaOverride(meta)
                     }}
