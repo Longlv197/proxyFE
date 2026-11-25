@@ -90,3 +90,5 @@
 - [_data_field child site](project_data_field_child_site.md) — TODO: FE refactor
 - Workspace: `SETUP.md` ở root — clone, config, deploy, supervisor
 - Dev mới: đọc `SETUP.md` → `BE/CLAUDE.md` → `FE/CLAUDE.md`
+- [Prod SSH giữ đăng nhập mật khẩu](feedback_prod_ssh_keep_password.md) — VPS prod 103.77.182.93: KHÔNG tắt password login; key login qua `ssh prod`; VPS .118 đã bỏ
+- [Proxyma ISP whitelist + swap IP](project_proxyma_isp_whitelist_swap.md) — whitelist xong (BE c9fcd3d7, chưa deploy, NCC 13 chưa bật ip_whitelist); đổi IP code xong nhưng TẮT (isp_swap_enabled) vì Proxyma bỏ route swap-ip; gói test 1657
