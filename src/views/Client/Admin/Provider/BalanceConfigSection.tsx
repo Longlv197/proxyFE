@@ -74,6 +74,11 @@ const PRESETS: Record<string, Partial<Form>> = {
     regex: 'CHATBOX_CUSTOMER_BALANCE\\s*=\\s*"([\\d.,]+)',
     logged_out_marker: 'id="loginForm"', session_ttl: '60'
   },
+  '2proxy.vn (API)': {
+    mode: 'api', currency: 'VND',
+    url: 'https://app.2proxy.vn/api/proxyv3.php?sukien=so_du', method: 'GET',
+    auth_type: 'query', auth_param: 'key', value_path: 'so_du'
+  },
   'Proxyma (API)': {
     mode: 'api', currency: 'USD',
     url: 'https://api.proxyma1.io/api/reseller/get/balance', method: 'GET',
