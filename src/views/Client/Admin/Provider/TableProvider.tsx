@@ -48,7 +48,14 @@ import {
 
 import { toast } from 'react-toastify'
 
-import { useDeleteProvider, useProviders, useProviderBalance } from '@/hooks/apis/useProviders'
+import {
+  formatProviderBalance,
+  useDeleteProvider,
+  useProviderBalance,
+  useProviderBalances,
+  useProviders
+} from '@/hooks/apis/useProviders'
+import ProviderBalanceCell from '@/views/Client/Admin/Provider/ProviderBalanceCell'
 import ConfigVersionDrawer from '@/views/Client/Admin/ConfigVersions/ConfigVersionDrawer'
 import QrCodeDialog from '@/views/Client/Admin/Provider/QrCodeDialog'
 import TransactionModal from '@/views/Client/Admin/Provider/TransactionModal'
@@ -76,8 +83,21 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
   const [rechargeDialogOpen, setRechargeDialogOpen] = useState(false)
   const [providerToRecharge, setProviderToRecharge] = useState<any>(null)
   const [rechargeAmount, setRechargeAmount] = useState('')
-  const [providerBalance, setProviderBalance] = useState<number | null>(null)
+  const [providerBalance, setProviderBalance] = useState<{ balance: number | null; currency: string } | null>(null)
   const balanceMutation = useProviderBalance()
+
+  // Số dư ở cột bảng: cache BE 15 phút/lần; nút làm mới từng dòng gọi NCC ngay
+  const { data: balances } = useProviderBalances()
+  const rowBalanceMutation = useProviderBalance()
+  const [refreshingCode, setRefreshingCode] = useState<string | null>(null)
+
+  const refreshRowBalance = useCallback((code: string) => {
+    setRefreshingCode(code)
+    rowBalanceMutation.mutate(code, {
+      onSettled: () => setRefreshingCode(null)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [qrCodeDialogOpen, setQrCodeDialogOpen] = useState(false)
   const [providerForQrCode, setProviderForQrCode] = useState<any>(null)
@@ -130,6 +150,7 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
     setAppliedStatus('all')
     setPagination(prev => ({ ...prev, pageIndex: 0 }))
   }, [])
+
   const deleteMutation = useDeleteProvider()
 
   const getStatusBadge = (status: string) => {
@@ -254,7 +275,10 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
   const fetchProviderBalance = useCallback((code?: string) => {
     if (!code) return
     balanceMutation.mutate(code, {
-      onSuccess: (res: any) => setProviderBalance(res?.data?.balance ?? null),
+      onSuccess: (res: any) =>
+        setProviderBalance(
+          res?.data?.balance != null ? { balance: res.data.balance, currency: res.data.currency || 'VND' } : null
+        ),
       onError: () => setProviderBalance(null)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -392,6 +416,22 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
         size: 110
       },
       {
+        header: 'Số dư NCC',
+        size: 150,
+        cell: ({ row }: { row: any }) => {
+          const code = row.original?.provider_code
+          const info = code ? balances?.[code] : undefined
+
+          return (
+            <ProviderBalanceCell
+              info={info}
+              loading={refreshingCode === code}
+              onRefresh={info ? () => refreshRowBalance(code) : undefined}
+            />
+          )
+        }
+      },
+      {
         header: 'Thao tác',
         cell: ({ row }: { row: any }) => {
           return (
@@ -475,7 +515,10 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
       handleOpenRechargeDialog,
       handleOpenTransactionModal,
       handleOpenStatistic,
-      handleOpenInvoice
+      handleOpenInvoice,
+      balances,
+      refreshingCode,
+      refreshRowBalance
     ]
   )
 
@@ -823,7 +866,7 @@ export default function TableProvider({ onOpenModal, onOpenStatistic, onOpenInvo
               <strong style={{ color: '#059669' }}>
                 {balanceMutation.isPending
                   ? 'Đang lấy...'
-                  : `${new Intl.NumberFormat('vi-VN').format(providerBalance || 0)} đ`}
+                  : formatProviderBalance(providerBalance?.balance, providerBalance?.currency)}
               </strong>
               <Button
                 size='small'

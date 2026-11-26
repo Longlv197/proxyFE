@@ -7,6 +7,11 @@ metadata:
   originSessionId: ed3d15e1-11b5-4750-a542-4c6855a0e02e
 ---
 
+## Trạng thái thực tế prod (kiểm 26/11/2026)
+- Đang chạy: NCC #10 proxyma.io (api.proxyma1.io), SP #42 "Rotate IPv4 Global" `api_body {"package_id":"8"}` (1GB/$5), giá 150k / vốn 130k, 8 đơn (7 hết hạn, 1 hoàn). Luồng buy/package → create/proxy (1000 port) → host override s1.proxiesmmo.win chạy đúng.
+- **Anh chốt giữ nguyên: SL = SỐ PORT (1–1999), KHÔNG phải số gói.** SL N = 1 gói, N port chung 1 dung lượng, giá không nhân SL. Gói GB lớn hơn = tạo SP riêng (clone #42, đổi package_id 1/2/3/4). Đừng đề xuất sửa lại.
+- Dung lượng gói (sync:package-usage 30p + FE PackageUsage) ĐÃ deploy; không thấy chỉ vì chưa có đơn active. Gap: đơn mới chờ ≤30p mới có số.
+
 ## Trạng thái: HƯỚNG A (config-driven) ĐÃ IMPLEMENT 08/06/2026 — code xong, build/lint pass, CHƯA test E2E, CHƯA deploy, CHƯA commit. Standalone Processor giữ phòng hờ (không route tới).
 
 ## ⚠️ NEXT: anh tự cấu hình 4b trên UI (provider api_config buy=deferred + fetch_proxies auth_string; SP proxy_host + price_quantity_mode=package + max_quantity>1 + custom_fields tariff stage=buy / combo location type=combo) → test E2E local → deploy → `supervisorctl restart all`. Reversible: bỏ comment 1 dòng ProviderFactory.

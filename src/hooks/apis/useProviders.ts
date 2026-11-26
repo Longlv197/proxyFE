@@ -106,17 +106,59 @@ return res?.data
   })
 }
 
-// Hook lấy số dư ví NCC (hiện hỗ trợ homeproxy.vn). Trả { success, data: { balance } }
+export interface ProviderBalanceInfo {
+  provider_id?: number
+  balance: number | null
+  currency: string
+  success: boolean | null
+  stale?: boolean
+  message?: string
+  fetched_at?: string | null
+  checked_at?: string | null
+  low_threshold?: number | null
+}
+
+// Lấy số dư NGAY từ NCC (nút làm mới) → cập nhật luôn cache bảng. Trả { success, data: ProviderBalanceInfo }
 export const useProviderBalance = () => {
   const axiosAuth = useAxiosAuth()
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (providerCode: string) => {
-      const res = await axiosAuth.get(`/provider-balance/${providerCode}`)
+      try {
+        const res = await axiosAuth.get(`/provider-balance/${providerCode}`)
 
-      return res?.data
+        return res?.data
+      } catch (e: any) {
+        // 422 vẫn mang số cũ (stale) + lý do lỗi → trả về để hiện, không ném
+        if (e?.response?.data) return e.response.data
+        throw e
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['providerBalances'] })
+  })
+}
+
+// Số dư ĐÃ CACHE của mọi NCC có cấu hình (BE cập nhật 15 phút/lần) — map theo provider_code
+export const useProviderBalances = () => {
+  const axiosAuth = useAxiosAuth()
+
+  return useQuery<Record<string, ProviderBalanceInfo>>({
+    queryKey: ['providerBalances'],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const res = await axiosAuth.get('/provider-balances')
+
+      return res?.data?.data || {}
     }
   })
+}
+
+export const formatProviderBalance = (amount: number | null | undefined, currency = 'VND') => {
+  if (amount === null || amount === undefined) return '-'
+  if (currency === 'VND') return `${new Intl.NumberFormat('vi-VN').format(amount)} đ`
+
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount)
 }
 
 // Hook lấy lịch sử giao dịch THẬT tại NCC (phân trang server-side). Trả { success, data, total, has_next }

@@ -52,6 +52,8 @@ import { defaultValues } from './ProviderFormTypes'
 import { parseApiConfig, buildApiConfig } from './ProviderFormSerializer'
 import ResidentialProviderSection from './ResidentialProviderSection'
 import type { ResidentialBuildRef } from './ResidentialProviderSection'
+import BalanceConfigSection from './BalanceConfigSection'
+import type { BalanceBuildRef } from './BalanceConfigSection'
 
 import BasicInfoSection from './sections/BasicInfoSection'
 import BuyConfigSection from './sections/BuyConfigSection'
@@ -290,6 +292,9 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
   // qua ref để nút "Cập nhật" footer cũng lưu được tab này (tránh trap 2 nút lưu)
   const residentialRef = useRef<ResidentialBuildRef | null>(null)
 
+  // Mục "Số dư NCC" (tab Cơ bản) — state cục bộ, build() merge vào api_config.balance khi lưu
+  const balanceRef = useRef<BalanceBuildRef | null>(null)
+
   // JSON preview
   const [jsonPreview, setJsonPreview] = useState('// Chưa có cấu hình API')
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -447,6 +452,19 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
       }
 
       payload.api_config = { ...(payload.api_config || {}), ...r.config }
+    }
+
+    if (balanceRef.current) {
+      const b = balanceRef.current.build()
+
+      if (!b.ok) {
+        toast.error(`Số dư NCC: ${b.error}`)
+        setActiveTab(0)
+
+        return
+      }
+
+      if (Object.keys(b.config).length) payload.api_config = { ...(payload.api_config || {}), ...b.config }
     }
 
     const mutation = type === 'create' ? createMutation : updateMutation
@@ -670,6 +688,7 @@ export default function ModalAddProvider({ open, onClose, type, providerData }: 
                 {/* Tab 0: Cơ bản */}
                 <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
                   <BasicInfoSection control={control} errors={errors} />
+                  <BalanceConfigSection provider={providerData} stateRef={balanceRef} />
                 </Box>
 
                 {/* Tab 1: Mua proxy */}

@@ -60,7 +60,7 @@
 - [Custom Fields](project_custom_fields_architecture.md) — 3 lớp key/provider_value/label, ẩn NCC
 - [Country Flag](project_country_flag_custom_field.md) — admin UX + preview dùng ProxyCard
 - [Gem1 Tool API](project_gem_tool_api.md) — 20/04: GemController /api/buy/proxy + /api/gem-orders, auth code+amount (không JWT), Redis lock chống overspend
-- [Proxyma Residential](project_residential_proxy_provider.md) — PHASE 2 DEPLOYED 01/06. NEXT: anh quyết hướng refactor A/B/C (xoá Processor 656 dòng vs giữ simple bulk insert 1000 OrderItem). Đọc memory TRƯỚC khi code.
+- [Proxyma Residential](project_residential_proxy_provider.md) — ĐANG BÁN prod (SP #42, gói 1GB). Anh chốt SL = số port, không sửa. Gói GB lớn = SP riêng (package_id 1–4). Đọc memory TRƯỚC khi code.
 
 ## Bugs
 - [Config panel UI đè lên config](bug_config_panel_ui_overlap.md) — ĐÃ SỬA 25/07 (chờ push): tách tab riêng "Kiểm tra" + chấm cảnh báo trên nhãn tab, verify Playwright.

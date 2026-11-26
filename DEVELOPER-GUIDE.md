@@ -847,6 +847,12 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+92 Số dư NCC: cột trong bảng + mục cấu hình trong form NCC (26/11/2026)
+
+**Thêm:** cột số dư ở bảng NCC (cache BE 15 phút/lần, `GET /provider-balances`, tự làm mới 60s), nút làm mới từng dòng gọi NCC ngay. Lỗi lần gần nhất → số cũ màu cảnh báo + ⚠, tooltip ghi lý do + thời điểm; dưới `low_threshold` → màu đỏ. NCC chưa cấu hình → "-". Modal nạp tiền hiện đúng đơn vị (USD/VND).
+**Form NCC (tab Cơ bản) mục "Số dư NCC":** chọn Tắt / API của NCC / Đăng nhập web; nút điền mẫu proxy.vn & Proxyma; ngưỡng cảnh báo; ô mật khẩu trống = giữ mật khẩu đã lưu (không hiện lại bản mã hoá); khối xem số dư hiện tại + "Lấy ngay". Lưu chung nút "Cập nhật" qua `balanceRef.build()` (cùng kiểu tab Residential) → `api_config.balance`.
+**Files:** `src/views/Client/Admin/Provider/ProviderBalanceCell.tsx` (mới), `src/views/Client/Admin/Provider/BalanceConfigSection.tsx` (mới), `src/views/Client/Admin/Provider/ModalAddProvider.tsx`, `src/views/Client/Admin/Provider/TableProvider.tsx`, `src/hooks/apis/useProviders.ts`
+
 #### 13.N+91 Form SP ISP: chọn gói đặt SL 1–1 (1 gói) (25/11/2026)
 
 **Sửa:** theo quy ước mới (BE 15.N+92) khách đặt SL 1 = 1 gói và nhận đủ IP của gói → chọn gói trong mục "Proxy tĩnh ISP / Gói NCC" đặt SL min = max = **1** (trước: = số IP). Cảnh báo đỏ khi SL khác 1–1 (BE từ chối đơn SL khác 1).
