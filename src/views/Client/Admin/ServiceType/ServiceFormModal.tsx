@@ -2876,6 +2876,38 @@ return <Chip key={val} label={p?.label || val} size='small' />
                     maxQuantity={watchedMaxQty}
                     proxyType={watchedProxyType || ''}
                     country={Array.isArray(watchedCountry) ? watchedCountry : []}
+                    purposeInfo={(() => {
+                      // 2 ô do hệ thống sinh từ NCC (source='isp_plan') — đếm để báo admin SP đang có gì
+                      const raw = (k: string) => (purchaseOptions.find(o => o.key === k) as any)?.__raw
+                      const pf = raw('purpose')
+                      const cf = raw('country')
+
+                      return pf?.source === 'isp_plan' && cf?.source === 'isp_plan'
+                        ? { purposes: (pf.options || []).length, countries: (cf.options || []).length }
+                        : null
+                    })()}
+                    onApplyPurposeFields={(fields: any[]) => {
+                      // Thay 2 ô purpose/country cũ bằng bản mới từ NCC, GIỮ các ô admin tự thêm.
+                      // __raw = bản gốc → buildField giữ nguyên depends_on/options_by_parent/source khi Lưu.
+                      const converted = fields.map((f: any) => ({
+                        key: f.key,
+                        param_name: f.param_name,
+                        label: f.label,
+                        type: 'select' as const,
+                        required: !!f.required,
+                        default: f.default || '',
+                        display_type: (f.display_type || '') as any,
+                        options: (f.options || []).map((o: any) => ({ ...o, provider_value: o.provider_value ?? '' })),
+                        stage: 'buy',
+                        price_driver: false,
+                        __raw: f
+                      }))
+
+                      setPurchaseOptions(prev => [
+                        ...prev.filter(o => o.key !== 'purpose' && o.key !== 'country'),
+                        ...(converted as any)
+                      ])
+                    }}
                     onPickTariff={(t, meta) => {
                       // SL = SỐ GÓI = 1 (BE tự tạo isp_ports dòng proxy cho 1 gói, gửi NCC quantity=1)
                       setValue('body_api', JSON.stringify({ tariff_id: Number(t.tariff_id) }))

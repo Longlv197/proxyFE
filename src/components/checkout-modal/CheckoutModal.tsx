@@ -182,7 +182,15 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
       const next = { ...prev, [key]: value }
       customFields?.forEach(f => {
         if (f.depends_on === key) {
-          delete next[f.key || f.param || '']
+          const childKey = f.key || f.param || ''
+
+          delete next[childKey]
+
+          // Ô con có mặc định (VD proxy ISP: Quốc gia = Any) và mặc định có trong danh sách của lựa chọn
+          // cha mới → đặt lại mặc định, khỏi bắt khách chọn lại (để trống thì BE báo thiếu trường bắt buộc).
+          const childOpts = f.options_by_parent?.[value] || []
+
+          if (f.default && childOpts.some(o => (o.key || o.value) === f.default)) next[childKey] = f.default
           customFields?.forEach(g => {
             if (g.depends_on === (f.key || f.param || '')) {
               delete next[g.key || g.param || '']
@@ -735,7 +743,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
             // Tariff card không còn — đã bỏ pricing per option. Detect chỉ bằng source.
             // Nếu admin muốn card nổi bật cho tariff, dùng display_type='card' (Phase sau).
             const isTariffCard = false
-            const isDependent = field.source === 'api_regions' || field.source === 'api_cities'
+            const isDependent = field.source === 'api_regions' || field.source === 'api_cities' || (!!field.depends_on && !!field.options_by_parent) // ISP: Quốc gia lọc theo Mục đích
             const parentKey = field.depends_on || ''
             const parentValue = parentKey ? customFieldValues[parentKey] : ''
             // Dependent → đọc snapshot options_by_parent[parentValue] (admin đã chọn trước)

@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
+
 import { Alert, Box, Button, MenuItem, Typography } from '@mui/material'
 import { RefreshCw } from 'lucide-react'
 
 import CustomTextField from '@/@core/components/mui/TextField'
-import { useIspTariffs } from '@/hooks/apis/useIspTariffs'
+import { useIspPurposeFields, useIspTariffs } from '@/hooks/apis/useIspTariffs'
 
 /**
  * Section trong ServiceFormModal khi SP gắn NCC có `api_config.kind = 'isp'` (proxy tĩnh Proxyma ISP).
@@ -21,6 +23,8 @@ import { useIspTariffs } from '@/hooks/apis/useIspTariffs'
  *     dòng proxy cho 1 gói + gửi NCC quantity=1; SL khác 1 bị BE từ chối (mỗi lần gọi API chỉ mua 1 gói).
  *   - giá "Cố định theo gói" (không × SL)
  *   - metadata `isp_*` (tham khảo) — `kind='isp'` do ServiceFormModal ghi khi lưu
+ *   - 2 ô khách chọn "Mục đích sử dụng" + "Quốc gia" (custom_fields, BE sinh từ `plans/{plan_id}` của NCC,
+ *     quốc gia phụ thuộc mục đích). BE kiểm cặp hợp lệ + kho thật TRƯỚC khi trừ tiền (27/11/2026).
  */
 
 export type IspTariff = {
@@ -52,6 +56,10 @@ type Props = {
   proxyType: string
   country: string[]
   onPickTariff: (tariff: IspTariff, meta: IspMetadata) => void
+
+  /** Số mục đích / quốc gia SP đang có ở 2 ô hệ thống sinh (null = chưa có) */
+  purposeInfo: { purposes: number; countries: number } | null
+  onApplyPurposeFields: (fields: any[]) => void
 }
 
 export function readTariffId(bodyApi: string): number | null {
@@ -70,8 +78,13 @@ const SOURCE_LABEL: Record<string, string> = {
   snapshot: 'NCC không trả bảng giá — đang dùng bản chụp cũ, giá có thể đã đổi'
 }
 
-const IspPackageSection = ({ providerId, providerApiConfig, currentTariffId, minQuantity, maxQuantity, proxyType, country, onPickTariff }: Props) => {
+const IspPackageSection = ({
+  providerId, providerApiConfig, currentTariffId, minQuantity, maxQuantity, proxyType, country, onPickTariff,
+  purposeInfo, onApplyPurposeFields
+}: Props) => {
   const { data: live, isLoading, isError, refreshFresh, refreshing } = useIspTariffs(providerId)
+  const { fetchFields, loading: loadingPurposes } = useIspPurposeFields()
+  const [purposeError, setPurposeError] = useState<string | null>(null)
   const snapshot: IspTariff[] = Array.isArray(providerApiConfig?.isp_tariffs) ? providerApiConfig.isp_tariffs : []
   const tariffs: IspTariff[] = live?.data?.length ? live.data : snapshot
   const source = live?.data?.length ? live.source : 'snapshot'
@@ -91,6 +104,27 @@ const IspPackageSection = ({ providerId, providerApiConfig, currentTariffId, min
       isp_country: buyParams.country ? String(buyParams.country) : undefined,
       isp_purpose_id: buyParams.purpose_id ? String(buyParams.purpose_id) : undefined
     })
+    loadPurposes(t.plan_id)
+  }
+
+  // Lấy 2 ô Mục đích + Quốc gia của gói từ NCC → điền vào "Tuỳ chọn mua hàng"
+  const loadPurposes = async (planId: number | string | null | undefined) => {
+    setPurposeError(null)
+
+    if (!providerId || planId === undefined || planId === null || planId === '') {
+      setPurposeError('Gói này không có plan_id — làm mới bảng giá rồi chọn lại gói')
+
+      return
+    }
+
+    try {
+      const r = await fetchFields(providerId, planId)
+
+      if (r.fields.length === 2) onApplyPurposeFields(r.fields)
+      else setPurposeError('NCC không trả danh sách mục đích')
+    } catch (e: any) {
+      setPurposeError(e?.response?.data?.message || 'Không lấy được Mục đích & Quốc gia từ NCC')
+    }
   }
 
   const qtyWrong = Number(minQuantity) !== 1 || Number(maxQuantity) !== 1
@@ -135,6 +169,21 @@ const IspPackageSection = ({ providerId, providerApiConfig, currentTariffId, min
         </Typography>
       )}
 
+      <Box sx={{ mt: 1.5, p: 1.25, borderRadius: 1, border: '1px solid', borderColor: purposeInfo ? 'success.light' : 'warning.light' }}>
+        <Typography sx={{ fontSize: 12, fontWeight: 600 }}>Mục đích & Quốc gia khách chọn khi mua</Typography>
+        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
+          {purposeInfo
+            ? `Đang có ${purposeInfo.purposes} mục đích · ${purposeInfo.countries} quốc gia (ở mục "Tuỳ chọn mua hàng"). Quốc gia lọc theo mục đích; hệ thống kiểm còn IP trước khi trừ tiền.`
+            : 'Chưa có — khách mua sẽ nhận mục đích "Other" + quốc gia ngẫu nhiên (Any). Bấm để lấy danh sách từ NCC.'}
+        </Typography>
+        <Button size='small' variant='outlined' sx={{ mt: 0.75, fontSize: 11, textTransform: 'none' }}
+          disabled={!current || loadingPurposes}
+          onClick={() => loadPurposes(current?.plan_id)}>
+          {loadingPurposes ? 'Đang lấy…' : purposeInfo ? 'Lấy lại Mục đích & Quốc gia từ NCC' : 'Lấy Mục đích & Quốc gia từ NCC'}
+        </Button>
+        {purposeError && <Alert severity='error' sx={{ mt: 1, py: 0 }}>{purposeError}</Alert>}
+      </Box>
+
       {currentTariffId !== null && !current && (
         <Alert severity='warning' sx={{ mt: 1, py: 0 }}>
           tariff_id {currentTariffId} trong api_body không có trong danh sách gói của NCC — chọn lại gói.
@@ -152,7 +201,7 @@ const IspPackageSection = ({ providerId, providerApiConfig, currentTariffId, min
       )}
       {country?.length > 0 && (
         <Alert severity='warning' sx={{ mt: 1, py: 0 }}>
-          NCC cấp IP ngẫu nhiên quốc gia (country: {buyParams.country || 'Any'}) — nên để trống Quốc gia để không hứa sai với khách.
+          Quốc gia do khách chọn lúc mua (ô &quot;Quốc gia&quot;) — nên để trống trường Quốc gia của SP để không hiện sai.
         </Alert>
       )}
     </Box>

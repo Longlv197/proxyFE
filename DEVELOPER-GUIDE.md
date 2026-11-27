@@ -847,6 +847,12 @@ Bước 2: fetch-partner-proxies (mỗi phút) → Scan AWAITING_PARTNER → G�
 
 ## 13. Changelog - Các vấn đề đã sửa
 
+#### 13.N+93 Proxy tĩnh ISP: ô Mục đích sử dụng + Quốc gia (27/11/2026)
+
+**Form SP (mục "Proxy tĩnh ISP / Gói NCC"):** chọn gói → tự lấy 2 ô "Mục đích sử dụng" + "Quốc gia" từ NCC (BE `purpose-fields`) điền vào "Tuỳ chọn mua hàng" (thay 2 ô cũ cùng key, giữ ô admin tự thêm; `__raw` giữ depends_on/options_by_parent/source khi Lưu). Khối trạng thái "Đang có N mục đích · M quốc gia" + nút "Lấy (lại) Mục đích & Quốc gia từ NCC" cho SP cũ.
+**Checkout:** ô phụ thuộc bật cho MỌI field có `depends_on` + `options_by_parent` (trước chỉ nguồn api_regions/api_cities). Đổi ô cha → ô con về mặc định nếu mặc định có trong danh sách mới (Quốc gia = Any), không bắt chọn lại.
+**Files:** `src/views/Client/Admin/ServiceType/IspPackageSection.tsx`, `src/views/Client/Admin/ServiceType/ServiceFormModal.tsx`, `src/hooks/apis/useIspTariffs.ts`, `src/components/checkout-modal/CheckoutModal.tsx`
+
 #### 13.N+92 Số dư NCC: cột trong bảng + mục cấu hình trong form NCC (26/11/2026)
 
 **Thêm:** cột số dư ở bảng NCC (cache BE 15 phút/lần, `GET /provider-balances`, tự làm mới 60s), nút làm mới từng dòng gọi NCC ngay. Lỗi lần gần nhất → số cũ màu cảnh báo + ⚠, tooltip ghi lý do + thời điểm; dưới `low_threshold` → màu đỏ. NCC chưa cấu hình → "-". Modal nạp tiền hiện đúng đơn vị (USD/VND).

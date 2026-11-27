@@ -53,3 +53,29 @@ export const useIspTariffs = (providerId?: string | number | null, enabled: bool
 
   return { ...query, refreshFresh, refreshing }
 }
+
+/**
+ * 2 custom_fields "Mục đích" + "Quốc gia" sinh từ danh sách thật của gói tại NCC (BE luôn lấy mới).
+ * Form SP gọi khi chọn gói / bấm "Lấy Mục đích & Quốc gia từ NCC" rồi điền vào "Tuỳ chọn mua hàng".
+ */
+export const useIspPurposeFields = () => {
+  const axiosAuth = useAxiosAuth()
+  const [loading, setLoading] = useState(false)
+
+  const fetchFields = async (providerId: string | number, planId: string | number) => {
+    setLoading(true)
+
+    try {
+      const res = await axiosAuth.get(`/admin/isp-providers/${providerId}/plans/${planId}/purpose-fields`)
+
+      return {
+        fields: (res?.data?.data ?? []) as any[],
+        summary: (res?.data?.summary ?? null) as { purposes: number; countries: number } | null
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return { fetchFields, loading }
+}
